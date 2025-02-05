@@ -5,7 +5,8 @@
 - **Ligan**
 - **Perolino**
 
-## Member 1: Sherween R. Perolino
+## Member 1
+### Name: Sherween R. Perolino
 ### Course & Year: BSIT-4
 
 Hello! I am **Sherween R. Perolino**, a third-year **BSIT** student at **Cebu Institute of Technology - University**.
