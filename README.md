@@ -1,13 +1,12 @@
 # IT342-SerbisYou
 
-Team Members:
-Bacarisas
-Ligan
-Perolino
+# Team Members
+- **Bacarisas**
+- **Ligan**
+- **Perolino**
 
-Member1
-NAME: SHERWEEN PEROLINO  
-COURSE & YEAR: BSIT-4
+## Member 1: Sherween R. Perolino
+### Course & Year: BSIT-4
 
 Hello! I am **Sherween R. Perolino**, a third-year **BSIT** student at **Cebu Institute of Technology - University**.
 
@@ -23,3 +22,7 @@ In my free time, I enjoy:
 
 ### Aspiration
 I have always dreamed of creating a system that can be accessed on both **mobile** and **web** platforms. This project is a step toward making that dream a reality, and I am thrilled to bring it to life! ^-^
+
+---
+
+Feel free to reach out or collaborate with us on our projects!
