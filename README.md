@@ -1,5 +1,34 @@
 # IT342-SerbisYou
 
+<<<<<<< HEAD
+# Team Members
+- **Bacarisas**
+- **Ligan**
+- **Perolino**
+
+## Member 1
+### Name: Sherween R. Perolino
+### Course & Year: BSIT-4
+
+Hello! I am **Sherween R. Perolino**, a third-year **BSIT** student at **Cebu Institute of Technology - University**.
+
+### Background
+I am originally from **Doldol, Dumanjug, Cebu**, a place known for its delicious **Inasal Manok Bisaya**. However, I currently reside in **Duljo Fatima, Cebu City**, as I pursue my tertiary education.
+
+### Hobbies
+In my free time, I enjoy:
+- Listening to music 🎶
+- Hiking 🥾
+- Reading fables 📚
+- Sleeping 🛏️
+
+### Aspiration
+I have always dreamed of creating a system that can be accessed on both **mobile** and **web** platforms. This project is a step toward making that dream a reality, and I am thrilled to bring it to life! ^-^
+
+---
+
+Feel free to reach out or collaborate with us on our projects!
+=======
 
 ## Team Members:
 - 👨‍💻 Bacarisas
@@ -67,3 +96,4 @@ I don’t have the full roadmap figured out yet, but I’m excited about the jou
 
 Feel free to reach out if you’d like to collaborate, share ideas, or discuss anything design-related!
 
+>>>>>>> main
