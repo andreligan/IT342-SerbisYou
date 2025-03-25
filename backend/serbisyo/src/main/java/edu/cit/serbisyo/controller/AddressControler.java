@@ -14,42 +14,45 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import edu.cit.serbisyo.entity.AddressEntity;
 import edu.cit.serbisyo.entity.UserAuthEntity;
+import edu.cit.serbisyo.service.AddressService;
 import edu.cit.serbisyo.service.UserAuthService;
 
 @RestController
-@RequestMapping(method=RequestMethod.GET, path="/api/userauth")
-public class UserAuthController {
+@RequestMapping(method=RequestMethod.GET, path="/api/addresses")
+public class AddressControler {
 
     @Autowired
-    UserAuthService userv;
+    AddressService aserv;
 
-     @GetMapping("/print")
+    @GetMapping("/print")
     public String print() {
         return "Wow, it works!";
     }
     
     // CREATE
-    @PostMapping("/postUserAuth")
-    public UserAuthEntity postUserAuth(@RequestBody UserAuthEntity userauth) {
-        return userv.postUserAuth(userauth);
+    @PostMapping("/postAddress")
+    public AddressEntity postAddress(@RequestBody AddressEntity address) {
+        return aserv.postAddress(address);
     }
     
       // READ
-    @GetMapping("/getAllUserAuths")
-    public List<UserAuthEntity> getAllUserAuths() {
-        return userv.getAllUserAuth();
+    @GetMapping("/getAllAddresses")
+    public List<AddressEntity> getAllAddresses() {
+        return aserv.getAllAddresses();
     }
 
     // UPDATE
-    @PutMapping("/putUserAuthDetails")
-    public UserAuthEntity putUserAuthDetails(@RequestParam int userId, @RequestBody UserAuthEntity newUserAuthDetails) {
-        return userv. putUserAuthDetails(userId, newUserAuthDetails);
+    @PutMapping("/putAddressDetails")
+    public AddressEntity putAddressDetails(@RequestParam int addressId, @RequestBody AddressEntity newAddressDetails) {
+        return aserv. putAddressDetails(addressId, newAddressDetails);
     }
 
     // DELETE
-    @DeleteMapping("/deleteUserAuthDetails/{userId}")
-    public String deleteUserAuthDetails(@PathVariable int userId) {
-        return userv.deleteUserAuthDetails(userId);
+    @DeleteMapping("/deleteAddressDetails/{addressId}")
+    public String deleteAddressDetails(@PathVariable int addressId) {
+        return aserv.deleteAddressDetails(addressId);
     }
+    
 }
