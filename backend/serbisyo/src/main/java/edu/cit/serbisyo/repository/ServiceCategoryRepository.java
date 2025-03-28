@@ -5,5 +5,5 @@ import org.springframework.stereotype.Repository;
 import edu.cit.serbisyo.entity.ServiceCategoryEntity;
 
 @Repository
-public interface ServiceCategoryRepository extends JpaRepository<ServiceCategoryEntity, Integer> {
+public interface ServiceCategoryRepository extends JpaRepository<ServiceCategoryEntity, Long> {
 }

@@ -1,40 +1,54 @@
 package edu.cit.serbisyo.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
+
+import java.util.List;
 
 @Entity
+@Table(name = "Service")
 public class ServiceEntity {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int serviceId;
+    private Long serviceId;
+
+    @ManyToOne
+    @JoinColumn(name = "providerId", nullable = false)
+    private ServiceProviderEntity provider;
+
+    @ManyToOne
+    @JoinColumn(name = "categoryId", nullable = false)
+    private ServiceCategoryEntity category;
 
     private String serviceName;
-    private String description;
+    private String serviceDescription;
     private String priceRange;
     private String durationEstimate;
 
-    public ServiceEntity() {
-        super();
-    }
+    @OneToMany(mappedBy = "service", cascade = CascadeType.ALL)
+    private List<BookingEntity> bookings;
 
-    public ServiceEntity(int serviceId, String serviceName, String description, String priceRange, String durationEstimate) {
-        this.serviceId = serviceId;
-        this.serviceName = serviceName;
-        this.description = description;
-        this.priceRange = priceRange;
-        this.durationEstimate = durationEstimate;
-    }
-
-    public int getServiceId() {
+    public Long getServiceId() {
         return serviceId;
     }
 
-    public void setServiceId(int serviceId) {
+    public void setServiceId(Long serviceId) {
         this.serviceId = serviceId;
+    }
+
+    public ServiceProviderEntity getProvider() {
+        return provider;
+    }
+
+    public void setProvider(ServiceProviderEntity provider) {
+        this.provider = provider;
+    }
+
+    public ServiceCategoryEntity getCategory() {
+        return category;
+    }
+
+    public void setCategory(ServiceCategoryEntity category) {
+        this.category = category;
     }
 
     public String getServiceName() {
@@ -45,12 +59,12 @@ public class ServiceEntity {
         this.serviceName = serviceName;
     }
 
-    public String getDescription() {
-        return description;
+    public String getServiceDescription() {
+        return serviceDescription;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setServiceDescription(String serviceDescription) {
+        this.serviceDescription = serviceDescription;
     }
 
     public String getPriceRange() {
@@ -67,5 +81,13 @@ public class ServiceEntity {
 
     public void setDurationEstimate(String durationEstimate) {
         this.durationEstimate = durationEstimate;
+    }
+
+    public List<BookingEntity> getBookings() {
+        return bookings;
+    }
+
+    public void setBookings(List<BookingEntity> bookings) {
+        this.bookings = bookings;
     }
 }

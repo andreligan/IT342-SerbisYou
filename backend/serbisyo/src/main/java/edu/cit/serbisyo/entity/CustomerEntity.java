@@ -1,27 +1,34 @@
 package edu.cit.serbisyo.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+
+import java.util.List;
 
 @Entity
-@Table(name = "customers")
+@Table(name = "Customer")
 public class CustomerEntity {
-
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long customerId;
 
-    private Long userId;
-    private Long addressId;
+    @OneToOne
+    @MapsId
+    @JoinColumn(name = "userId")
+    private UserAuthEntity userAuth;
+
+    @ManyToOne
+    @JoinColumn(name = "addressId", nullable = false)
+    private AddressEntity address;
+
     private String firstName;
     private String lastName;
     private String phoneNumber;
-    private String email;
 
-    // Getters and Setters
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL)
+    private List<BookingEntity> bookings;
+
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL)
+    private List<ReviewEntity> reviews;
+
     public Long getCustomerId() {
         return customerId;
     }
@@ -30,20 +37,20 @@ public class CustomerEntity {
         this.customerId = customerId;
     }
 
-    public Long getUserId() {
-        return userId;
+    public UserAuthEntity getUserAuth() {
+        return userAuth;
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
+    public void setUserAuth(UserAuthEntity userAuth) {
+        this.userAuth = userAuth;
     }
 
-    public Long getAddressId() {
-        return addressId;
+    public AddressEntity getAddress() {
+        return address;
     }
 
-    public void setAddressId(Long addressId) {
-        this.addressId = addressId;
+    public void setAddress(AddressEntity address) {
+        this.address = address;
     }
 
     public String getFirstName() {
@@ -70,11 +77,19 @@ public class CustomerEntity {
         this.phoneNumber = phoneNumber;
     }
 
-    public String getEmail() {
-        return email;
+    public List<BookingEntity> getBookings() {
+        return bookings;
     }
 
-    public void setEmail(String email) {
-        this.email = email;
+    public void setBookings(List<BookingEntity> bookings) {
+        this.bookings = bookings;
+    }
+
+    public List<ReviewEntity> getReviews() {
+        return reviews;
+    }
+
+    public void setReviews(List<ReviewEntity> reviews) {
+        this.reviews = reviews;
     }
 }

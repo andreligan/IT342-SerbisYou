@@ -1,61 +1,44 @@
 package edu.cit.serbisyo.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
+
+import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "UserAuth")
 public class UserAuthEntity {
-
     @Id
-    @GeneratedValue(strategy=GenerationType.IDENTITY)
-    private int userId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long userId;
 
-    private String email;
-    
     private String userName;
-
     private String password;
-
+    private String email;
     private String role;
+    private LocalDateTime createdAt;
 
-    private String createdAt;
+    @OneToOne(mappedBy = "userAuth", cascade = CascadeType.ALL)
+    private CustomerEntity customer;
 
-    public UserAuthEntity() {
-        super();
-    }
+    @OneToOne(mappedBy = "userAuth", cascade = CascadeType.ALL)
+    private ServiceProviderEntity serviceProvider;
 
-    public UserAuthEntity(int userId, String email, String userName, String password, String role, String createdAt) {
-       this.userId = userId;
-       this.email = email;
-       this.userName = userName;
-       this.password = password;
-       this.role = role;   
-       this.createdAt = createdAt;
-    }
+    @OneToOne(mappedBy = "userAuth", cascade = CascadeType.ALL)
+    private AdminEntity admin;
 
-    public int getUserId() {
+    public Long getUserId() {
         return userId;
     }
 
-    public void setUserId(int userId) {
+    public void setUserId(Long userId) {
         this.userId = userId;
     }
 
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getUsername() {
+    public String getUserName() {
         return userName;
     }
 
-    public void setUsername(String userName) {
+    public void setUserName(String userName) {
         this.userName = userName;
     }
 
@@ -66,8 +49,15 @@ public class UserAuthEntity {
     public void setPassword(String password) {
         this.password = password;
     }
-    
-    
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
     public String getRole() {
         return role;
     }
@@ -76,13 +66,35 @@ public class UserAuthEntity {
         this.role = role;
     }
 
-    public String getCreatedAt() {
+    public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(String createdAt) {
+    public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
-}
-    
 
+    public CustomerEntity getCustomer() {
+        return customer;
+    }
+
+    public void setCustomer(CustomerEntity customer) {
+        this.customer = customer;
+    }
+
+    public ServiceProviderEntity getServiceProvider() {
+        return serviceProvider;
+    }
+
+    public void setServiceProvider(ServiceProviderEntity serviceProvider) {
+        this.serviceProvider = serviceProvider;
+    }
+
+    public AdminEntity getAdmin() {
+        return admin;
+    }
+
+    public void setAdmin(AdminEntity admin) {
+        this.admin = admin;
+    }
+}

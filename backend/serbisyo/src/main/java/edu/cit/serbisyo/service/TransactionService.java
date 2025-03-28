@@ -6,6 +6,7 @@ import edu.cit.serbisyo.entity.TransactionEntity;
 import edu.cit.serbisyo.repository.TransactionRepository;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 @Service
@@ -14,39 +15,46 @@ public class TransactionService {
     @Autowired
     private TransactionRepository transactionRepository;
 
-    // CREATE
-    public TransactionEntity addTransaction(TransactionEntity transaction) {
+    public TransactionService() {
+        super();
+    }
+
+    // CREATE a new transaction
+    public TransactionEntity createTransaction(TransactionEntity transaction) {
         return transactionRepository.save(transaction);
     }
 
-    // READ
+    // READ all transactions
     public List<TransactionEntity> getAllTransactions() {
         return transactionRepository.findAll();
     }
 
-    public Optional<TransactionEntity> getTransactionById(int id) {
-        return transactionRepository.findById(id);
+    // READ a transaction by ID
+    public TransactionEntity getTransactionById(Long transactionId) {
+        return transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new NoSuchElementException("Transaction with ID " + transactionId + " not found"));
     }
 
-    // UPDATE
-    public TransactionEntity updateTransaction(int id, TransactionEntity newDetails) {
-        return transactionRepository.findById(id)
-            .map(transaction -> {
-                transaction.setServiceId(newDetails.getServiceId());
-                transaction.setUserId(newDetails.getUserId());
-                transaction.setBookingDate(newDetails.getBookingDate());
-                transaction.setStatus(newDetails.getStatus());
-                transaction.setTotalCost(newDetails.getTotalCost());
-                return transactionRepository.save(transaction);
-            }).orElseThrow(() -> new RuntimeException("Transaction not found!"));
+    // UPDATE an existing transaction
+    public TransactionEntity updateTransaction(Long transactionId, TransactionEntity newTransactionDetails) {
+        TransactionEntity existingTransaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new NoSuchElementException("Transaction with ID " + transactionId + " not found"));
+
+        existingTransaction.setBooking(newTransactionDetails.getBooking());
+        existingTransaction.setPaymentMethod(newTransactionDetails.getPaymentMethod());
+        existingTransaction.setAmount(newTransactionDetails.getAmount());
+        existingTransaction.setStatus(newTransactionDetails.getStatus());
+
+        return transactionRepository.save(existingTransaction);
     }
 
-    // DELETE
-    public String deleteTransaction(int id) {
-        if (transactionRepository.existsById(id)) {
-            transactionRepository.deleteById(id);
-            return "Transaction successfully deleted!";
+    // DELETE a transaction
+    public String deleteTransaction(Long transactionId) {
+        if (transactionRepository.existsById(transactionId)) {
+            transactionRepository.deleteById(transactionId);
+            return "Transaction with ID " + transactionId + " has been deleted successfully.";
+        } else {
+            return "Transaction with ID " + transactionId + " not found.";
         }
-        return "Transaction with ID " + id + " not found.";
     }
 }

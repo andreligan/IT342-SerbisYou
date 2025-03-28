@@ -4,56 +4,38 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "notifications")
+@Table(name = "Notification")
 public class NotificationEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int notificationId;
+    private Long notificationId;
 
-    @Column(nullable = false)
-    private int userId;
+    @ManyToOne
+    @JoinColumn(name = "userId", nullable = false)
+    private UserAuthEntity user;
 
-    @Column(nullable = false)
-    private String type; // e.g., "booking", "message", "system"
-
-    @Column(nullable = false, columnDefinition = "TEXT")
+    private String type;
     private String message;
-
-    @Column(nullable = false)
-    private Boolean isRead;
-
-    @Column(nullable = false)
+    private boolean isRead;
     private LocalDateTime createdAt;
 
-    @Column(nullable = false)
-    private String entityType; // e.g., "booking", "message", "user"
-
-    // Constructor with fields (excluding ID and createdAt)
-    public NotificationEntity(int userId, String type, String message, Boolean isRead, String entityType) {
-        this.userId = userId;
-        this.type = type;
-        this.message = message;
-        this.isRead = isRead;
-        this.entityType = entityType;
-        this.createdAt = LocalDateTime.now(); // Set createdAt on creation
-    }
-
     // Getters and Setters
-    public int getNotificationId() {
+
+    public Long getNotificationId() {
         return notificationId;
     }
 
-    public void setNotificationId(int notificationId) {
+    public void setNotificationId(Long notificationId) {
         this.notificationId = notificationId;
     }
 
-    public int getUserId() {
-        return userId;
+    public UserAuthEntity getUser() {
+        return user;
     }
 
-    public void setUserId(int userId) {
-        this.userId = userId;
+    public void setUser(UserAuthEntity user) {
+        this.user = user;
     }
 
     public String getType() {
@@ -72,11 +54,11 @@ public class NotificationEntity {
         this.message = message;
     }
 
-    public Boolean getRead() {
+    public boolean isRead() {
         return isRead;
     }
 
-    public void setRead(Boolean read) {
+    public void setRead(boolean read) {
         isRead = read;
     }
 
@@ -86,13 +68,5 @@ public class NotificationEntity {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
-    }
-
-    public String getEntityType() {
-        return entityType;
-    }
-
-    public void setEntityType(String entityType) {
-        this.entityType = entityType;
     }
 }

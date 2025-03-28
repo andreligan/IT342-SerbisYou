@@ -7,8 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface ServiceProviderRepository extends JpaRepository<ServiceProviderEntity, int> {
-
+public interface ServiceProviderRepository extends JpaRepository<ServiceProviderEntity, Long> {
     // Find by business category
     List<ServiceProviderEntity> findByCategory(String category);
 
@@ -16,5 +15,5 @@ public interface ServiceProviderRepository extends JpaRepository<ServiceProvider
     List<ServiceProviderEntity> findByIsVerifiedTrue();
 
     // Find service providers by user ID
-    List<ServiceProviderEntity> findByUserId(int userId);
+    List<ServiceProviderEntity> findByUserId(long userId);
 }

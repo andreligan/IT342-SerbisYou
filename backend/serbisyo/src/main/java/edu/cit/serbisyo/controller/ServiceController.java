@@ -8,39 +8,51 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/service")
-@CrossOrigin(origins = "http://localhost:5173")
+@RequestMapping(method = RequestMethod.GET, path = "/api/services")
 public class ServiceController {
 
     @Autowired
-    private ServiceService sserv;
+    private ServiceService serviceService;
 
-    @GetMapping("/test")
-    public String test() {
-        return "Service API is working!";
+    @GetMapping("/print")
+    public String print() {
+        return "Service Controller is working!";
     }
 
     // CREATE
-    @PostMapping("/postServiceRecord")
-    public ServiceEntity postServiceRecord(@RequestBody ServiceEntity service) {
-        return sserv.postServiceRecord(service);
+    @PostMapping("/postService/{providerId}/{categoryId}")
+    public ServiceEntity createService(
+            @PathVariable Long providerId,
+            @PathVariable Long categoryId,
+            @RequestBody ServiceEntity serviceDetails) {
+        return serviceService.createService(providerId, categoryId, serviceDetails);
     }
 
-    // READ
-    @GetMapping("/getAllServices")
+    // READ ALL
+    @GetMapping("/getAll")
     public List<ServiceEntity> getAllServices() {
-        return sserv.getAllServices();
+        return serviceService.getAllServices();
+    }
+
+    // READ BY ID
+    @GetMapping("/getById/{serviceId}")
+    public ServiceEntity getServiceById(@PathVariable Long serviceId) {
+        return serviceService.getServiceById(serviceId);
     }
 
     // UPDATE
-    @PutMapping("/putServiceDetails")
-    public ServiceEntity putServiceDetails(@RequestParam int serviceId, @RequestBody ServiceEntity newServiceDetails) {
-        return sserv.putServiceDetails(serviceId, newServiceDetails);
+    @PutMapping("/updateService/{serviceId}/{providerId}/{categoryId}")
+    public ServiceEntity updateService(
+            @PathVariable Long serviceId,
+            @PathVariable Long providerId,
+            @PathVariable Long categoryId,
+            @RequestBody ServiceEntity newServiceDetails) {
+        return serviceService.updateService(serviceId, providerId, categoryId, newServiceDetails);
     }
 
     // DELETE
-    @DeleteMapping("/deleteServiceDetails/{serviceId}")
-    public String deleteService(@PathVariable int serviceId) {
-        return sserv.deleteService(serviceId);
+    @DeleteMapping("/delete/{serviceId}")
+    public String deleteService(@PathVariable Long serviceId) {
+        return serviceService.deleteService(serviceId);
     }
 }

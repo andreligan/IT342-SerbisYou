@@ -1,63 +1,45 @@
 package edu.cit.serbisyo.service;
 
-import java.util.List;
-import java.util.NoSuchElementException;
-import javax.naming.NameNotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import edu.cit.serbisyo.entity.AddressEntity;
 import edu.cit.serbisyo.repository.AddressRepository;
+import org.springframework.stereotype.Service;
 
+import java.util.List;
 
 @Service
 public class AddressService {
-    @Autowired
-    AddressRepository arepo;
+    private final AddressRepository addressRepository;
 
-    public AddressService() {
-        super();
+    public AddressService(AddressRepository addressRepository) {
+        this.addressRepository = addressRepository;
     }
 
-    // CREATE
-    public AddressEntity postAddress(AddressEntity addresses) {
-        return arepo.save(addresses);
-        
-    }
-
-    // READ
     public List<AddressEntity> getAllAddresses() {
-        return arepo.findAll();
+        return addressRepository.findAll();
     }
 
-    // UPDATE
-@SuppressWarnings("finally")
-public AddressEntity putAddressDetails(int addressId, AddressEntity newAddressDetails) {
-    AddressEntity address = new AddressEntity();
-
-    try {
-        address = arepo.findById(addressId).orElseThrow(() -> new NoSuchElementException("Address not found"));
-
-        address.setProvince(newAddressDetails.getProvince());
-        address.setCity(newAddressDetails.getCity());
-        address.setBarangay(newAddressDetails.getBarangay());
-        address.setStreetName(newAddressDetails.getStreetName());
-
-    } catch(NoSuchElementException nex) {
-        throw new NameNotFoundException("Address " + addressId + " not found.");
-    } finally {
-        return arepo.save(address);
+    public AddressEntity createAddress(AddressEntity address) {
+        return addressRepository.save(address);
     }
-}
 
-    // DELETE
-    public String deleteAddressDetails(int addressId) {
-        String msg = "";
-        if(arepo.findById(addressId).isPresent()) {
-            arepo.deleteById(addressId);
-            msg = "Address Record sucessfully deleted.";
-        } else {
-            return "User Authentication ID " + addressId + " not found.";
+    public AddressEntity updateAddress(Long addressId, AddressEntity updatedAddress) {
+        AddressEntity existingAddress = addressRepository.findById(addressId)
+                .orElseThrow(() -> new RuntimeException("Address not found"));
+
+        existingAddress.setProvince(updatedAddress.getProvince());
+        existingAddress.setCity(updatedAddress.getCity());
+        existingAddress.setBarangay(updatedAddress.getBarangay());
+        existingAddress.setStreetName(updatedAddress.getStreetName());
+        existingAddress.setZipCode(updatedAddress.getZipCode());
+
+        return addressRepository.save(existingAddress);
+    }
+
+    public String deleteAddress(Long addressId) {
+        if (addressRepository.existsById(addressId)) {
+            addressRepository.deleteById(addressId);
+            return "Address successfully deleted.";
         }
-        return msg;
+        return "Address not found.";
     }
 }

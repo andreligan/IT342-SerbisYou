@@ -11,54 +11,45 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/customers")
+@RequestMapping(method = RequestMethod.GET, path = "/api/customers")
 public class CustomerController {
 
     @Autowired
     private CustomerService customerService;
 
-    // Create Customer
-    @PostMapping("/createCustomers")
-    public ResponseEntity<?> createCustomer(@RequestBody CustomerEntity customer) {
-        CustomerEntity savedCustomer = customerService.saveCustomer(customer);
-        return ResponseEntity.status(201).body(savedCustomer);
+    @GetMapping("/print")
+    public String print() {
+        return "Customer Controller is working!";
     }
 
-    // Get All Customers
-    @GetMapping
+    // CREATE
+    @PostMapping("/postCustomer")
+    public CustomerEntity createCustomer(@RequestBody CustomerEntity customer) {
+        return customerService.createCustomer(customer);
+    }
+
+    // READ ALL
+    @GetMapping("/getAll")
     public List<CustomerEntity> getAllCustomers() {
         return customerService.getAllCustomers();
     }
 
-    // Update Customer
-    @PutMapping("/{customerId}")
-    public ResponseEntity<?> updateCustomer(@PathVariable Long customerId, @RequestBody CustomerEntity updatedCustomer) {
-        Optional<CustomerEntity> customerData = customerService.getCustomerById(customerId);
-
-        if (customerData.isPresent()) {
-            CustomerEntity existingCustomer = customerData.get();
-            existingCustomer.setUserId(updatedCustomer.getUserId());
-            existingCustomer.setAddressId(updatedCustomer.getAddressId());
-            existingCustomer.setFirstName(updatedCustomer.getFirstName());
-            existingCustomer.setLastName(updatedCustomer.getLastName());
-            existingCustomer.setPhoneNumber(updatedCustomer.getPhoneNumber());
-            existingCustomer.setEmail(updatedCustomer.getEmail());
-
-            CustomerEntity savedCustomer = customerService.saveCustomer(existingCustomer);
-            return ResponseEntity.ok(savedCustomer);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+    // READ BY ID
+    @GetMapping("/getById/{customerId}")
+    public CustomerEntity getCustomerById(@PathVariable Long customerId) {
+        return customerService.getCustomerById(customerId)
+                .orElse(null); // Return null if not found, modify as needed
     }
 
-    // Delete Customer
-    @DeleteMapping("/{customerId}")
-    public ResponseEntity<?> deleteCustomer(@PathVariable Long customerId) {
-        boolean isDeleted = customerService.deleteCustomer(customerId);
-        if (isDeleted) {
-            return ResponseEntity.ok().body("Customer deleted successfully.");
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+    // UPDATE
+    @PutMapping("/updateCustomer/{customerId}")
+    public CustomerEntity updateCustomer(@PathVariable Long customerId, @RequestBody CustomerEntity updatedCustomer) {
+        return customerService.updateCustomer(customerId, updatedCustomer);
+    }
+
+    // DELETE
+    @DeleteMapping("/delete/{customerId}")
+    public String deleteCustomer(@PathVariable Long customerId) {
+        return customerService.deleteCustomer(customerId);
     }
 }

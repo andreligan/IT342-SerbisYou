@@ -1,49 +1,57 @@
 package edu.cit.serbisyo.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
+import java.util.Date;
 
 @Entity
-@Table(name = "reviews")
+@Table(name = "Review")
 public class ReviewEntity {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int reviewId;
+    private Long reviewId;
 
-    private int customerId;
-    private int serviceProviderId;
+    @ManyToOne
+    @JoinColumn(name = "customerId")
+    private CustomerEntity customer;
+
+    @ManyToOne
+    @JoinColumn(name = "providerId")
+    private ServiceProviderEntity provider;
+
     private int rating;
     private String comment;
-    private LocalDateTime createdAt;
+    private Date reviewDate;
+
+    @ManyToOne
+    @JoinColumn(name = "bookingId")
+    private BookingEntity booking;
 
     // Getters and Setters
-    public int getReviewId() {
+
+    public Long getReviewId() {
         return reviewId;
     }
 
-    public void setReviewId(int reviewId) {
+    public void setReviewId(Long reviewId) {
         this.reviewId = reviewId;
     }
 
-    public int getCustomerId() {
-        return customerId;
+    public CustomerEntity getCustomer() {
+        return customer;
     }
 
-    public void setCustomerId(int customerId) {
-        this.customerId = customerId;
+    public void setCustomer(CustomerEntity customer) {
+        this.customer = customer;
     }
 
-    public int getServiceProviderId() {
-        return serviceProviderId;
+    public ServiceProviderEntity getProvider() {
+        return provider;
     }
 
-    public void setServiceProviderId(int serviceProviderId) {
-        this.serviceProviderId = serviceProviderId;
+    public void setProvider(ServiceProviderEntity provider) {
+        this.provider = provider;
     }
 
     public int getRating() {
@@ -62,11 +70,19 @@ public class ReviewEntity {
         this.comment = comment;
     }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
+    public Date getReviewDate() {
+        return reviewDate;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
+    public void setReviewDate(Date reviewDate) {
+        this.reviewDate = reviewDate;
+    }
+
+    public BookingEntity getBooking() {
+        return booking;
+    }
+
+    public void setBooking(BookingEntity booking) {
+        this.booking = booking;
     }
 }

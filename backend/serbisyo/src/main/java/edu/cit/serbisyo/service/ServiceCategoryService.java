@@ -1,12 +1,13 @@
 package edu.cit.serbisyo.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import edu.cit.serbisyo.entity.ServiceCategoryEntity;
 import edu.cit.serbisyo.repository.ServiceCategoryRepository;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import java.util.List;
-import java.util.Optional;
+import java.util.NoSuchElementException;
 
 @Service
 public class ServiceCategoryService {
@@ -14,35 +15,43 @@ public class ServiceCategoryService {
     @Autowired
     private ServiceCategoryRepository serviceCategoryRepository;
 
-    // CREATE
-    public ServiceCategoryEntity addServiceCategory(ServiceCategoryEntity serviceCategory) {
+    public ServiceCategoryService() {
+        super();
+    }
+
+    // CREATE a new service category
+    public ServiceCategoryEntity createServiceCategory(ServiceCategoryEntity serviceCategory) {
         return serviceCategoryRepository.save(serviceCategory);
     }
 
-    // READ
+    // READ all service categories
     public List<ServiceCategoryEntity> getAllServiceCategories() {
         return serviceCategoryRepository.findAll();
     }
 
-    public Optional<ServiceCategoryEntity> getServiceCategoryById(int id) {
-        return serviceCategoryRepository.findById(id);
+    // READ a service category by ID
+    public ServiceCategoryEntity getServiceCategoryById(Long categoryId) {
+        return serviceCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new NoSuchElementException("Service Category with ID " + categoryId + " not found"));
     }
 
-    // UPDATE
-    public ServiceCategoryEntity updateServiceCategory(int id, ServiceCategoryEntity newDetails) {
-        return serviceCategoryRepository.findById(id)
-            .map(category -> {
-                category.setCategoryName(newDetails.getCategoryName());
-                return serviceCategoryRepository.save(category);
-            }).orElseThrow(() -> new RuntimeException("Service Category not found!"));
+    // UPDATE an existing service category
+    public ServiceCategoryEntity updateServiceCategory(Long categoryId, ServiceCategoryEntity newCategoryDetails) {
+        ServiceCategoryEntity existingCategory = serviceCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new NoSuchElementException("Service Category with ID " + categoryId + " not found"));
+
+        existingCategory.setCategoryName(newCategoryDetails.getCategoryName());
+
+        return serviceCategoryRepository.save(existingCategory);
     }
 
-    // DELETE
-    public String deleteServiceCategory(int id) {
-        if (serviceCategoryRepository.existsById(id)) {
-            serviceCategoryRepository.deleteById(id);
-            return "Service Category successfully deleted!";
+    // DELETE a service category
+    public String deleteServiceCategory(Long categoryId) {
+        if (serviceCategoryRepository.existsById(categoryId)) {
+            serviceCategoryRepository.deleteById(categoryId);
+            return "Service Category with ID " + categoryId + " has been deleted successfully.";
+        } else {
+            return "Service Category with ID " + categoryId + " not found.";
         }
-        return "Service Category with ID " + id + " not found.";
     }
 }

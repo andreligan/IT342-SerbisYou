@@ -2,63 +2,54 @@ package edu.cit.serbisyo.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "Transaction")
 public class TransactionEntity {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int transactionId;
+    private Long transactionId;
 
-    private int serviceId;
-    private int userId;
-    private LocalDate bookingDate;
+    @ManyToOne
+    @JoinColumn(name = "bookingId", nullable = false)
+    private BookingEntity booking;
+
+    private double amount;
+    private String paymentMethod;
     private String status;
-    private double totalCost;
+    private LocalDateTime transactionDate;
 
-    public TransactionEntity() {
-        super();
-    }
-
-    public TransactionEntity(int transactionId, int serviceId, int userId, LocalDate bookingDate, String status, double totalCost) {
-        this.transactionId = transactionId;
-        this.serviceId = serviceId;
-        this.userId = userId;
-        this.bookingDate = bookingDate;
-        this.status = status;
-        this.totalCost = totalCost;
-    }
-
-    public int getTransactionId() {
+    public Long getTransactionId() {
         return transactionId;
     }
 
-    public void setTransactionId(int transactionId) {
+    public void setTransactionId(Long transactionId) {
         this.transactionId = transactionId;
     }
 
-    public int getServiceId() {
-        return serviceId;
+    public BookingEntity getBooking() {
+        return booking;
     }
 
-    public void setServiceId(int serviceId) {
-        this.serviceId = serviceId;
+    public void setBooking(BookingEntity booking) {
+        this.booking = booking;
     }
 
-    public int getUserId() {
-        return userId;
+    public double getAmount() {
+        return amount;
     }
 
-    public void setUserId(int userId) {
-        this.userId = userId;
+    public void setAmount(double amount) {
+        this.amount = amount;
     }
 
-    public LocalDate getBookingDate() {
-        return bookingDate;
+    public String getPaymentMethod() {
+        return paymentMethod;
     }
 
-    public void setBookingDate(LocalDate bookingDate) {
-        this.bookingDate = bookingDate;
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
     }
 
     public String getStatus() {
@@ -69,11 +60,11 @@ public class TransactionEntity {
         this.status = status;
     }
 
-    public double getTotalCost() {
-        return totalCost;
+    public LocalDateTime getTransactionDate() {
+        return transactionDate;
     }
 
-    public void setTotalCost(double totalCost) {
-        this.totalCost = totalCost;
+    public void setTransactionDate(LocalDateTime transactionDate) {
+        this.transactionDate = transactionDate;
     }
 }

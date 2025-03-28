@@ -7,6 +7,7 @@ import edu.cit.serbisyo.entity.CustomerEntity;
 import edu.cit.serbisyo.repository.CustomerRepository;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 @Service
@@ -15,27 +16,46 @@ public class CustomerService {
     @Autowired
     private CustomerRepository customerRepository;
 
-    // Create or Update Customer
-    public CustomerEntity saveCustomer(CustomerEntity customer) {
+    public CustomerService() {
+        super();
+    }
+
+    // CREATE
+    public CustomerEntity createCustomer(CustomerEntity customer) {
         return customerRepository.save(customer);
     }
 
-    // Get All Customers
+    // READ ALL
     public List<CustomerEntity> getAllCustomers() {
         return customerRepository.findAll();
     }
 
-    // Get Customer By ID
+    // READ BY ID
     public Optional<CustomerEntity> getCustomerById(Long customerId) {
         return customerRepository.findById(customerId);
     }
 
-    // Delete Customer
-    public boolean deleteCustomer(Long customerId) {
-        if (customerRepository.existsById(customerId)) {
+    // UPDATE
+    public CustomerEntity updateCustomer(Long customerId, CustomerEntity updatedCustomer) {
+        CustomerEntity existingCustomer = customerRepository.findById(customerId).orElseThrow(() ->
+                new NoSuchElementException("Customer with ID " + customerId + " not found"));
+
+//        existingCustomer.setUserAuth(updatedCustomer.getUserAuth());
+        existingCustomer.setAddress(updatedCustomer.getAddress());
+        existingCustomer.setFirstName(updatedCustomer.getFirstName());
+        existingCustomer.setLastName(updatedCustomer.getLastName());
+        existingCustomer.setPhoneNumber(updatedCustomer.getPhoneNumber());
+
+        return customerRepository.save(existingCustomer);
+    }
+
+    // DELETE
+    public String deleteCustomer(Long customerId) {
+        if (customerRepository.findById(customerId).isPresent()) {
             customerRepository.deleteById(customerId);
-            return true;
+            return "Customer successfully deleted.";
+        } else {
+            return "Customer with ID " + customerId + " not found.";
         }
-        return false;
     }
 }

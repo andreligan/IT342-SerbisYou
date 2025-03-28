@@ -1,7 +1,12 @@
 package edu.cit.serbisyo.service;
 
 import edu.cit.serbisyo.entity.ServiceEntity;
+import edu.cit.serbisyo.entity.ServiceProviderEntity;
+import edu.cit.serbisyo.entity.ServiceCategoryEntity;
 import edu.cit.serbisyo.repository.ServiceRepository;
+import edu.cit.serbisyo.repository.ServiceProviderRepository;
+import edu.cit.serbisyo.repository.ServiceCategoryRepository;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -12,40 +17,71 @@ import java.util.NoSuchElementException;
 public class ServiceService {
 
     @Autowired
-    private ServiceRepository srepo;
+    private ServiceRepository serviceRepository;
+
+    @Autowired
+    private ServiceProviderRepository serviceProviderRepository;
+
+    @Autowired
+    private ServiceCategoryRepository serviceCategoryRepository;
 
     public ServiceService() {
         super();
     }
 
-    // CREATE
-    public ServiceEntity postServiceRecord(ServiceEntity service) {
-        return srepo.save(service);
+    // CREATE a new service
+    public ServiceEntity createService(Long providerId, Long categoryId, ServiceEntity serviceDetails) {
+        ServiceProviderEntity provider = serviceProviderRepository.findById(providerId)
+                .orElseThrow(() -> new NoSuchElementException("Service Provider with ID " + providerId + " not found"));
+
+        ServiceCategoryEntity category = serviceCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new NoSuchElementException("Service Category with ID " + categoryId + " not found"));
+
+        serviceDetails.setProvider(provider);
+        serviceDetails.setCategory(category);
+
+        return serviceRepository.save(serviceDetails);
     }
 
-    // READ
+    // READ all services
     public List<ServiceEntity> getAllServices() {
-        return srepo.findAll();
+        return serviceRepository.findAll();
     }
 
-    // UPDATE
-    public ServiceEntity putServiceDetails(int serviceId, ServiceEntity newServiceDetails) {
-        return srepo.findById(serviceId)
-                .map(existingService -> {
-                    existingService.setServiceName(newServiceDetails.getServiceName());
-                    existingService.setDescription(newServiceDetails.getDescription());
-                    existingService.setPriceRange(newServiceDetails.getPriceRange());
-                    existingService.setDurationEstimate(newServiceDetails.getDurationEstimate());
-                    return srepo.save(existingService);
-                }).orElseThrow(() -> new NoSuchElementException("Service ID " + serviceId + " not found."));
+    // READ a service by ID
+    public ServiceEntity getServiceById(Long serviceId) {
+        return serviceRepository.findById(serviceId)
+                .orElseThrow(() -> new NoSuchElementException("Service with ID " + serviceId + " not found"));
     }
 
-    // DELETE
-    public String deleteService(int serviceId) {
-        if (srepo.existsById(serviceId)) {
-            srepo.deleteById(serviceId);
-            return "Service record successfully deleted.";
+    // UPDATE an existing service
+    public ServiceEntity updateService(Long serviceId, Long providerId, Long categoryId, ServiceEntity newServiceDetails) {
+        ServiceEntity existingService = serviceRepository.findById(serviceId)
+                .orElseThrow(() -> new NoSuchElementException("Service with ID " + serviceId + " not found"));
+
+        ServiceProviderEntity provider = serviceProviderRepository.findById(providerId)
+                .orElseThrow(() -> new NoSuchElementException("Service Provider with ID " + providerId + " not found"));
+
+        ServiceCategoryEntity category = serviceCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new NoSuchElementException("Service Category with ID " + categoryId + " not found"));
+
+        existingService.setProvider(provider);
+        existingService.setCategory(category);
+        existingService.setServiceName(newServiceDetails.getServiceName());
+        existingService.setServiceDescription(newServiceDetails.getServiceDescription());
+        existingService.setPriceRange(newServiceDetails.getPriceRange());
+        existingService.setDurationEstimate(newServiceDetails.getDurationEstimate());
+
+        return serviceRepository.save(existingService);
+    }
+
+    // DELETE a service
+    public String deleteService(Long serviceId) {
+        if (serviceRepository.existsById(serviceId)) {
+            serviceRepository.deleteById(serviceId);
+            return "Service with ID " + serviceId + " has been deleted successfully.";
+        } else {
+            return "Service with ID " + serviceId + " not found.";
         }
-        return "Service ID " + serviceId + " not found.";
     }
 }

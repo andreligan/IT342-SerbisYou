@@ -12,45 +12,30 @@ import edu.cit.serbisyo.repository.NotificationRepository;
 @Service
 public class NotificationService {
     @Autowired
-    NotificationRepository nrepo;
+    private NotificationRepository notificationRepository;
 
-    public NotificationService() {
-        super();
+    public NotificationEntity createNotification(NotificationEntity notification) {
+        return notificationRepository.save(notification);
     }
 
-    // CREATE
-    public NotificationEntity postNotification(NotificationEntity notification) {
-        notification.setCreatedAt(LocalDateTime.now()); // Ensure createdAt is set on creation
-        return nrepo.save(notification);
-    }
-
-    // READ
     public List<NotificationEntity> getAllNotifications() {
-        return nrepo.findAll();
+        return notificationRepository.findAll();
     }
 
-    // UPDATE
-    public NotificationEntity putNotificationDetails(int notificationId, NotificationEntity newNotificationDetails) throws NameNotFoundException {
-        NotificationEntity notification = nrepo.findById(notificationId).orElseThrow(() -> new NoSuchElementException("Notification not found"));
-
-        notification.setUserId(newNotificationDetails.getUserId());
-        notification.setType(newNotificationDetails.getType());
-        notification.setMessage(newNotificationDetails.getMessage());
-        notification.setRead(newNotificationDetails.getRead());
-        notification.setEntityType(newNotificationDetails.getEntityType());
-
-        return nrepo.save(notification);
+    public NotificationEntity updateNotification(Long notificationId, NotificationEntity updatedNotification) {
+        NotificationEntity existingNotification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new RuntimeException("Notification not found"));
+        existingNotification.setType(updatedNotification.getType());
+        existingNotification.setMessage(updatedNotification.getMessage());
+        existingNotification.setRead(updatedNotification.isRead());
+        return notificationRepository.save(existingNotification);
     }
 
-    // DELETE
-    public String deleteNotificationDetails(int notificationId) {
-        String msg = "";
-        if(nrepo.findById(notificationId).isPresent()) {
-            nrepo.deleteById(notificationId);
-            msg = "Notification record successfully deleted.";
-        } else {
-            return "Notification ID " + notificationId + " not found.";
+    public String deleteNotification(Long notificationId) {
+        if (notificationRepository.existsById(notificationId)) {
+            notificationRepository.deleteById(notificationId);
+            return "Notification successfully deleted.";
         }
-        return msg;
+        return "Notification not found.";
     }
 }

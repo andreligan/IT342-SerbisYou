@@ -8,30 +8,39 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/booking")
-@CrossOrigin(origins = "http://localhost:5173")
+@RequestMapping(method = RequestMethod.GET, path = "/api/bookings")
 public class BookingController {
-    
+
     @Autowired
-    private BookingService bserv;
+    private BookingService bookingService;
 
-    @PostMapping("/postBookingRecord")
-    public BookingEntity postBookingRecord(@RequestBody BookingEntity booking) {
-        return bserv.postBookingRecord(booking);
+    @GetMapping("/print")
+    public String print() {
+        return "Booking Controller is working!";
     }
 
-    @GetMapping("/getAllBookings")
+    @PostMapping("/postBooking")
+    public BookingEntity createBooking(@RequestBody BookingEntity booking) {
+        return bookingService.createBooking(booking);
+    }
+
+    @GetMapping("/getAll")
     public List<BookingEntity> getAllBookings() {
-        return bserv.getAllBookings();
+        return bookingService.getAllBookings();
     }
 
-    @PutMapping("/putBookingDetails")
-    public BookingEntity putBookingDetails(@RequestParam int bookingId, @RequestBody BookingEntity newBookingDetails) {
-        return bserv.putBookingDetails(bookingId, newBookingDetails);
+    @GetMapping("/getById/{bookingId}")
+    public BookingEntity getBookingById(@PathVariable Long bookingId) {
+        return bookingService.getBookingById(bookingId);
     }
 
-    @DeleteMapping("/deleteBookingDetails/{bookingId}")
-    public String deleteBooking(@PathVariable int bookingId) {
-        return bserv.deleteBooking(bookingId);
+    @PutMapping("/updateBooking/{bookingId}")
+    public BookingEntity updateBooking(@PathVariable Long bookingId, @RequestBody BookingEntity updatedBooking) {
+        return bookingService.updateBooking(bookingId, updatedBooking);
+    }
+
+    @DeleteMapping("/delete/{bookingId}")
+    public String deleteBooking(@PathVariable Long bookingId) {
+        return bookingService.deleteBooking(bookingId);
     }
 }

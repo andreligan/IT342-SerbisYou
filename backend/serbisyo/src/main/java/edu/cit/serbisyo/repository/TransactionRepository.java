@@ -5,5 +5,5 @@ import org.springframework.stereotype.Repository;
 import edu.cit.serbisyo.entity.TransactionEntity;
 
 @Repository
-public interface TransactionRepository extends JpaRepository<TransactionEntity, Integer> {
+public interface TransactionRepository extends JpaRepository<TransactionEntity, Long> {
 }
