@@ -1,7 +1,6 @@
 package edu.cit.serbisyo.entity;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -22,6 +21,7 @@ public class ServiceProviderEntity {
     @OneToOne(mappedBy = "serviceProvider")
     private VerificationEntity verification;
 
+    private boolean verified;
     private String firstName;
     private String lastName;
     private String phoneNumber;
@@ -35,6 +35,14 @@ public class ServiceProviderEntity {
     @OneToMany(mappedBy = "provider", cascade = CascadeType.ALL)
     private List<ServiceEntity> services;
 
+
+    public boolean isVerified() {
+        return verified;
+    }
+
+    public void setVerified(boolean verified) {
+        this.verified = verified;
+    }
 
     public Long getProviderId() {
         return providerId;

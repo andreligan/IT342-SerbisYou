@@ -16,7 +16,7 @@ public class ReviewService {
     }
 
     public List<ReviewEntity> getReviewsByProvider(Long providerId) {
-        return reviewRepository.findByServiceProviderId(providerId);
+        return reviewRepository.findByProviderProviderId(providerId);
     }
 
     public ReviewEntity updateReview(Long reviewId, ReviewEntity updatedReview) {

@@ -2,7 +2,6 @@ package edu.cit.serbisyo.entity;
 
 import jakarta.persistence.*;
 
-import java.time.LocalDateTime;
 import java.util.Date;
 
 @Entity
@@ -10,7 +9,7 @@ import java.util.Date;
 public class ReviewEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long reviewId;
+    private long reviewId;
 
     @ManyToOne
     @JoinColumn(name = "customerId")

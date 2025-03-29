@@ -1,14 +1,12 @@
 package edu.cit.serbisyo.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import edu.cit.serbisyo.entity.CustomerEntity;
 import edu.cit.serbisyo.service.CustomerService;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping(method = RequestMethod.GET, path = "/api/customers")

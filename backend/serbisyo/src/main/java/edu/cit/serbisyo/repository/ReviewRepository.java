@@ -9,9 +9,6 @@ import java.util.List;
 @Repository
 public interface ReviewRepository extends JpaRepository<ReviewEntity, Long> {
 
-    // Find all reviews by a specific service provider
-    List<ReviewEntity> findByServiceProviderId(long providerId);
-
-    // Find all reviews by a specific customer
-    List<ReviewEntity> findByCustomerId(long customerId);
+    // Correct query method
+    List<ReviewEntity> findByProviderProviderId(long providerId);
 }
