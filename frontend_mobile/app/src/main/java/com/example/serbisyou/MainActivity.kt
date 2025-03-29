@@ -1,4 +1,4 @@
-package com.example.serbisyou
+/*package com.example.serbisyou
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -43,4 +43,4 @@ fun GreetingPreview() {
     SerbisYouTheme {
         Greeting("Android")
     }
-}
+}*/
