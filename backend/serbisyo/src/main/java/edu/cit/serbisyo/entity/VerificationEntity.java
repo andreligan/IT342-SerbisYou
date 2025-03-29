@@ -1,7 +1,6 @@
 package edu.cit.serbisyo.entity;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
 import java.util.Date;
 
 @Entity
@@ -22,9 +21,16 @@ public class VerificationEntity {
     private String reviewNotes;
     private Date verifiedAt;
     private Date rejectedAt;
+    private String status;
 
     // Getters and Setters
 
+    public String getStatus() {
+        return status;
+    }
+    public void setStatus(String status) {
+        this.status = status;
+    }
     public Long getVerificationId() {
         return verificationId;
     }

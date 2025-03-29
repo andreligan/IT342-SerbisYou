@@ -13,5 +13,5 @@ public interface VerificationRepository extends JpaRepository<VerificationEntity
     List<VerificationEntity> findByStatus(String status);
 
     // Find verification records by service provider ID
-    List<VerificationEntity> findByServiceProviderId(long providerId);
+    List<VerificationEntity> findByServiceProviderProviderId(Long providerId);
 }

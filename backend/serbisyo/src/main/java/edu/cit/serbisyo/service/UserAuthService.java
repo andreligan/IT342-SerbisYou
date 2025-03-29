@@ -1,10 +1,8 @@
 package edu.cit.serbisyo.service;
 
-import edu.cit.serbisyo.entity.UserAuthEntity;
 import edu.cit.serbisyo.repository.UserAuthRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 
 @Service
 public class UserAuthService {
