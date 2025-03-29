@@ -10,52 +10,36 @@ import java.util.Optional;
 
 @Service
 public class VerificationService {
-
     @Autowired
     private VerificationRepository verificationRepository;
 
-    // Create a new verification request
     public VerificationEntity createVerification(VerificationEntity verification) {
         return verificationRepository.save(verification);
     }
 
-    // Get all verifications
     public List<VerificationEntity> getAllVerifications() {
         return verificationRepository.findAll();
     }
 
-    // Get a verification by ID
-    public Optional<VerificationEntity> getVerificationById(int id) {
-        return verificationRepository.findById(id);
+    public VerificationEntity getVerification(Long verificationId) {
+        VerificationEntity verification = verificationRepository.findById(verificationId)
+                .orElseThrow(() -> new RuntimeException("Verification request not found"));
+        return verification;
     }
 
-    // Get verifications by service provider ID
-    public List<VerificationEntity> getVerificationsByServiceProviderId(int serviceProviderId) {
-        return verificationRepository.findByServiceProviderId(serviceProviderId);
+    public VerificationEntity updateVerification(Long verificationId, VerificationEntity updatedVerification) {
+        VerificationEntity existingVerification = verificationRepository.findById(verificationId)
+                .orElseThrow(() -> new RuntimeException("Verification request not found"));
+        existingVerification.setVerificationLevel(updatedVerification.getVerificationLevel());
+        existingVerification.setReviewNotes(updatedVerification.getReviewNotes());
+        return verificationRepository.save(existingVerification);
     }
 
-    // Get verifications by status
-    public List<VerificationEntity> getVerificationsByStatus(String status) {
-        return verificationRepository.findByStatus(status);
-    }
-
-    // Update a verification request
-    public VerificationEntity updateVerification(int id, VerificationEntity updatedVerification) {
-        return verificationRepository.findById(id)
-                .map(verification -> {
-                    verification.setStatus(updatedVerification.getStatus());
-                    verification.setRemarks(updatedVerification.getRemarks());
-                    return verificationRepository.save(verification);
-                })
-                .orElse(null);
-    }
-
-    // Delete a verification request
-    public boolean deleteVerification(int id) {
-        if (verificationRepository.existsById(id)) {
-            verificationRepository.deleteById(id);
-            return true;
+    public String deleteVerification(Long verificationId) {
+        if (verificationRepository.existsById(verificationId)) {
+            verificationRepository.deleteById(verificationId);
+            return "Verification request successfully deleted.";
         }
-        return false;
+        return "Verification request not found.";
     }
 }

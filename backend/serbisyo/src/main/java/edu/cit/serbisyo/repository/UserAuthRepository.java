@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository;
 import edu.cit.serbisyo.entity.UserAuthEntity;
 
 @Repository
-public interface UserAuthRepository extends JpaRepository <UserAuthEntity, Integer> {
+public interface UserAuthRepository extends JpaRepository <UserAuthEntity, Long> {
     
     public UserAuthEntity findByEmail(String email);
 }

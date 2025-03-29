@@ -1,35 +1,26 @@
 package edu.cit.serbisyo.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
 
 @Entity
+@Table(name = "Service_Category")
 public class ServiceCategoryEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int serviceCategoryId;
+    private Long categoryId;
 
     private String categoryName;
 
-    public ServiceCategoryEntity() {
-        super();
+    // Getters and Setters
+
+    public Long getCategoryId() {
+        return categoryId;
     }
 
-    public ServiceCategoryEntity(int serviceCategoryId, String categoryName) {
-        this.serviceCategoryId = serviceCategoryId;
-        this.categoryName = categoryName;
-    }
-
-    public int getServiceCategoryId() {
-        return serviceCategoryId;
-    }
-
-    public void setServiceCategoryId(int serviceCategoryId) {
-        this.serviceCategoryId = serviceCategoryId;
+    public void setCategoryId(Long categoryId) {
+        this.categoryId = categoryId;
     }
 
     public String getCategoryName() {

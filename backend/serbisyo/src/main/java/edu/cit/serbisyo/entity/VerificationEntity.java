@@ -2,58 +2,106 @@ package edu.cit.serbisyo.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.Date;
 
 @Entity
-@Table(name = "verifications")
+@Table(name = "Verification")
 public class VerificationEntity {
-
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int verificationId;
+    private Long verificationId;
 
-    private int serviceProviderId;
-    private String status; // e.g., PENDING, APPROVED, REJECTED
-    private String remarks;
-    private LocalDateTime createdAt;
+    @OneToOne
+    @JoinColumn(name = "providerId")
+    private ServiceProviderEntity serviceProvider;
 
-    public VerificationEntity() {
-        this.createdAt = LocalDateTime.now();
-    }
+    private Long reviewedByAdmin;
+    private String idProof;
+    private String businessPermit;
+    private String professionalLicense;
+    private String verificationLevel;
+    private String reviewNotes;
+    private Date verifiedAt;
+    private Date rejectedAt;
 
     // Getters and Setters
-    public int getVerificationId() {
+
+    public Long getVerificationId() {
         return verificationId;
     }
 
-    public void setVerificationId(int verificationId) {
+    public void setVerificationId(Long verificationId) {
         this.verificationId = verificationId;
     }
 
-    public int getServiceProviderId() {
-        return serviceProviderId;
+    public ServiceProviderEntity getProvider() {
+        return serviceProvider;
     }
 
-    public void setServiceProviderId(int serviceProviderId) {
-        this.serviceProviderId = serviceProviderId;
+    public void setProvider(ServiceProviderEntity provider) {
+        this.serviceProvider = provider;
     }
 
-    public String getStatus() {
-        return status;
+    public Long getReviewedByAdmin() {
+        return reviewedByAdmin;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
+    public void setReviewedByAdmin(Long reviewedByAdmin) {
+        this.reviewedByAdmin = reviewedByAdmin;
     }
 
-    public String getRemarks() {
-        return remarks;
+    public String getIdProof() {
+        return idProof;
     }
 
-    public void setRemarks(String remarks) {
-        this.remarks = remarks;
+    public void setIdProof(String idProof) {
+        this.idProof = idProof;
     }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
+    public String getBusinessPermit() {
+        return businessPermit;
+    }
+
+    public void setBusinessPermit(String businessPermit) {
+        this.businessPermit = businessPermit;
+    }
+
+    public String getProfessionalLicense() {
+        return professionalLicense;
+    }
+
+    public void setProfessionalLicense(String professionalLicense) {
+        this.professionalLicense = professionalLicense;
+    }
+
+    public String getVerificationLevel() {
+        return verificationLevel;
+    }
+
+    public void setVerificationLevel(String verificationLevel) {
+        this.verificationLevel = verificationLevel;
+    }
+
+    public String getReviewNotes() {
+        return reviewNotes;
+    }
+
+    public void setReviewNotes(String reviewNotes) {
+        this.reviewNotes = reviewNotes;
+    }
+
+    public Date getVerifiedAt() {
+        return verifiedAt;
+    }
+
+    public void setVerifiedAt(Date verifiedAt) {
+        this.verifiedAt = verifiedAt;
+    }
+
+    public Date getRejectedAt() {
+        return rejectedAt;
+    }
+
+    public void setRejectedAt(Date rejectedAt) {
+        this.rejectedAt = rejectedAt;
     }
 }

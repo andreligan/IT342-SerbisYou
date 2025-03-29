@@ -7,11 +7,11 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface VerificationRepository extends JpaRepository<VerificationEntity, Integer> {
+public interface VerificationRepository extends JpaRepository<VerificationEntity, Long> {
 
     // Find verifications by status
     List<VerificationEntity> findByStatus(String status);
 
     // Find verification records by service provider ID
-    List<VerificationEntity> findByServiceProviderId(int serviceProviderId);
+    List<VerificationEntity> findByServiceProviderId(long providerId);
 }

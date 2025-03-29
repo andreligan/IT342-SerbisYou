@@ -1,47 +1,53 @@
 package edu.cit.serbisyo.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
 import edu.cit.serbisyo.entity.TransactionEntity;
 import edu.cit.serbisyo.service.TransactionService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/transaction")
-@CrossOrigin(origins = "http://localhost:5173")
+@RequestMapping(method = RequestMethod.GET, path = "/api/transactions")
 public class TransactionController {
 
     @Autowired
     private TransactionService transactionService;
 
-    // CREATE
-    @PostMapping("/add")
-    public TransactionEntity addTransaction(@RequestBody TransactionEntity transaction) {
-        return transactionService.addTransaction(transaction);
+    @GetMapping("/print")
+    public String print() {
+        return "Transaction Controller is working!";
     }
 
-    // READ
+    // CREATE
+    @PostMapping("/postTransaction")
+    public TransactionEntity createTransaction(@RequestBody TransactionEntity transaction) {
+        return transactionService.createTransaction(transaction);
+    }
+
+    // READ ALL
     @GetMapping("/getAll")
     public List<TransactionEntity> getAllTransactions() {
         return transactionService.getAllTransactions();
     }
 
-    @GetMapping("/get/{id}")
-    public Optional<TransactionEntity> getTransactionById(@PathVariable int id) {
-        return transactionService.getTransactionById(id);
+    // READ BY ID
+    @GetMapping("/getById/{transactionId}")
+    public TransactionEntity getTransactionById(@PathVariable Long transactionId) {
+        return transactionService.getTransactionById(transactionId);
     }
 
     // UPDATE
-    @PutMapping("/update/{id}")
-    public TransactionEntity updateTransaction(@PathVariable int id, @RequestBody TransactionEntity newDetails) {
-        return transactionService.updateTransaction(id, newDetails);
+    @PutMapping("/updateTransaction/{transactionId}")
+    public TransactionEntity updateTransaction(
+            @PathVariable Long transactionId,
+            @RequestBody TransactionEntity newTransactionDetails) {
+        return transactionService.updateTransaction(transactionId, newTransactionDetails);
     }
 
     // DELETE
-    @DeleteMapping("/delete/{id}")
-    public String deleteTransaction(@PathVariable int id) {
-        return transactionService.deleteTransaction(id);
+    @DeleteMapping("/delete/{transactionId}")
+    public String deleteTransaction(@PathVariable Long transactionId) {
+        return transactionService.deleteTransaction(transactionId);
     }
 }

@@ -18,38 +18,34 @@ import edu.cit.serbisyo.entity.MessageEntity;
 import edu.cit.serbisyo.service.MessageService;
 
 @RestController
-@RequestMapping(method=RequestMethod.GET, path="/api/messages")
+@RequestMapping(method = RequestMethod.GET, path = "/api/messages")
 public class MessageController {
 
     @Autowired
-    MessageService messageService;
+    private MessageService messageService;
 
     @GetMapping("/print")
     public String print() {
-        return "Wow, it works!";
+        return "Message Controller is working!";
     }
-    
-    // CREATE
+
     @PostMapping("/postMessage")
-    public MessageEntity postMessage(@RequestBody MessageEntity message) {
-        return messageService.postMessage(message);
+    public MessageEntity createMessage(@RequestBody MessageEntity message) {
+        return messageService.createMessage(message);
     }
-    
-    // READ
-    @GetMapping("/getAllMessages")
+
+    @GetMapping("/getAll")
     public List<MessageEntity> getAllMessages() {
         return messageService.getAllMessages();
     }
 
-    // UPDATE
-    @PutMapping("/putMessageDetails")
-    public MessageEntity putMessageDetails(@RequestParam int messageId, @RequestBody MessageEntity newMessageDetails) {
-        return messageService.putMessageDetails(messageId, newMessageDetails);
+    @PutMapping("/updateMessage/{messageId}")
+    public MessageEntity updateMessage(@PathVariable Long messageId, @RequestBody MessageEntity updatedMessage) {
+        return messageService.updateMessage(messageId, updatedMessage);
     }
 
-    // DELETE
-    @DeleteMapping("/deleteMessageDetails/{messageId}")
-    public String deleteMessageDetails(@PathVariable int messageId) {
-        return messageService.deleteMessageDetails(messageId);
+    @DeleteMapping("/delete/{messageId}")
+    public String deleteMessage(@PathVariable Long messageId) {
+        return messageService.deleteMessage(messageId);
     }
 }

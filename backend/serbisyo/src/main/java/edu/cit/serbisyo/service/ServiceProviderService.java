@@ -10,62 +10,37 @@ import java.util.Optional;
 
 @Service
 public class ServiceProviderService {
-
     @Autowired
     private ServiceProviderRepository serviceProviderRepository;
 
-    // Create a new service provider
-    public ServiceProviderEntity createServiceProvider(ServiceProviderEntity serviceProvider) {
-        return serviceProviderRepository.save(serviceProvider);
+    public ServiceProviderEntity registerServiceProvider(ServiceProviderEntity provider) {
+        return serviceProviderRepository.save(provider);
     }
 
-    // Get all service providers
     public List<ServiceProviderEntity> getAllServiceProviders() {
         return serviceProviderRepository.findAll();
     }
 
-    // Get a service provider by ID
-    public Optional<ServiceProviderEntity> getServiceProviderById(int id) {
-        return serviceProviderRepository.findById(id);
+    public ServiceProviderEntity getServiceProvider(Long providerId) {
+        ServiceProviderEntity provider = serviceProviderRepository.findById(providerId)
+                .orElseThrow(() -> new RuntimeException("Service provider not found"));
+        return provider;
     }
 
-    // Get service providers by category
-    public List<ServiceProviderEntity> getServiceProvidersByCategory(String category) {
-        return serviceProviderRepository.findByCategory(category);
+    public ServiceProviderEntity updateServiceProvider(Long providerId, ServiceProviderEntity updatedProvider) {
+        ServiceProviderEntity existingProvider = serviceProviderRepository.findById(providerId)
+                .orElseThrow(() -> new RuntimeException("Service provider not found"));
+        existingProvider.setBusinessName(updatedProvider.getBusinessName());
+        existingProvider.setYearsOfExperience(updatedProvider.getYearsOfExperience());
+        existingProvider.setStatus(updatedProvider.getStatus());
+        return serviceProviderRepository.save(existingProvider);
     }
 
-    // Get all verified service providers
-    public List<ServiceProviderEntity> getVerifiedServiceProviders() {
-        return serviceProviderRepository.findByIsVerifiedTrue();
-    }
-
-    // Get service providers by user ID
-    public List<ServiceProviderEntity> getServiceProvidersByUserId(int userId) {
-        return serviceProviderRepository.findByUserId(userId);
-    }
-
-    // Update a service provider
-    public ServiceProviderEntity updateServiceProvider(int id, ServiceProviderEntity updatedServiceProvider) {
-        return serviceProviderRepository.findById(id)
-                .map(serviceProvider -> {
-                    serviceProvider.setBusinessName(updatedServiceProvider.getBusinessName());
-                    serviceProvider.setCategory(updatedServiceProvider.getCategory());
-                    serviceProvider.setDescription(updatedServiceProvider.getDescription());
-                    serviceProvider.setPhoneNumber(updatedServiceProvider.getPhoneNumber());
-                    serviceProvider.setEmail(updatedServiceProvider.getEmail());
-                    serviceProvider.setAddress(updatedServiceProvider.getAddress());
-                    serviceProvider.setVerified(updatedServiceProvider.isVerified());
-                    return serviceProviderRepository.save(serviceProvider);
-                })
-                .orElse(null);
-    }
-
-    // Delete a service provider
-    public boolean deleteServiceProvider(int id) {
-        if (serviceProviderRepository.existsById(id)) {
-            serviceProviderRepository.deleteById(id);
-            return true;
+    public String deleteServiceProvider(Long providerId) {
+        if (serviceProviderRepository.existsById(providerId)) {
+            serviceProviderRepository.deleteById(providerId);
+            return "Service provider successfully deleted.";
         }
-        return false;
+        return "Service provider not found.";
     }
 }
