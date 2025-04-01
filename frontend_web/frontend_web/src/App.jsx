@@ -1,9 +1,13 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 import LandingPage from "./components/LandingPage"; // Import the LandingPage component
+import SignupStepWizard from "./components/SignupStepWizard";
+import LoginPopup from "./components/LoginPopup"; // Import the LoginPopup component
+import CustomerHomePage from "./components/CustomerHomePage";
 import { useState } from "react";
 
 function App() {
   const [userRole, setUserRole] = useState(null); // null means no user is logged in
+  const [isLoginPopupVisible, setIsLoginPopupVisible] = useState(false); // State to control LoginPopup visibility
 
   const styles = {
     appHeader: {
@@ -41,7 +45,9 @@ function App() {
     },
   };
 
-  const renderHeaderContent = () => {
+  const HeaderContent = () => {
+    const navigate = useNavigate(); // Hook for navigation
+
     switch (userRole) {
       case "Admin":
         return <p>Welcome, Admin! Manage the platform here.</p>;
@@ -61,17 +67,17 @@ function App() {
                 style={styles.button}
                 onMouseOver={(e) => (e.target.style.backgroundColor = styles.buttonHover.backgroundColor)}
                 onMouseOut={(e) => (e.target.style.backgroundColor = styles.button.backgroundColor)}
-                onClick={() => setUserRole("SignIn")}
+                onClick={() => navigate("/signup")} // Navigate to the signup page
               >
-                Sign In
+                Sign Up
               </button>
               <button
                 style={styles.button}
                 onMouseOver={(e) => (e.target.style.backgroundColor = styles.buttonHover.backgroundColor)}
                 onMouseOut={(e) => (e.target.style.backgroundColor = styles.button.backgroundColor)}
-                onClick={() => setUserRole("SignUp")}
+                onClick={() => setIsLoginPopupVisible(true)} // Show the LoginPopup
               >
-                Sign Up
+                Sign In
               </button>
             </div>
           </>
@@ -80,15 +86,21 @@ function App() {
   };
 
   return (
-    <Router>
+    <>
       <header style={styles.appHeader}>
-        {renderHeaderContent()}
+        <HeaderContent />
       </header>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/signup" element={<SignupStepWizard />} />
+        <Route path="/customer-home" element={<CustomerHomePage />} /> {/* Add more routes here as needed */}
         {/* Add more routes here as needed */}
       </Routes>
-    </Router>
+      <LoginPopup 
+        open={isLoginPopupVisible} // Pass the open state to the LoginPopup
+        onClose={() => setIsLoginPopupVisible(false)} // Pass a callback to close the popup
+      />
+    </>
   );
 }
 

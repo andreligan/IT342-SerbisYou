@@ -8,11 +8,11 @@ import java.util.List;
 @Table(name = "Customer")
 public class CustomerEntity {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long customerId;
 
     @OneToOne
-    @MapsId
-    @JoinColumn(name = "userId")
+    @JoinColumn(name = "userId", nullable = false)
     private UserAuthEntity userAuth;
 
     @ManyToOne

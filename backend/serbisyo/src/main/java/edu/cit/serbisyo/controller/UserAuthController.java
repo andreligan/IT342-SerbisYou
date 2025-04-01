@@ -1,5 +1,7 @@
 package edu.cit.serbisyo.controller;
 
+import edu.cit.serbisyo.entity.CustomerEntity;
+import edu.cit.serbisyo.entity.ServiceProviderEntity;
 import edu.cit.serbisyo.entity.UserAuthEntity;
 import edu.cit.serbisyo.service.UserAuthService;
 
@@ -7,6 +9,8 @@ import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
 @RequestMapping(method = RequestMethod.GET, path = "/api/user-auth")
@@ -30,14 +34,19 @@ public class UserAuthController {
     }
 
     // CREATE user authentication record
-    @PostMapping
-    public UserAuthEntity createUserAuth(@RequestBody UserAuthEntity userAuth) {
-        return userAuthService.createUserAuth(userAuth);
-    }
+    // @PostMapping
+    // public UserAuthEntity createUserAuth(@RequestBody UserAuthEntity userAuth) {
+    //     return userAuthService.createUserAuth(userAuth);
+    // }
 
     @PostMapping("/register")
-    public ResponseEntity<String> registerUser(@RequestBody UserAuthEntity userAuth) {
-        String result = userAuthService.registerUser(userAuth);
+    public ResponseEntity<String> registerUser(@RequestBody Map<String, Object> requestBody) {
+        ObjectMapper mapper = new ObjectMapper();
+        UserAuthEntity userAuth = mapper.convertValue(requestBody.get("userAuth"), UserAuthEntity.class);
+        CustomerEntity customer = mapper.convertValue(requestBody.get("customer"), CustomerEntity.class);
+        ServiceProviderEntity serviceProvider = mapper.convertValue(requestBody.get("serviceProvider"), ServiceProviderEntity.class);
+
+        String result = userAuthService.registerUser(userAuth, customer, serviceProvider);
         return ResponseEntity.ok(result);
     }
 

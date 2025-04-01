@@ -1,0 +1,176 @@
+import React, { useState } from 'react';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogTitle,
+  TextField,
+  Button,
+  Checkbox,
+  FormControlLabel,
+  Typography,
+  IconButton,
+  Box,
+  Divider,
+  Link
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import GoogleIcon from '@mui/icons-material/Google';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate for redirection
+
+const LoginPopup = ({ open, onClose }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const navigate = useNavigate(); // Initialize useNavigate
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      // Send login request to the backend
+      const response = await axios.post('/api/user-auth/login', {
+        email,
+        password,
+      });
+
+      // Handle successful login
+      const { token } = response.data;
+      console.log('Login successful. Token:', token);
+
+      // Store the token in localStorage or sessionStorage
+      if (rememberMe) {
+        localStorage.setItem('authToken', token);
+      } else {
+        sessionStorage.setItem('authToken', token);
+      }
+
+      // Redirect to the customer homepage
+      navigate('/customer-home'); // Replace with the actual route for the customer homepage
+
+      // Close the popup
+      onClose();
+    } catch (error) {
+      // Handle login error
+      const errorMsg = error.response?.data?.message || 'Invalid email or password.';
+      setErrorMessage(errorMsg);
+    }
+  };
+
+  return (
+    <Dialog 
+      open={open} 
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+    >
+      <DialogTitle sx={{ mb: 2, textAlign: 'center', pt: 4 }}>
+        <IconButton
+          aria-label="close"
+          onClick={onClose}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            top: 8,
+            color: (theme) => theme.palette.grey[500],
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+        <Typography variant="h4" component="div" sx={{ fontWeight: 500, color: '#445561' }}>
+          Welcome Back!
+        </Typography>
+        <Typography variant="subtitle1" sx={{ mt: 1, color: '#677483' }}>
+          Please login to your account
+        </Typography>
+      </DialogTitle>
+      
+      <DialogContent>
+        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
+          {errorMessage && (
+            <Typography color="error" sx={{ mb: 2 }}>
+              {errorMessage}
+            </Typography>
+          )}
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>Email</Typography>
+          <TextField
+            margin="dense"
+            id="email"
+            type="email"
+            fullWidth
+            variant="outlined"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            sx={{ mb: 3 }}
+          />
+          
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>Password</Typography>
+          <TextField
+            margin="dense"
+            id="password"
+            type="password"
+            fullWidth
+            variant="outlined"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            sx={{ mb: 1 }}
+          />
+          
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <FormControlLabel
+              control={
+                <Checkbox 
+                  checked={rememberMe} 
+                  onChange={() => setRememberMe(!rememberMe)} 
+                  name="rememberMe" 
+                />
+              }
+              label="Remember Me"
+            />
+            <Link href="#forgot-password" underline="hover">
+              Forgot Password?
+            </Link>
+          </Box>
+          
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            sx={{ 
+              py: 1.5, 
+              textTransform: 'none', 
+              backgroundColor: '#f5d14e', 
+              color: '#000',
+              '&:hover': {
+                backgroundColor: '#e9c53a',
+              }
+            }}
+          >
+            Log In
+          </Button>
+          
+          <Box sx={{ textAlign: 'center', mt: 3 }}>
+            <Typography variant="body1">
+              No account yet? <Link href="#signup" underline="hover" sx={{ fontWeight: 500 }}>Sign up here</Link>
+            </Typography>
+          </Box>
+          
+          <Divider sx={{ my: 3 }} />
+          
+          <Button
+            fullWidth
+            variant="outlined"
+            startIcon={<GoogleIcon />}
+            sx={{ textTransform: 'none', mb: 2 }}
+          >
+            Log in with Google
+          </Button>
+        </Box>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default LoginPopup;

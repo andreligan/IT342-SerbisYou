@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "UserAuth")
 public class UserAuthEntity {
@@ -17,9 +19,11 @@ public class UserAuthEntity {
     private String role;
     private LocalDateTime createdAt;
 
+    @JsonIgnore
     @OneToOne(mappedBy = "userAuth", cascade = CascadeType.ALL)
     private CustomerEntity customer;
 
+    @JsonIgnore
     @OneToOne(mappedBy = "userAuth", cascade = CascadeType.ALL)
     private ServiceProviderEntity serviceProvider;
 
