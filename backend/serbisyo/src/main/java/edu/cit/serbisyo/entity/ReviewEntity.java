@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 
 import java.util.Date;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "Review")
 public class ReviewEntity {
@@ -11,10 +13,12 @@ public class ReviewEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long reviewId;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "customerId")
     private CustomerEntity customer;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "providerId")
     private ServiceProviderEntity provider;
@@ -23,6 +27,7 @@ public class ReviewEntity {
     private String comment;
     private Date reviewDate;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "bookingId")
     private BookingEntity booking;

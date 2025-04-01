@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "Customer")
 public class CustomerEntity {
@@ -23,6 +25,7 @@ public class CustomerEntity {
     private String lastName;
     private String phoneNumber;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL)
     private List<BookingEntity> bookings;
 
