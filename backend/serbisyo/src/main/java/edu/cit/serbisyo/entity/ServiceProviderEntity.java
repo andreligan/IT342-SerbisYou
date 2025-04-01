@@ -7,10 +7,10 @@ import java.util.List;
 @Table(name = "ServiceProvider")
 public class ServiceProviderEntity {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long providerId;
 
     @OneToOne
-    @MapsId
     @JoinColumn(name = "userId")
     private UserAuthEntity userAuth;
 
