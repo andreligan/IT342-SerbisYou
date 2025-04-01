@@ -3,6 +3,8 @@ package edu.cit.serbisyo.entity;
 import jakarta.persistence.*;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "ServiceProvider")
 public class ServiceProviderEntity {
@@ -32,6 +34,7 @@ public class ServiceProviderEntity {
     private String status;
     private String paymentMethod;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "provider", cascade = CascadeType.ALL)
     private List<ServiceEntity> services;
 
