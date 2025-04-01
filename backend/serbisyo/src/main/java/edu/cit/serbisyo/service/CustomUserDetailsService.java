@@ -2,8 +2,10 @@
 package edu.cit.serbisyo.service;
 
 import edu.cit.serbisyo.entity.UserAuthEntity;
+import edu.cit.serbisyo.entity.UserPrincipal;
 import edu.cit.serbisyo.repository.UserAuthRepository;
-import org.springframework.security.core.userdetails.User;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -12,22 +14,18 @@ import org.springframework.stereotype.Service;
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 
-    private final UserAuthRepository userAuthRepository;
+    @Autowired
+    private UserAuthRepository userAuthRepository;
 
-    public CustomUserDetailsService(UserAuthRepository userAuthRepository) {
-        this.userAuthRepository = userAuthRepository;
-    }
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        UserAuthEntity user = userAuthRepository.findByEmail(email);
-        if (user == null) {
-            throw new UsernameNotFoundException("User not found with email: " + email);
+    public UserDetails loadUserByUsername(String userName) throws UsernameNotFoundException {
+        UserAuthEntity userAuthEntity = userAuthRepository.findByUserName(userName);
+        if (userAuthEntity == null) {
+            System.out.println("User Not Found");
+            throw new UsernameNotFoundException("user not found");
         }
-        return User.builder()
-                .username(user.getEmail())
-                .password(user.getPassword())
-                .roles(user.getRole())
-                .build();
+        
+        return new UserPrincipal(userAuthEntity);
     }
 }

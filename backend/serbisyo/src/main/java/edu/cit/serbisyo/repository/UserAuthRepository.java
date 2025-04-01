@@ -9,4 +9,5 @@ import edu.cit.serbisyo.entity.UserAuthEntity;
 public interface UserAuthRepository extends JpaRepository <UserAuthEntity, Long> {
     
     public UserAuthEntity findByEmail(String email);
+    public UserAuthEntity findByUserName(String userName); // Add this method to find by username
 }
