@@ -19,7 +19,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate for redirection
 
 const LoginPopup = ({ open, onClose }) => {
-  const [email, setEmail] = useState('');
+  const [userName, setuserName] = useState(''); // Changed from email to userName
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -30,7 +30,7 @@ const LoginPopup = ({ open, onClose }) => {
     try {
       // Send login request to the backend
       const response = await axios.post('/api/user-auth/login', {
-        email,
+        userName, // Use userName instead of email
         password,
       });
 
@@ -52,7 +52,7 @@ const LoginPopup = ({ open, onClose }) => {
       onClose();
     } catch (error) {
       // Handle login error
-      const errorMsg = error.response?.data?.message || 'Invalid email or password.';
+      const errorMsg = error.response?.data?.message || 'Invalid userName or password.';
       setErrorMessage(errorMsg);
     }
   };
@@ -92,15 +92,15 @@ const LoginPopup = ({ open, onClose }) => {
               {errorMessage}
             </Typography>
           )}
-          <Typography variant="subtitle1" sx={{ mb: 1 }}>Email</Typography>
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>userName</Typography> {/* Updated label */}
           <TextField
             margin="dense"
-            id="email"
-            type="email"
+            id="userName"
+            type="text" // Changed type to text
             fullWidth
             variant="outlined"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={userName} // Updated state
+            onChange={(e) => setuserName(e.target.value)} // Updated handler
             required
             sx={{ mb: 3 }}
           />

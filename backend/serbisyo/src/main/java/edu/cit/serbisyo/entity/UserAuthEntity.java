@@ -13,7 +13,9 @@ public class UserAuthEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long userId;
 
+    @Column(nullable = false)
     private String userName;
+    @Column(nullable = false)
     private String password;
     private String email;
     private String role;
