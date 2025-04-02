@@ -2,6 +2,16 @@ import React, { useState } from "react";
 import { Box, Typography, Avatar, Grid, Button } from "@mui/material";
 import { styled } from "@mui/system";
 import Footer from "./Footer";
+import plumbing from "../assets/plumbing.jpg";
+import electrical from "../assets/electrical.jpg";
+import cleaning from "../assets/cleaning.jpg";
+import pestControl from "../assets/pest control.jpg";
+import applianceRepair from "../assets/appliance repair.jpg";
+import homePainting from "../assets/home painting.jpg";
+import carpentry from "../assets/carpentry.jpg";
+import movingPacking from "../assets/home moving.jpg";
+import handyman from "../assets/handyman.jpeg";
+import lawnCare from "../assets/lawn care.jpg";
 
 const BoxContainer = styled(Box)({
   backgroundColor: "#495E57", // Box color
@@ -59,16 +69,16 @@ const ProviderButton = styled(Box)({
 
 // Featured Home Categories Section
 const categories = [
-  { name: "Plumbing Services", image: "/images/plumbing.png" },
-  { name: "Electrical Services", image: "/images/electrical.png" },
-  { name: "Cleaning Services", image: "/images/cleaning.png" },
-  { name: "Pest Control", image: "/images/pest_control.png" },
-  { name: "Appliance Repair", image: "/images/appliance_repair.png" },
-  { name: "Home Painting", image: "/images/home_painting.png" },
-  { name: "Carpentry Services", image: "/images/carpentry.png" },
-  { name: "Moving & Packing Services", image: "/images/moving_packing.png" },
-  { name: "Handyman Services", image: "/images/handyman.png" },
-  { name: "Lawn Care & Gardening", image: "/images/lawn_care.png" },
+  { name: "Plumbing Services", image: plumbing },
+  { name: "Electrical Services", image: electrical },
+  { name: "Cleaning Services", image: cleaning },
+  { name: "Pest Control", image: pestControl },
+  { name: "Appliance Repair", image: applianceRepair },
+  { name: "Home Painting", image: homePainting },
+  { name: "Carpentry Services", image: carpentry },
+  { name: "Moving & Packing Services", image: movingPacking },
+  { name: "Handyman Services", image: handyman },
+  { name: "Lawn Care & Gardening", image: lawnCare },
 ];
 
 const FeaturedCategoriesContainer = styled(Box)({
@@ -82,12 +92,16 @@ const FeaturedCategoriesContainer = styled(Box)({
   alignItems: "center", // Center content horizontally
 });
 
-const CategoryCircle = styled(Avatar)({
+const CategoryCircle = styled(Box)(({ src }) => ({
   width: "100px",
   height: "100px",
   margin: "0 auto",
   backgroundColor: "#f5f5f5",
-});
+  borderRadius: "50%",
+  backgroundImage: `url(${src})`, // Dynamically set the image from props
+  backgroundSize: "cover", // Ensure the image covers the circle
+  backgroundPosition: "center", // Center the image
+}));
 
 const CategoryName = styled(Typography)({
   marginTop: "10px",

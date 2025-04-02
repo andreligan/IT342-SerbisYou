@@ -1,13 +1,32 @@
-import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
-import LandingPage from "./components/LandingPage"; // Import the LandingPage component
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import LandingPage from "./components/LandingPage";
 import SignupStepWizard from "./components/SignupStepWizard";
-import LoginPopup from "./components/LoginPopup"; // Import the LoginPopup component
+import LoginPopup from "./components/LoginPopup";
 import CustomerHomePage from "./components/CustomerHomePage";
-import { useState } from "react";
+import ServiceProviderHomePage from "./components/ServiceProviderHomePage";
+import PlumbingServicesPage from "./components/PlumbingServicesPage";
+import { useState, useEffect } from "react";
 
 function App() {
-  const [userRole, setUserRole] = useState(null); // null means no user is logged in
-  const [isLoginPopupVisible, setIsLoginPopupVisible] = useState(false); // State to control LoginPopup visibility
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // Tracks if the user is logged in
+  const [isLoginPopupVisible, setIsLoginPopupVisible] = useState(false);
+  const navigate = useNavigate(); // React Router's navigation hook
+  const location = useLocation(); // React Router's location hook
+
+  // Check authentication status whenever the route changes
+  useEffect(() => {
+    const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+    setIsAuthenticated(!!token); // Update isAuthenticated based on token presence
+    console.log("Route changed. isAuthenticated:", !!token); // Debug log
+  }, [location]); // Re-run this effect whenever the route changes
+
+  const handleLogout = () => {
+    console.log("User has logged out."); // Log a message to confirm logout
+    localStorage.removeItem("authToken"); // Remove the token from localStorage
+    sessionStorage.removeItem("authToken"); // Remove the token from sessionStorage
+    setIsAuthenticated(false); // Set authentication to false
+    navigate("/"); // Redirect to the LandingPage
+  };
 
   const styles = {
     appHeader: {
@@ -45,29 +64,21 @@ function App() {
     },
   };
 
-  const HeaderContent = () => {
-    const navigate = useNavigate(); // Hook for navigation
-
-    switch (userRole) {
-      case "Admin":
-        return <p>Welcome, Admin! Manage the platform here.</p>;
-      case "Customer":
-        return <p>Welcome, Customer! Explore our services.</p>;
-      case "Service Provider":
-        return <p>Welcome, Service Provider! Manage your services here.</p>;
-      default:
-        return (
-          <>
-            <div style={styles.leftSection}>
-              <img src="/logo.png" alt="SerbisYo Logo" style={styles.logo} />
-              <h1>Serbisyo</h1>
-            </div>
-            <div style={styles.rightSection}>
+  const HeaderContent = ({ isAuthenticated, onLogout, onLoginPopup }) => {
+    return (
+      <>
+        <div style={styles.leftSection}>
+          <img src="/logo.png" alt="SerbisYo Logo" style={styles.logo} />
+          <h1>Serbisyo</h1>
+        </div>
+        <div style={styles.rightSection}>
+          {!isAuthenticated ? (
+            <>
               <button
                 style={styles.button}
                 onMouseOver={(e) => (e.target.style.backgroundColor = styles.buttonHover.backgroundColor)}
                 onMouseOut={(e) => (e.target.style.backgroundColor = styles.button.backgroundColor)}
-                onClick={() => navigate("/signup")} // Navigate to the signup page
+                onClick={() => navigate("/signup")}
               >
                 Sign Up
               </button>
@@ -75,30 +86,55 @@ function App() {
                 style={styles.button}
                 onMouseOver={(e) => (e.target.style.backgroundColor = styles.buttonHover.backgroundColor)}
                 onMouseOut={(e) => (e.target.style.backgroundColor = styles.button.backgroundColor)}
-                onClick={() => setIsLoginPopupVisible(true)} // Show the LoginPopup
+                onClick={onLoginPopup}
               >
                 Sign In
               </button>
-            </div>
-          </>
-        );
-    }
+            </>
+          ) : (
+            <button
+              style={styles.button}
+              onMouseOver={(e) => (e.target.style.backgroundColor = styles.buttonHover.backgroundColor)}
+              onMouseOut={(e) => (e.target.style.backgroundColor = styles.button.backgroundColor)}
+              onClick={onLogout}
+            >
+              Logout
+            </button>
+          )}
+        </div>
+      </>
+    );
   };
 
   return (
     <>
       <header style={styles.appHeader}>
-        <HeaderContent />
+        <HeaderContent
+          isAuthenticated={isAuthenticated} // Pass isAuthenticated as a prop
+          onLogout={handleLogout}
+          onLoginPopup={() => setIsLoginPopupVisible(true)}
+        />
       </header>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/signup" element={<SignupStepWizard />} />
-        <Route path="/customer-home" element={<CustomerHomePage />} /> {/* Add more routes here as needed */}
-        {/* Add more routes here as needed */}
+        <Route path="/customerHomePage" element={<CustomerHomePage />} />
+        <Route path="/serviceProviderHomePage" element={<ServiceProviderHomePage />} /> {/* New route */}
+        <Route path="/plumbingServices" element={<PlumbingServicesPage />} />
       </Routes>
-      <LoginPopup 
-        open={isLoginPopupVisible} // Pass the open state to the LoginPopup
-        onClose={() => setIsLoginPopupVisible(false)} // Pass a callback to close the popup
+      <LoginPopup
+        open={isLoginPopupVisible}
+        onClose={() => setIsLoginPopupVisible(false)}
+        onLogin={() => {
+          console.log("LoginPopup: User logged in."); // Debug log for login
+          setIsAuthenticated(true); // Set authentication to true upon successful login
+          const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+          if (token) {
+            // Redirect to the appropriate page based on role (if needed)
+            navigate("/customerHomePage");
+            navigate("/serviceProviderHomePage");
+          }
+        }}
       />
     </>
   );

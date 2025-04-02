@@ -30,29 +30,42 @@ const LoginPopup = ({ open, onClose }) => {
     try {
       // Send login request to the backend
       const response = await axios.post('/api/user-auth/login', {
-        userName, // Use userName instead of email
+        userName,
         password,
       });
-
+  
       // Handle successful login
-      const { token } = response.data;
-      console.log('Login successful. Token:', token);
-
+      const { token, role } = response.data; // Extract token and role from the response
+      console.log('Login successful. Token:', token, 'Role:', role);
+  
       // Store the token in localStorage or sessionStorage
       if (rememberMe) {
         localStorage.setItem('authToken', token);
       } else {
         sessionStorage.setItem('authToken', token);
       }
-
-      // Redirect to the customer homepage
-      navigate('/customer-home'); // Replace with the actual route for the customer homepage
-
+  
+      // Redirect based on role
+      switch (role.toLowerCase()) { // Convert role to lowercase for case-insensitive comparison
+        case 'customer':
+          navigate('/customerHomePage');
+          break;
+        case 'admin':
+          navigate('/adminDashboard');
+          break;
+        case 'service provider': // Match the exact string from the database
+          navigate('/serviceProviderHomePage');
+          break;
+        default:
+          navigate('/defaultPage'); // Fallback route
+          break;
+      }
+  
       // Close the popup
       onClose();
     } catch (error) {
       // Handle login error
-      const errorMsg = error.response?.data?.message || 'Invalid userName or password.';
+      const errorMsg = error.response?.data?.message || 'Invalid username or password.';
       setErrorMessage(errorMsg);
     }
   };

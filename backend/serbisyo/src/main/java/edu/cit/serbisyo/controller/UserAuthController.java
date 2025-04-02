@@ -56,8 +56,12 @@ public class UserAuthController {
 
     @PostMapping("/login")
     public ResponseEntity<Object> loginUser(@RequestBody UserAuthEntity userAuth) {
-        String token = userAuthService.loginUser(userAuth);
-        return ResponseEntity.ok(Map.of("token", token));
+        try {
+            Map<String, String> response = userAuthService.loginUser(userAuth);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
     @GetMapping("/getAll")
