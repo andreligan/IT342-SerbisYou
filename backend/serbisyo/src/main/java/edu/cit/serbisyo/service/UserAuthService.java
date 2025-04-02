@@ -11,6 +11,9 @@ import edu.cit.serbisyo.repository.UserAuthRepository;
 import jakarta.transaction.Transactional;
 
 import org.springframework.stereotype.Service;
+
+import java.util.Map;
+
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 @Service
@@ -84,13 +87,21 @@ public class UserAuthService {
     //     return "User authentication record not found.";
     // }
 
-    public String loginUser(UserAuthEntity userAuth) {
+    public Map<String, String> loginUser(UserAuthEntity userAuth) {
         // Check if the user exists by username
         UserAuthEntity existingUser = userAuthRepository.findByUserName(userAuth.getUserName());
         if (existingUser == null || !passwordEncoder.matches(userAuth.getPassword(), existingUser.getPassword())) {
-            return "Invalid username or password.";
+            throw new IllegalArgumentException("Invalid username or password.");
         }
-        return jwtUtil.generateToken(existingUser.getUserName());
+    
+        // Generate the token
+        String token = jwtUtil.generateToken(existingUser.getUserName());
+    
+        // Fetch the user's role
+        String role = existingUser.getRole();
+    
+        // Return both token and role in a Map
+        return Map.of("token", token, "role", role);
     }
 
     public Object getAllUserAuth() {
