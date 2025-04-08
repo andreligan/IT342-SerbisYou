@@ -39,10 +39,15 @@ const LoginPopup = ({ open, onClose }) => {
       console.log('Login successful. Token:', token, 'Role:', role);
   
       // Store the token in localStorage or sessionStorage
+      // Store the token, role, and authentication status
       if (rememberMe) {
         localStorage.setItem('authToken', token);
+        localStorage.setItem('userRole', role);
+        localStorage.setItem('isAuthenticated', 'true');
       } else {
         sessionStorage.setItem('authToken', token);
+        sessionStorage.setItem('userRole', role);
+        sessionStorage.setItem('isAuthenticated', 'true');
       }
   
       // Redirect based on role

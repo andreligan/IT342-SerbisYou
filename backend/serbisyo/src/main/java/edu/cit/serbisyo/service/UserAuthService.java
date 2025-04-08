@@ -87,22 +87,30 @@ public class UserAuthService {
     //     return "User authentication record not found.";
     // }
 
-    public Map<String, String> loginUser(UserAuthEntity userAuth) {
-        // Check if the user exists by username
-        UserAuthEntity existingUser = userAuthRepository.findByUserName(userAuth.getUserName());
-        if (existingUser == null || !passwordEncoder.matches(userAuth.getPassword(), existingUser.getPassword())) {
-            throw new IllegalArgumentException("Invalid username or password.");
-        }
-    
-        // Generate the token
-        String token = jwtUtil.generateToken(existingUser.getUserName());
-    
-        // Fetch the user's role
-        String role = existingUser.getRole();
-    
-        // Return both token and role in a Map
-        return Map.of("token", token, "role", role);
+// ...existing code...
+
+public Map<String, String> loginUser(UserAuthEntity userAuth) {
+    // Check if the user exists by username
+    UserAuthEntity existingUser = userAuthRepository.findByUserName(userAuth.getUserName());
+    if (existingUser == null || !passwordEncoder.matches(userAuth.getPassword(), existingUser.getPassword())) {
+        throw new IllegalArgumentException("Invalid username or password.");
     }
+
+    // Generate the token with username, email and role
+    String token = jwtUtil.generateToken(
+        existingUser.getUserName(), 
+        existingUser.getEmail(), 
+        existingUser.getRole()
+    );
+
+    // Fetch the user's role
+    String role = existingUser.getRole();
+
+    // Return both token and role in a Map
+    return Map.of("token", token, "role", role);
+}
+
+// ...existing code...
 
     public Object getAllUserAuth() {
         return userAuthRepository.findAll();
