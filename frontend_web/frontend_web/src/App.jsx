@@ -5,11 +5,14 @@ import LoginPopup from "./components/LoginPopup";
 import CustomerHomePage from "./components/CustomerHomePage";
 import ServiceProviderHomePage from "./components/ServiceProviderHomePage";
 import PlumbingServicesPage from "./components/PlumbingServicesPage";
+import AddServicePage from "./components/AddServicePage";
+import LogoutConfirmationPopup from "./components/LogoutConfirmationPopup";
 import { useState, useEffect } from "react";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false); // Tracks if the user is logged in
   const [isLoginPopupVisible, setIsLoginPopupVisible] = useState(false);
+  const [isLogoutPopupVisible, setIsLogoutPopupVisible] = useState(false); // Tracks logout popup visibility
   const navigate = useNavigate(); // React Router's navigation hook
   const location = useLocation(); // React Router's location hook
 
@@ -21,10 +24,15 @@ function App() {
   }, [location]); // Re-run this effect whenever the route changes
 
   const handleLogout = () => {
+    setIsLogoutPopupVisible(true); // Show the logout confirmation popup
+  };
+
+  const confirmLogout = () => {
     console.log("User has logged out."); // Log a message to confirm logout
     localStorage.removeItem("authToken"); // Remove the token from localStorage
     sessionStorage.removeItem("authToken"); // Remove the token from sessionStorage
     setIsAuthenticated(false); // Set authentication to false
+    setIsLogoutPopupVisible(false); // Close the popup
     navigate("/"); // Redirect to the LandingPage
   };
 
@@ -119,8 +127,9 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/signup" element={<SignupStepWizard />} />
         <Route path="/customerHomePage" element={<CustomerHomePage />} />
-        <Route path="/serviceProviderHomePage" element={<ServiceProviderHomePage />} /> {/* New route */}
+        <Route path="/serviceProviderHomePage" element={<ServiceProviderHomePage />} />
         <Route path="/plumbingServices" element={<PlumbingServicesPage />} />
+        <Route path="/addService" element={<AddServicePage />} />
       </Routes>
       <LoginPopup
         open={isLoginPopupVisible}
@@ -130,11 +139,14 @@ function App() {
           setIsAuthenticated(true); // Set authentication to true upon successful login
           const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
           if (token) {
-            // Redirect to the appropriate page based on role (if needed)
             navigate("/customerHomePage");
-            navigate("/serviceProviderHomePage");
           }
         }}
+      />
+      <LogoutConfirmationPopup
+        open={isLogoutPopupVisible}
+        onClose={() => setIsLogoutPopupVisible(false)}
+        onConfirm={confirmLogout}
       />
     </>
   );
