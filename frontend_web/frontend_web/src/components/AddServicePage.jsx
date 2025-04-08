@@ -29,15 +29,29 @@ const AddServicePage = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await axios.get("/api/service-categories/getAll");
-        setServiceCategories(response.data); // Set categories from the backend
-        setIsLoading(false); // Set loading to false
+        // Get token from localStorage or sessionStorage
+        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        
+        if (!token) {
+          console.error("No authentication token found");
+          setIsLoading(false);
+          return;
+        }
+        
+        const response = await axios.get("/api/service-categories/getAll", {
+          headers: {
+            'Authorization': `Bearer ${token}`  // Add token as Bearer token
+          }
+        });
+        
+        setServiceCategories(response.data);
+        setIsLoading(false);
       } catch (error) {
         console.error("Error fetching service categories:", error);
-        setIsLoading(false); // Set loading to false even if there's an error
+        setIsLoading(false);
       }
     };
-
+  
     fetchCategories();
   }, []);
 
@@ -53,10 +67,28 @@ const AddServicePage = () => {
 
   const handleConfirm = async () => {
     setIsPopupOpen(false);
-    console.log("Service added:", formData);
-    // Backend integration for adding the service will go here
+    
+    try {
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      
+      if (!token) {
+        console.error("No authentication token found");
+        return;
+      }
+      
+      const response = await axios.post("/api/services/create", formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log("Service added successfully:", response.data);
+      // Handle success (clear form, show success message, etc.)
+    } catch (error) {
+      console.error("Error adding service:", error);
+      // Handle error
+    }
   };
-
   return (
     <Box sx={{ padding: "40px", maxWidth: "600px", margin: "0 auto" }}>
       {/* Title */}

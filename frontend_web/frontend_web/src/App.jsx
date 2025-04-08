@@ -1,4 +1,4 @@
-import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 import LandingPage from "./components/LandingPage";
 import SignupStepWizard from "./components/SignupStepWizard";
 import LoginPopup from "./components/LoginPopup";
@@ -9,70 +9,107 @@ import AddServicePage from "./components/AddServicePage";
 import LogoutConfirmationPopup from "./components/LogoutConfirmationPopup";
 import { useState, useEffect } from "react";
 
-function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false); // Tracks if the user is logged in
-  const [isLoginPopupVisible, setIsLoginPopupVisible] = useState(false);
-  const [isLogoutPopupVisible, setIsLogoutPopupVisible] = useState(false); // Tracks logout popup visibility
-  const navigate = useNavigate(); // React Router's navigation hook
-  const location = useLocation(); // React Router's location hook
+// Protected Route component for role-based access control
+const ProtectedRoute = ({ element, allowedRoles }) => {
+  const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+  const userRole = localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
+  
+  // If not authenticated, redirect to landing page
+  if (!token) {
+    return <Navigate to="/" replace />;
+  }
+  
+  // If role restriction exists and user's role is not allowed, redirect
+  if (allowedRoles && !allowedRoles.includes(userRole?.toLowerCase())) {
+    console.log(`Access denied: User role ${userRole} not allowed for this page`);
+    // Redirect to appropriate home page based on role
+    if (userRole?.toLowerCase() === 'customer') {
+      return <Navigate to="/customerHomePage" replace />;
+    } else if (userRole?.toLowerCase() === 'service provider') {
+      return <Navigate to="/serviceProviderHomePage" replace />;
+    } else {
+      return <Navigate to="/" replace />;
+    }
+  }
+  
+  // If authenticated and authorized, render the requested component
+  return element;
+};
 
-  // Check authentication status whenever the route changes
+function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState(null); // Add state for user role
+  const [isLoginPopupVisible, setIsLoginPopupVisible] = useState(false);
+  const [isLogoutPopupVisible, setIsLogoutPopupVisible] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check authentication status and user role whenever the route changes
   useEffect(() => {
     const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-    setIsAuthenticated(!!token); // Update isAuthenticated based on token presence
-    console.log("Route changed. isAuthenticated:", !!token); // Debug log
-  }, [location]); // Re-run this effect whenever the route changes
+    const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
+    
+    setIsAuthenticated(!!token);
+    setUserRole(role);
+    console.log("Route changed. isAuthenticated:", !!token, "Role:", role);
+  }, [location]);
 
   const handleLogout = () => {
-    setIsLogoutPopupVisible(true); // Show the logout confirmation popup
+    setIsLogoutPopupVisible(true);
   };
 
   const confirmLogout = () => {
-    console.log("User has logged out."); // Log a message to confirm logout
-    localStorage.removeItem("authToken"); // Remove the token from localStorage
-    sessionStorage.removeItem("authToken"); // Remove the token from sessionStorage
-    setIsAuthenticated(false); // Set authentication to false
-    setIsLogoutPopupVisible(false); // Close the popup
-    navigate("/"); // Redirect to the LandingPage
+    console.log("User has logged out.");
+    // Clear all authentication data
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("authToken");
+    sessionStorage.removeItem("userRole");
+    sessionStorage.removeItem("isAuthenticated");
+    
+    setIsAuthenticated(false);
+    setUserRole(null);
+    setIsLogoutPopupVisible(false);
+    navigate("/");
   };
 
+  // Define your styles here
   const styles = {
     appHeader: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "10px 20px",
-      backgroundColor: "#f8f9fa",
-      borderBottom: "1px solid #ddd",
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: '1rem 2rem',
+      backgroundColor: '#fff',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
     },
     leftSection: {
-      display: "flex",
-      alignItems: "center",
-      gap: "10px",
+      display: 'flex',
+      alignItems: 'center',
     },
     logo: {
-      width: "50px",
-      height: "auto",
+      height: '40px',
+      marginRight: '10px'
     },
     rightSection: {
-      display: "flex",
-      gap: "10px",
+      display: 'flex',
+      gap: '10px'
     },
     button: {
-      padding: "8px 16px",
-      border: "none",
-      borderRadius: "4px",
-      backgroundColor: "#007bff",
-      color: "white",
-      cursor: "pointer",
-      fontSize: "14px",
+      padding: '8px 16px',
+      backgroundColor: '#F4CE14',
+      color: '#000',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer'
     },
     buttonHover: {
-      backgroundColor: "#0056b3",
-    },
+      backgroundColor: '#e0b813'
+    }
   };
 
-  const HeaderContent = ({ isAuthenticated, onLogout, onLoginPopup }) => {
+  const HeaderContent = ({ isAuthenticated, userRole, onLogout, onLoginPopup }) => {
     return (
       <>
         <div style={styles.leftSection}>
@@ -100,14 +137,17 @@ function App() {
               </button>
             </>
           ) : (
-            <button
-              style={styles.button}
-              onMouseOver={(e) => (e.target.style.backgroundColor = styles.buttonHover.backgroundColor)}
-              onMouseOut={(e) => (e.target.style.backgroundColor = styles.button.backgroundColor)}
-              onClick={onLogout}
-            >
-              Logout
-            </button>
+            <>
+              {/* Optional: You can add role-specific navigation links here */}
+              <button
+                style={styles.button}
+                onMouseOver={(e) => (e.target.style.backgroundColor = styles.buttonHover.backgroundColor)}
+                onMouseOut={(e) => (e.target.style.backgroundColor = styles.button.backgroundColor)}
+                onClick={onLogout}
+              >
+                Logout
+              </button>
+            </>
           )}
         </div>
       </>
@@ -118,30 +158,39 @@ function App() {
     <>
       <header style={styles.appHeader}>
         <HeaderContent
-          isAuthenticated={isAuthenticated} // Pass isAuthenticated as a prop
+          isAuthenticated={isAuthenticated}
+          userRole={userRole}
           onLogout={handleLogout}
           onLoginPopup={() => setIsLoginPopupVisible(true)}
         />
       </header>
       <Routes>
+        {/* Public routes - accessible to anyone */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/signup" element={<SignupStepWizard />} />
-        <Route path="/customerHomePage" element={<CustomerHomePage />} />
-        <Route path="/serviceProviderHomePage" element={<ServiceProviderHomePage />} />
-        <Route path="/plumbingServices" element={<PlumbingServicesPage />} />
-        <Route path="/addService" element={<AddServicePage />} />
+        
+        {/* Protected routes with role-based access */}
+        <Route 
+          path="/customerHomePage" 
+          element={<ProtectedRoute element={<CustomerHomePage />} allowedRoles={['customer']} />} 
+        />
+        <Route 
+          path="/serviceProviderHomePage" 
+          element={<ProtectedRoute element={<ServiceProviderHomePage />} allowedRoles={['service provider']} />} 
+        />
+        <Route 
+          path="/plumbingServices" 
+          element={<ProtectedRoute element={<PlumbingServicesPage />} allowedRoles={['customer']} />} 
+        />
+        <Route 
+          path="/addService" 
+          element={<ProtectedRoute element={<AddServicePage />} allowedRoles={['service provider']} />} 
+        />
       </Routes>
+      
       <LoginPopup
         open={isLoginPopupVisible}
         onClose={() => setIsLoginPopupVisible(false)}
-        onLogin={() => {
-          console.log("LoginPopup: User logged in."); // Debug log for login
-          setIsAuthenticated(true); // Set authentication to true upon successful login
-          const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-          if (token) {
-            navigate("/customerHomePage");
-          }
-        }}
       />
       <LogoutConfirmationPopup
         open={isLogoutPopupVisible}

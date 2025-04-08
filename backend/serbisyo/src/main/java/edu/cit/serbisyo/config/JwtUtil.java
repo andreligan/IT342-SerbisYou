@@ -33,8 +33,10 @@ public class JwtUtil {
         }
     }
 
-    public String generateToken(String username) {
+    public String generateToken(String username, String email, String role) {
         Map<String, Object> claims = new HashMap<>();
+        claims.put("email", email);
+        claims.put("role", role);
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(username)
@@ -42,7 +44,15 @@ public class JwtUtil {
                 .setExpiration(new Date(System.currentTimeMillis() + 60 * 60 * 30))
                 .signWith(getKey())
                 .compact();
-
+    }
+    
+    // Add methods to extract email and role
+    public String extractEmail(String token) {
+        return extractClaim(token, claims -> claims.get("email", String.class));
+    }
+    
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> claims.get("role", String.class));
     }
 
     private SecretKey getKey() {
