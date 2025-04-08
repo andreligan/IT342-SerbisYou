@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Typography, Avatar, Button } from "@mui/material";
 import { styled } from "@mui/system";
+import serbisyoLogo from "../assets/SerbisYo Logo.png";
 
 const FooterContainer = styled(Box)({
   backgroundColor: "#495E57", // Footer background color
@@ -59,7 +60,7 @@ function Footer() {
       {/* First Column */}
       <FooterColumn>
         <FooterLogo>
-          <FooterLogoImage src="/images/logo.png" alt="SerbisYo Logo" />
+          <FooterLogoImage src={serbisyoLogo} alt="SerbisYo Logo" />
           <FooterSubtitle>SerbisYo</FooterSubtitle>
         </FooterLogo>
         <FooterText>Find trusted professionals for any home service you need.</FooterText>
