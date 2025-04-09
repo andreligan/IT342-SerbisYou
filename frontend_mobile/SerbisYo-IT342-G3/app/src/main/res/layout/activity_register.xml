@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    tools:context=".RegisterActivity">
+
+    <!-- Green header with curved bottom -->
+    <View
+        android:id="@+id/headerBackground"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:background="@drawable/login_header_background"
+        app:layout_constraintHeight_percent="0.28"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- App Title -->
+    <TextView
+        android:id="@+id/tvAppName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="SerbisYo"
+        android:textColor="@color/primary_yellow"
+        android:textSize="36sp"
+        android:textStyle="bold"
+        android:layout_marginTop="48dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Create Account Section -->
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Create Account"
+        android:textColor="@color/primary_green"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_marginTop="24dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/headerBackground" />
+
+    <TextView
+        android:id="@+id/tvSubtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Enter your account details"
+        android:textColor="@android:color/darker_gray"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tvTitle" />
+
+    <!-- Username Input -->
+    <LinearLayout
+        android:id="@+id/usernameContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:layout_marginHorizontal="24dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp"
+        android:background="@drawable/input_field_background"
+        app:layout_constraintTop_toBottomOf="@id/tvSubtitle">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_person"
+            android:contentDescription="Username icon"
+            app:tint="@android:color/darker_gray" />
+
+        <EditText
+            android:id="@+id/etUsername"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:background="@null"
+            android:hint="Username"
+            android:inputType="text"
+            android:textSize="16sp" />
+    </LinearLayout>
+
+    <!-- Email Input -->
+    <LinearLayout
+        android:id="@+id/emailContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginHorizontal="24dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp"
+        android:background="@drawable/input_field_background"
+        app:layout_constraintTop_toBottomOf="@id/usernameContainer">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_email"
+            android:contentDescription="Email icon"
+            app:tint="@android:color/darker_gray" />
+
+        <EditText
+            android:id="@+id/etEmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:background="@null"
+            android:hint="Email"
+            android:inputType="textEmailAddress"
+            android:textSize="16sp" />
+    </LinearLayout>
+
+    <!-- Password Input -->
+    <LinearLayout
+        android:id="@+id/passwordContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginHorizontal="24dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp"
+        android:background="@drawable/input_field_background"
+        app:layout_constraintTop_toBottomOf="@id/emailContainer">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_lock"
+            android:contentDescription="Password icon"
+            app:tint="@android:color/darker_gray" />
+
+        <EditText
+            android:id="@+id/etPassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:background="@null"
+            android:hint="Password"
+            android:inputType="textPassword"
+            android:textSize="16sp" />
+    </LinearLayout>
+
+    <!-- Confirm Password Input -->
+    <LinearLayout
+        android:id="@+id/confirmPasswordContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginHorizontal="24dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp"
+        android:background="@drawable/input_field_background"
+        app:layout_constraintTop_toBottomOf="@id/passwordContainer">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_lock"
+            android:contentDescription="Confirm Password icon"
+            app:tint="@android:color/darker_gray" />
+
+        <EditText
+            android:id="@+id/etConfirmPassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:background="@null"
+            android:hint="Confirm Password"
+            android:inputType="textPassword"
+            android:textSize="16sp" />
+    </LinearLayout>
+
+    <!-- Register Button -->
+    <Button
+        android:id="@+id/btnRegister"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:layout_marginHorizontal="24dp"
+        android:padding="12dp"
+        android:text="Register"
+        android:textSize="16sp"
+        android:backgroundTint="@color/primary_yellow"
+        android:textColor="@color/primary_green"
+        android:textStyle="bold"
+        app:cornerRadius="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/confirmPasswordContainer" />
+
+    <!-- Login Link -->
+    <TextView
+        android:id="@+id/tvLogin"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Already have an account? Log in"
+        android:textColor="@color/primary_green"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btnRegister" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

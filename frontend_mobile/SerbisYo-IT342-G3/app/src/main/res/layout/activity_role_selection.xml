@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/primary_green"
+    tools:context=".RoleSelection">
+
+    <!-- Illustration area -->
+    <ImageView
+        android:id="@+id/ivIllustration"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginHorizontal="40dp"
+        android:src="@drawable/ic_first_get_started"
+        android:contentDescription="Security shield illustration"
+        app:layout_constraintWidth_percent="0.7"
+        app:layout_constraintHeight_percent="0.4"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/tvGetStarted"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintVertical_chainStyle="packed" />
+
+    <!-- Yellow stars/accents -->
+    <ImageView
+        android:id="@+id/ivStar1"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/star_icon"
+        android:contentDescription="Decorative star"
+        app:layout_constraintStart_toStartOf="@id/ivIllustration"
+        app:layout_constraintTop_toTopOf="@id/ivIllustration"
+        app:layout_constraintHorizontal_bias="0.2"
+        app:layout_constraintVertical_bias="0.3"
+        app:tint="@color/primary_yellow" />
+
+    <ImageView
+        android:id="@+id/ivStar2"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/star_icon"
+        android:contentDescription="Decorative star"
+        app:layout_constraintEnd_toEndOf="@id/ivIllustration"
+        app:layout_constraintTop_toTopOf="@id/ivIllustration"
+        app:layout_constraintHorizontal_bias="0.8"
+        app:layout_constraintVertical_bias="0.5"
+        app:tint="@color/primary_yellow" />
+
+    <TextView
+        android:id="@+id/tvGetStarted"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Get Started Free"
+        android:textColor="@color/white"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:layout_marginTop="32dp"
+        app:layout_constraintTop_toBottomOf="@id/ivIllustration"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/stepIndicator" />
+
+    <!-- Step indicators -->
+    <LinearLayout
+        android:id="@+id/stepIndicator"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="32dp"
+        android:layout_marginHorizontal="40dp"
+        android:gravity="center"
+        app:layout_constraintTop_toBottomOf="@id/tvGetStarted"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/tvAsRegularUser">
+
+        <!-- Step 1 - Current -->
+        <TextView
+            android:id="@+id/tvStep1"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/circle_yellow"
+            android:text="1"
+            android:textColor="@color/primary_green"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <!-- Line between 1-2 -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="2dp"
+            android:layout_weight="1"
+            android:background="@color/white" />
+
+        <!-- Step 2 - Next -->
+        <TextView
+            android:id="@+id/tvStep2"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/circle_white"
+            android:text="2"
+            android:textColor="@color/primary_green"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <!-- Line between 2-3 -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="2dp"
+            android:layout_weight="1"
+            android:background="@color/white" />
+
+        <!-- Step 3 - Next -->
+        <TextView
+            android:id="@+id/tvStep3"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/circle_white"
+            android:text="3"
+            android:textColor="@color/primary_green"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+    </LinearLayout>
+
+    <!-- User type selection section -->
+
+    <!-- Role selection buttons -->
+    <TextView
+        android:id="@+id/tvAsRegularUser"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="52dp"
+        android:layout_marginTop="32dp"
+        android:text="as Regular User"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        app:layout_constraintBottom_toTopOf="@+id/roleButtonsLayout"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/stepIndicator" />
+
+    <TextView
+        android:id="@+id/tvBecomeA"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:layout_marginEnd="68dp"
+        android:text="become a"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        app:layout_constraintBottom_toTopOf="@+id/roleButtonsLayout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/stepIndicator"
+        app:layout_constraintVertical_bias="0.062" />
+
+    <LinearLayout
+        android:id="@+id/roleButtonsLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/tvAsRegularUser"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintVertical_bias="0.1">
+
+        <!-- Customer button -->
+        <Button
+            android:id="@+id/btnCustomer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:padding="12dp"
+            android:text="Customer"
+            android:textSize="16sp"
+            android:textColor="@color/primary_green"
+            android:backgroundTint="@color/white" />
+
+        <!-- Vertical divider line -->
+        <View
+            android:layout_width="2dp"
+            android:layout_height="match_parent"
+            android:background="@color/primary_yellow" />
+
+        <!-- Service Provider button -->
+        <Button
+            android:id="@+id/btnServiceProvider"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:padding="12dp"
+            android:text="Service Provider"
+            android:textSize="16sp"
+            android:textColor="@color/primary_green"
+            android:backgroundTint="@color/white" />
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

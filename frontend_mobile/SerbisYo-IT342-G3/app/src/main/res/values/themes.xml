@@ -1,0 +1,22 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Theme.SerbisyoIT342G3" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/primary_green</item>
+        <item name="colorPrimaryVariant">@color/primary_green</item>
+        <item name="colorOnPrimary">@color/primary_yellow</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/primary_yellow</item>
+        <item name="colorSecondaryVariant">@color/primary_yellow</item>
+        <item name="colorOnSecondary">@color/primary_green</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowTranslucentStatus">true</item>
+        <!-- Hide navigation bar -->
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <!-- Customize your theme here. -->
+        <item name="android:windowFullscreen">true</item>
+    </style>
+
+    <style name="Theme.SerbisYoIT342G3" parent="Theme.SerbisyoIT342G3" />
+</resources>
