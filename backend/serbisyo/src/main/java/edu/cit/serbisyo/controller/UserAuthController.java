@@ -74,4 +74,10 @@ public class UserAuthController {
         String result = userAuthService.deleteUserAuth(authId);
         return ResponseEntity.ok(result);
     }
+
+    @PutMapping("/update/{authId}")
+    public ResponseEntity<String> updateUserAuth(@PathVariable Long authId, @RequestBody UserAuthEntity userAuth) {
+        String result = userAuthService.updateUserAuth(authId, userAuth);
+        return ResponseEntity.ok(result);
+    }
 }

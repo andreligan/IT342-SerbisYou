@@ -125,4 +125,19 @@ public Map<String, String> loginUser(UserAuthEntity userAuth) {
         }
         return "User authentication record not found.";
     }
+
+    public String updateUserAuth(Long authId, UserAuthEntity userAuth) {
+        if (userAuthRepository.existsById(authId)) {
+            UserAuthEntity existingUserAuth = userAuthRepository.findById(authId).orElse(null);
+            if (existingUserAuth != null) {
+                existingUserAuth.setUserName(userAuth.getUserName());
+                existingUserAuth.setEmail(userAuth.getEmail());
+                existingUserAuth.setPassword(passwordEncoder.encode(userAuth.getPassword()));
+                existingUserAuth.setRole(userAuth.getRole());
+                userAuthRepository.save(existingUserAuth);
+                return "User authentication record successfully updated.";
+            }
+        }
+        return "User authentication record not found.";
+    }
 }
