@@ -3,11 +3,12 @@ import LandingPage from "./components/LandingPage";
 import SignupStepWizard from "./components/SignupStepWizard";
 import LoginPopup from "./components/LoginPopup";
 import CustomerHomePage from "./components/CustomerHomePage";
-import ServiceProviderHomePage from "./components/ServiceProviderHomePage";
+import ServiceProviderHomePage from "./components/service_provider/ServiceProviderHomePage";
 import PlumbingServicesPage from "./components/PlumbingServicesPage";
-import AddServicePage from "./components/AddServicePage";
+import AddServicePage from "./components/service_provider/AddServicePage";
 import LogoutConfirmationPopup from "./components/LogoutConfirmationPopup";
 import { useState, useEffect } from "react";
+import ServiceProviderProfile from "./components/service_provider/ServiceProviderProfile";
 
 // Protected Route component for role-based access control
 const ProtectedRoute = ({ element, allowedRoles }) => {
@@ -113,7 +114,7 @@ function App() {
     return (
       <>
         <div style={styles.leftSection}>
-          <img src="/logo.png" alt="SerbisYo Logo" style={styles.logo} />
+          <img src="SerbisYo Logo.png" alt="SerbisYo Logo" style={styles.logo} />
           <h1>Serbisyo</h1>
         </div>
         <div style={styles.rightSection}>
@@ -185,6 +186,10 @@ function App() {
         <Route 
           path="/addService" 
           element={<ProtectedRoute element={<AddServicePage />} allowedRoles={['service provider']} />} 
+        />
+        <Route 
+          path="/serviceProviderProfile"
+          element={<ProtectedRoute element={<ServiceProviderProfile />} allowedRoles={['service provider']} />} 
         />
       </Routes>
       

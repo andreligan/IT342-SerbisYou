@@ -18,7 +18,7 @@ const AddServicePage = () => {
     name: "",
     serviceDescription: "",
     priceRange: "",
-    duration: "",
+    durationEstimate: "",
   });
 
   const [serviceCategories, setServiceCategories] = useState([]); // State to store categories
@@ -126,7 +126,7 @@ const providerId = providerData.providerId;
         serviceName: formData.name,
         serviceDescription: formData.serviceDescription, 
         priceRange: formData.priceRange,
-        duration: formData.duration
+        durationEstimate: formData.durationEstimate
       };
       
       // Use the correct API endpoint format
@@ -147,7 +147,7 @@ const providerId = providerData.providerId;
         name: "",
         serviceDescription: "",
         priceRange: "",
-        duration: "",
+        durationEstimate: "",
       });
       // Add success notification here
     } catch (error) {
@@ -241,11 +241,11 @@ const providerId = providerData.providerId;
           fullWidth
         />
 
-        {/* Duration */}
+        {/* durationEstimate */}
         <TextField
-          label="Duration"
-          name="duration"
-          value={formData.duration}
+          label="durationEstimate"
+          name="durationEstimate"
+          value={formData.durationEstimate}
           onChange={handleChange}
           required
           fullWidth
@@ -288,7 +288,7 @@ const providerId = providerData.providerId;
             <strong>Price Range:</strong> {formData.priceRange}
           </Typography>
           <Typography variant="body1" sx={{ marginBottom: "10px" }}>
-            <strong>Duration:</strong> {formData.duration}
+            <strong>durationEstimate:</strong> {formData.durationEstimate}
           </Typography>
         </DialogContent>
         <DialogActions>
