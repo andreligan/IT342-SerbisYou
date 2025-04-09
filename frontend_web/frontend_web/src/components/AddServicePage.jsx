@@ -16,7 +16,7 @@ const AddServicePage = () => {
   const [formData, setFormData] = useState({
     category: "",
     name: "",
-    description: "",
+    serviceDescription: "",
     priceRange: "",
     duration: "",
   });
@@ -76,19 +76,86 @@ const AddServicePage = () => {
         return;
       }
       
-      const response = await axios.post("/api/services/create", formData, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      // Step 1: Get user ID from auth data
+      // Update this line to check both storage options
+      const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+
+      if (!userId) {
+        console.error("User ID not found");
+        return;
+      }
+      
+      // Step 2: Fetch service provider details using user ID
+      // Since there's no direct endpoint to get provider by userId, we need to:
+      // 1. Get all providers
+      // 2. Filter to find the one matching current user
+// Step 2: Fetch service provider details using user ID
+const providerResponse = await axios.get("/api/service-providers/getAll", {
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+
+// Examine a single provider object to understand its structure
+console.log("Current user ID:", userId);
+console.log("Sample provider object structure:", 
+  providerResponse.data.length > 0 ? JSON.stringify(providerResponse.data[0], null, 2) : "No providers found");
+
+    // Try different property paths to find the user ID
+    const providerData = providerResponse.data.find(provider => {
+      // Log the whole provider object to inspect all properties
+      console.log("Provider object:", provider);
+      
+      // Check if the userAuth.userId matches the current user ID
+      return provider.userAuth?.userId == userId;
+    });
+
+    if (!providerData) {
+      console.error("No service provider found for this user");
+      return;
+    }
+
+// Log the found provider
+console.log("Found provider:", providerData);
+
+// Extract the provider ID (assuming it's called providerId)
+const providerId = providerData.providerId;
+      
+      // Create service entity that matches your backend expectations
+      const serviceDetails = {
+        serviceName: formData.name,
+        serviceDescription: formData.serviceDescription, 
+        priceRange: formData.priceRange,
+        duration: formData.duration
+      };
+      
+      // Use the correct API endpoint format
+      const response = await axios.post(
+        `/api/services/postService/${providerId}/${formData.category}`, 
+        serviceDetails,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         }
-      });
+      );
       
       console.log("Service added successfully:", response.data);
-      // Handle success (clear form, show success message, etc.)
+      // Clear form or redirect user after success
+      setFormData({
+        category: "",
+        name: "",
+        serviceDescription: "",
+        priceRange: "",
+        duration: "",
+      });
+      // Add success notification here
     } catch (error) {
       console.error("Error adding service:", error);
-      // Handle error
+      // Handle error - show error message to user
     }
   };
+
   return (
     <Box sx={{ padding: "40px", maxWidth: "600px", margin: "0 auto" }}>
       {/* Title */}
@@ -152,11 +219,11 @@ const AddServicePage = () => {
           fullWidth
         />
 
-        {/* Description */}
+        {/* serviceDescription */}
         <TextField
-          label="Description"
-          name="description"
-          value={formData.description}
+          label="serviceDescription"
+          name="serviceDescription"
+          value={formData.serviceDescription}
           onChange={handleChange}
           required
           multiline
@@ -215,7 +282,7 @@ const AddServicePage = () => {
             <strong>Name:</strong> {formData.name}
           </Typography>
           <Typography variant="body1" sx={{ marginBottom: "10px" }}>
-            <strong>Description:</strong> {formData.description}
+            <strong>serviceDescription:</strong> {formData.serviceDescription}
           </Typography>
           <Typography variant="body1" sx={{ marginBottom: "10px" }}>
             <strong>Price Range:</strong> {formData.priceRange}

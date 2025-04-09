@@ -105,9 +105,11 @@ public Map<String, String> loginUser(UserAuthEntity userAuth) {
 
     // Fetch the user's role
     String role = existingUser.getRole();
+    String userId = existingUser.getUserId().toString(); // Assuming you have a getId() method
+
 
     // Return both token and role in a Map
-    return Map.of("token", token, "role", role);
+    return Map.of("token", token, "role", role, "userId", userId);
 }
 
 // ...existing code...
