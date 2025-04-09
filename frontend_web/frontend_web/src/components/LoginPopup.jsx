@@ -33,20 +33,27 @@ const LoginPopup = ({ open, onClose }) => {
         userName,
         password,
       });
-  
-      // Handle successful login
-      const { token, role } = response.data; // Extract token and role from the response
-      console.log('Login successful. Token:', token, 'Role:', role);
-  
-      // Store the token in localStorage or sessionStorage
-      // Store the token, role, and authentication status
+    
+      // Log first to see what's actually in the response
+      console.log('Full response data:', response.data);
+      
+      // Then extract the data with potential fallback
+      const token = response.data.token;
+      const role = response.data.role;
+      const userId = response.data.userId || response.data.id; // Try alternative property names
+      
+      // console.log('Login successful. Token:', token, 'Role:', role, 'User ID:', userId);
+      
+      // Store in localStorage/sessionStorage and add userId too
       if (rememberMe) {
         localStorage.setItem('authToken', token);
         localStorage.setItem('userRole', role);
+        localStorage.setItem('userId', userId); // Store userId too
         localStorage.setItem('isAuthenticated', 'true');
       } else {
         sessionStorage.setItem('authToken', token);
         sessionStorage.setItem('userRole', role);
+        sessionStorage.setItem('userId', userId); // Store userId too
         sessionStorage.setItem('isAuthenticated', 'true');
       }
   
