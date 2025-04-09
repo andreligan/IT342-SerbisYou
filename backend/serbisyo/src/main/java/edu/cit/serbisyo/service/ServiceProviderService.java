@@ -28,6 +28,9 @@ public class ServiceProviderService {
     public ServiceProviderEntity updateServiceProvider(Long providerId, ServiceProviderEntity updatedProvider) {
         ServiceProviderEntity existingProvider = serviceProviderRepository.findById(providerId)
                 .orElseThrow(() -> new RuntimeException("Service provider not found"));
+        existingProvider.setFirstName(updatedProvider.getFirstName());
+        existingProvider.setLastName(updatedProvider.getLastName());
+        existingProvider.setPhoneNumber(updatedProvider.getPhoneNumber());
         existingProvider.setBusinessName(updatedProvider.getBusinessName());
         existingProvider.setYearsOfExperience(updatedProvider.getYearsOfExperience());
         existingProvider.setStatus(updatedProvider.getStatus());

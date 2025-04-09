@@ -1,34 +1,51 @@
 import React, { useState } from 'react';
-import { User, Home, MapPin, Briefcase, Lock } from 'lucide-react';
+import { User, Home, MapPin, Briefcase, Lock, Package } from 'lucide-react';
+import Footer from '../Footer';
+import tate from '../../assets/tate.webp';
 import {
-  AppBar,
   Box,
-  Button,
   Container,
-  Drawer,
   Grid,
-  IconButton,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
   Paper,
-  TextField,
-  Toolbar,
   Typography,
-  Link,
-  Stack,
-  Avatar,
 } from '@mui/material';
 
+// Import components from profile directory
+import ProfileContent from './profile/ProfileContent';
+import AddressContent from './profile/AddressContent';
+import BusinessDetailsContent from './profile/BusinessDetailsContent';
+import MyServicesContent from './profile/MyServicesContent';
+import ChangePasswordContent from './profile/ChangePasswordContent';
+
 function ServiceProviderProfile() {
-  // ...existing code...
-const [selectedImage, setSelectedImage] = useState('https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150&h=150&fit=crop');
-// ...existing code...
+  const [selectedImage, setSelectedImage] = useState(tate);
+  const [activeSection, setActiveSection] = useState('profile');
+
+  // Render the appropriate content based on active section
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'profile':
+        return <ProfileContent selectedImage={selectedImage}  setSelectedImage={setSelectedImage}/>;
+      case 'address':
+        return <AddressContent />;
+      case 'business':
+        return <BusinessDetailsContent />;
+      case 'services':
+        return <MyServicesContent />;
+      case 'password':
+        return <ChangePasswordContent />;
+      default:
+        return <ProfileContent selectedImage={selectedImage} />;
+    }
+  };
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#F9FAFB' }}>
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth="lg" sx={{ py: 4,}}>
         <Grid container spacing={3}>
           {/* Sidebar */}
           <Grid item xs={12} md={3}>
@@ -38,19 +55,48 @@ const [selectedImage, setSelectedImage] = useState('https://images.unsplash.com/
                 <Typography variant="h6">My Account</Typography>
               </Box>
               <List component="nav" disablePadding>
-                <ListItem button selected sx={{ borderRadius: 1 }}>
+                <ListItem 
+                  button 
+                  selected={activeSection === 'profile'} 
+                  onClick={() => setActiveSection('profile')}
+                  sx={{ borderRadius: 1, cursor: 'pointer' }}
+                >
                   <ListItemIcon sx={{ minWidth: 40 }}><Home size={18} /></ListItemIcon>
                   <ListItemText primary="Profile" />
                 </ListItem>
-                <ListItem button sx={{ borderRadius: 1 }}>
+                <ListItem 
+                  button 
+                  selected={activeSection === 'address'} 
+                  onClick={() => setActiveSection('address')}
+                  sx={{ borderRadius: 1, cursor: 'pointer' }}
+                >
                   <ListItemIcon sx={{ minWidth: 40 }}><MapPin size={18} /></ListItemIcon>
                   <ListItemText primary="Address" />
                 </ListItem>
-                <ListItem button sx={{ borderRadius: 1 }}>
+                <ListItem 
+                  button 
+                  selected={activeSection === 'business'} 
+                  onClick={() => setActiveSection('business')}
+                  sx={{ borderRadius: 1, cursor: 'pointer' }}
+                >
                   <ListItemIcon sx={{ minWidth: 40 }}><Briefcase size={18} /></ListItemIcon>
                   <ListItemText primary="Business Details" />
                 </ListItem>
-                <ListItem button sx={{ borderRadius: 1 }}>
+                <ListItem 
+                  button 
+                  selected={activeSection === 'services'} 
+                  onClick={() => setActiveSection('services')}
+                  sx={{ borderRadius: 1, cursor: 'pointer' }}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}><Package size={18} /></ListItemIcon>
+                  <ListItemText primary="My Services" />
+                </ListItem>
+                <ListItem 
+                  button 
+                  selected={activeSection === 'password'} 
+                  onClick={() => setActiveSection('password')}
+                  sx={{ borderRadius: 1, cursor: 'pointer' }}
+                >
                   <ListItemIcon sx={{ minWidth: 40 }}><Lock size={18} /></ListItemIcon>
                   <ListItemText primary="Change Password" />
                 </ListItem>
@@ -59,82 +105,15 @@ const [selectedImage, setSelectedImage] = useState('https://images.unsplash.com/
           </Grid>
 
           {/* Main Content */}
-          <Grid item xs={12} md={9} sx={{ border: 'solid' }}>
-            <Paper sx={{ p: 4 }}>
-              <Typography variant="h4" gutterBottom>My Profile</Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-                Manage and protect your account
-              </Typography>
-
-              <Grid container spacing={3}>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Username"
-                    variant="outlined"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Name"
-                    variant="outlined"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Email"
-                    type="email"
-                    variant="outlined"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Phone Number"
-                    type="tel"
-                    variant="outlined"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Gender"
-                    variant="outlined"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Date of Birth"
-                    type="date"
-                    InputLabelProps={{ shrink: true }}
-                    variant="outlined"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 4, mt: 2 }}>
-                    <Box>
-                      <Avatar
-                        src={selectedImage}
-                        sx={{ width: 100, height: 100, mb: 1 }}
-                      />
-                      <Button variant="outlined" size="small" fullWidth>
-                        Select Image
-                      </Button>
-                    </Box>
-                    <Button variant="contained" sx={{ px: 4 }}>
-                      Save
-                    </Button>
-                  </Box>
-                </Grid>
-              </Grid>
+          <Grid item xs={12} md={7} >
+            <Paper sx={{ p: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {renderContent()}
             </Paper>
           </Grid>
         </Grid>
       </Container>
-    </Box>
+      <Footer />
+    </Box>  
   );
 }
 
