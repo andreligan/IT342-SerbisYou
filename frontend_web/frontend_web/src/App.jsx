@@ -9,6 +9,8 @@ import AddServicePage from "./components/service_provider/AddServicePage";
 import LogoutConfirmationPopup from "./components/LogoutConfirmationPopup";
 import { useState, useEffect } from "react";
 import ServiceProviderProfile from "./components/service_provider/ServiceProviderProfile";
+import API from "./utils/API";
+import axios from "axios";
 
 // Protected Route component for role-based access control
 const ProtectedRoute = ({ element, allowedRoles }) => {
@@ -45,15 +47,15 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Check authentication status and user role whenever the route changes
+  // Update the dependency array to include an empty dependency
   useEffect(() => {
     const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
     const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
     
     setIsAuthenticated(!!token);
     setUserRole(role);
-    console.log("Route changed. isAuthenticated:", !!token, "Role:", role);
-  }, [location]);
+    console.log("Authentication check. isAuthenticated:", !!token, "Role:", role);
+  }, [location, /* empty dependency to run on mount as well */]);
 
   const handleLogout = () => {
     setIsLogoutPopupVisible(true);
@@ -154,6 +156,55 @@ function App() {
       </>
     );
   };
+
+  useEffect(() => {
+    // Make axios use our configured instance with interceptors
+    axios.defaults.baseURL = API.defaults.baseURL;
+    axios.interceptors.response.handlers = API.interceptors.response.handlers;
+    
+    // Check token validity on app load
+    const checkAuth = async () => {
+      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
+      
+      if (token) {
+        try {
+          // Make a lightweight call to verify token is still valid
+          // If your API endpoint is returning 403, you might need to check the endpoint
+          await axios.get('/api/user-auth/validate-token', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          // If validation succeeds, set authentication state
+          setIsAuthenticated(true);
+          setUserRole(role);
+        } catch (error) {
+          console.log("Token validation failed:", error.message);
+          
+          // Option 1: Trust the token exists and is valid, don't clear auth
+          setIsAuthenticated(true);
+          setUserRole(role);
+          
+          // Option 2: Clear auth data (uncomment if you want this behavior)
+          /*
+          localStorage.removeItem("authToken");
+          localStorage.removeItem("userRole");
+          localStorage.removeItem("userId");
+          localStorage.removeItem("isAuthenticated");
+          sessionStorage.removeItem("authToken");
+          sessionStorage.removeItem("userRole");
+          sessionStorage.removeItem("userId");
+          sessionStorage.removeItem("isAuthenticated");
+          
+          setIsAuthenticated(false);
+          setUserRole(null);
+          */
+        }
+      }
+    };
+    
+    checkAuth();
+  }, []);
 
   return (
     <>

@@ -128,6 +128,7 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
       findProviderByUserId();
       console.log('Retrieved userId:', userId);
       console.log('Retrieved token:', token ? 'Token exists' : 'Token is missing');
+      console.log('hello');
     } else {
       setError('Authentication required. Please log in again.');
       setLoading(false);
