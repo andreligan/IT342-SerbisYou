@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -19,7 +20,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Divider,
   Chip,
   IconButton,
   Accordion,
@@ -33,6 +33,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 function MyServicesContent() {
+  // Add navigate for routing
+  const navigate = useNavigate();
+  
   // States for data
   const [providerId, setProviderId] = useState(null);
   const [services, setServices] = useState([]);
@@ -44,12 +47,19 @@ function MyServicesContent() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   
-  // States for dialogs
-  const [openAddDialog, setOpenAddDialog] = useState(false);
+  // States for dialogs - removed openAddDialog
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+
+  // State for tracking which category accordion is expanded
+  const [expandedCategory, setExpandedCategory] = useState(null);
+
+    // Handle accordion expansion change
+  const handleAccordionChange = (categoryId) => (event, isExpanded) => {
+    setExpandedCategory(isExpanded ? categoryId : null);
+  };
   
-  // State for current service
+  // State for current service - only for edit/delete now
   const [currentService, setCurrentService] = useState({
     serviceId: null,
     serviceName: '',
@@ -164,17 +174,9 @@ function MyServicesContent() {
     fetchServices();
   }, [providerId, token]);
   
-  // Handle opening the add dialog
+  // Navigate to add service page instead of opening dialog
   const handleAddClick = () => {
-    setCurrentService({
-      serviceId: null,
-      serviceName: '',
-      serviceDescription: '',
-      priceRange: '',
-      durationEstimate: '',
-      categoryId: ''
-    });
-    setOpenAddDialog(true);
+    navigate('/addService');
   };
   
   // Handle opening the edit dialog
@@ -203,62 +205,6 @@ function MyServicesContent() {
       ...prev,
       [name]: value
     }));
-  };
-  
-  // Add a new service
-  const handleAddService = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Create service payload
-      const servicePayload = {
-        serviceName: currentService.serviceName,
-        serviceDescription: currentService.serviceDescription,
-        priceRange: currentService.priceRange,
-        durationEstimate: currentService.durationEstimate,
-        // Use providerId and categoryId to establish relationships
-        provider: { providerId: providerId },
-        category: { categoryId: currentService.categoryId }
-      };
-      
-      const response = await axios.post('/api/services/postService', servicePayload, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      // Add new service to the list
-      setServices(prev => [...prev, response.data]);
-      
-      // Update services by category
-      setServicesByCategory(prev => {
-        const categoryId = response.data.category.categoryId;
-        const categoryName = response.data.category.categoryName;
-        
-        const newServicesByCategory = {...prev};
-        
-        if (!newServicesByCategory[categoryId]) {
-          newServicesByCategory[categoryId] = {
-            categoryName: categoryName,
-            services: []
-          };
-        }
-        
-        newServicesByCategory[categoryId].services.push(response.data);
-        
-        return newServicesByCategory;
-      });
-      
-      setSuccess('Service added successfully!');
-      setOpenAddDialog(false);
-      setLoading(false);
-      
-      // Auto-hide success message
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      console.error('Error adding service:', err);
-      setError('Failed to add service. Please try again.');
-      setLoading(false);
-    }
   };
   
   // Update an existing service
@@ -403,7 +349,7 @@ function MyServicesContent() {
         <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>
       )}
 
-      {/* Add Service Button */}
+      {/* Add Service Button - Now navigates to AddService page */}
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
         <Button 
           variant="contained" 
@@ -427,7 +373,12 @@ function MyServicesContent() {
       ) : (
         <Box sx={{ mt: 2 }}>
           {Object.entries(servicesByCategory).map(([categoryId, category]) => (
-            <Accordion key={categoryId} defaultExpanded sx={{ mb: 2 }}>
+            <Accordion 
+              key={categoryId} 
+              expanded={expandedCategory === categoryId}
+              onChange={handleAccordionChange(categoryId)}
+              sx={{ mb: 2 }}
+            >
               <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
                 aria-controls={`category-${categoryId}-content`}
@@ -484,95 +435,6 @@ function MyServicesContent() {
           ))}
         </Box>
       )}
-
-      {/* Add Service Dialog */}
-      <Dialog open={openAddDialog} onClose={() => setOpenAddDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add New Service</DialogTitle>
-        <DialogContent>
-          <Box component="form" sx={{ mt: 2 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <FormControl fullWidth required>
-                  <InputLabel id="category-label">Service Category</InputLabel>
-                  <Select
-                    labelId="category-label"
-                    id="categoryId"
-                    name="categoryId"
-                    value={currentService.categoryId}
-                    onChange={handleInputChange}
-                    label="Service Category"
-                  >
-                    {categories.map((category) => (
-                      <MenuItem key={category.categoryId} value={category.categoryId}>
-                        {category.categoryName}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  required
-                  fullWidth
-                  id="serviceName"
-                  name="serviceName"
-                  label="Service Name"
-                  value={currentService.serviceName}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  required
-                  fullWidth
-                  id="serviceDescription"
-                  name="serviceDescription"
-                  label="Service Description"
-                  value={currentService.serviceDescription}
-                  onChange={handleInputChange}
-                  multiline
-                  rows={3}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  required
-                  fullWidth
-                  id="priceRange"
-                  name="priceRange"
-                  label="Price Range"
-                  value={currentService.priceRange}
-                  onChange={handleInputChange}
-                  placeholder="e.g., ₱500 - ₱1000"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  required
-                  fullWidth
-                  id="durationEstimate"
-                  name="durationEstimate"
-                  label="Duration Estimate"
-                  value={currentService.durationEstimate}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 1-2 hours"
-                />
-              </Grid>
-            </Grid>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenAddDialog(false)}>Cancel</Button>
-          <Button 
-            onClick={handleAddService} 
-            variant="contained" 
-            color="primary"
-            disabled={loading || !currentService.categoryId || !currentService.serviceName}
-          >
-            {loading ? <CircularProgress size={24} /> : 'Add Service'}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Edit Service Dialog */}
       <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} maxWidth="sm" fullWidth>

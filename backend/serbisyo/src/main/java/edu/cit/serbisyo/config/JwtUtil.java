@@ -4,6 +4,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -19,19 +21,23 @@ import java.util.function.Function;
 @Service
 public class JwtUtil {
 
+    @Value("${jwt.secret}")
+    private String secretkey;
 
-    private String secretkey = "";
+    // Remove the constructor that generates a random key
 
-    public JwtUtil() {
+    // private String secretkey = "";
 
-        try {
-            KeyGenerator keyGen = KeyGenerator.getInstance("HmacSHA256");
-            SecretKey sk = keyGen.generateKey();
-            secretkey = Base64.getEncoder().encodeToString(sk.getEncoded());
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-    }
+    // public JwtUtil() {
+
+    //     try {
+    //         KeyGenerator keyGen = KeyGenerator.getInstance("HmacSHA256");
+    //         SecretKey sk = keyGen.generateKey();
+    //         secretkey = Base64.getEncoder().encodeToString(sk.getEncoded());
+    //     } catch (NoSuchAlgorithmException e) {
+    //         throw new RuntimeException(e);
+    //     }
+    // }
 
     public String generateToken(String username, String email, String role) {
         Map<String, Object> claims = new HashMap<>();
@@ -41,7 +47,7 @@ public class JwtUtil {
                 .setClaims(claims)
                 .setSubject(username)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 60 * 60 * 30))
+                .setExpiration(new Date(System.currentTimeMillis() + 60 * 60 * 1000 * 24))
                 .signWith(getKey())
                 .compact();
     }

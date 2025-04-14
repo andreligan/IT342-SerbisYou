@@ -7,13 +7,15 @@ import edu.cit.serbisyo.service.UserAuthService;
 
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
-@RequestMapping(method = RequestMethod.GET, path = "/api/user-auth")
+@RequestMapping("/api/user-auth")
 public class UserAuthController {
 
     private final UserAuthService userAuthService;
@@ -79,5 +81,14 @@ public class UserAuthController {
     public ResponseEntity<String> updateUserAuth(@PathVariable Long authId, @RequestBody UserAuthEntity userAuth) {
         String result = userAuthService.updateUserAuth(authId, userAuth);
         return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/validate-token")
+    public ResponseEntity<?> validateToken(Authentication authentication) {
+        // If we get here, the token is already validated by the JWT filter
+        if (authentication != null && authentication.isAuthenticated()) {
+            return ResponseEntity.ok(Map.of("valid", true));
+        }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("valid", false));
     }
 }
