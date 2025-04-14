@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    <!-- Shield outline -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M100,20C80,40 50,50 20,50v60c0,40 30,60 80,80 50,-20 80,-40 80,-80V50c-30,0 -60,-10 -80,-30z"
+        android:strokeColor="#CCCCCC"
+        android:strokeWidth="2"/>
+    
+    <!-- Shield center line -->
+    <path
+        android:strokeColor="#CCCCCC"
+        android:strokeWidth="2"
+        android:pathData="M100,20v170"/>
+    
+    <!-- Hand outline -->
+    <path
+        android:fillColor="#FF6B51"
+        android:pathData="M130,80c-5,0 -10,4 -10,10v30h-5v-20c0,-5 -4,-10 -10,-10 -5,0 -10,4 -10,10v20h-5v-20c0,-5 -4,-10 -10,-10 -5,0 -10,4 -10,10v30c0,15 10,30 25,30h20c15,0 25,-15 25,-30v-30c0,-6 -5,-10 -10,-10z"/>
+    
+    <!-- Person head -->
+    <path
+        android:fillColor="#FF6B51"
+        android:pathData="M160,70c-8,0 -15,7 -15,15v10h30v-10c0,-8 -7,-15 -15,-15z"/>
+    
+    <!-- Person body -->
+    <path
+        android:fillColor="#395B55"
+        android:pathData="M175,95h-30v30h30z"/>
+    
+    <!-- Person legs -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M145,125h30v50h-30z"/>
+</vector> 

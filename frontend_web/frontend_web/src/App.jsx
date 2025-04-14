@@ -3,14 +3,18 @@ import LandingPage from "./components/LandingPage";
 import SignupStepWizard from "./components/SignupStepWizard";
 import LoginPopup from "./components/LoginPopup";
 import CustomerHomePage from "./components/CustomerHomePage";
+import BrowseServicesPage from "./components/BrowseServicesPage";
+import BookServicePage from "./components/BookServicePage";
 import ServiceProviderHomePage from "./components/service_provider/ServiceProviderHomePage";
 import PlumbingServicesPage from "./components/PlumbingServicesPage";
 import AddServicePage from "./components/service_provider/AddServicePage";
 import LogoutConfirmationPopup from "./components/LogoutConfirmationPopup";
 import { useState, useEffect } from "react";
 import ServiceProviderProfile from "./components/service_provider/ServiceProviderProfile";
+
 import API from "./utils/API";
 import axios from "axios";
+
 
 // Protected Route component for role-based access control
 const ProtectedRoute = ({ element, allowedRoles }) => {
@@ -116,7 +120,7 @@ function App() {
     return (
       <>
         <div style={styles.leftSection}>
-          <img src="SerbisYo Logo.png" alt="SerbisYo Logo" style={styles.logo} />
+          <img src={serbisyoLogo} alt="SerbisYo Logo" style={styles.logo} />
           <h1>Serbisyo</h1>
         </div>
         <div style={styles.rightSection}>
@@ -225,6 +229,14 @@ function App() {
         <Route 
           path="/customerHomePage" 
           element={<ProtectedRoute element={<CustomerHomePage />} allowedRoles={['customer']} />} 
+        />
+        <Route 
+          path="/browseServices" 
+          element={<ProtectedRoute element={<BrowseServicesPage />} allowedRoles={['customer']} />} 
+        />
+        <Route 
+          path="/bookService" 
+          element={<ProtectedRoute element={<BookServicePage />} allowedRoles={['customer']} />} 
         />
         <Route 
           path="/serviceProviderHomePage" 
