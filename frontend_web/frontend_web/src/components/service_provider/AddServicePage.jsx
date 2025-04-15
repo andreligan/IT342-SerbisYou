@@ -1,16 +1,5 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import {
-  Box,
-  Typography,
-  TextField,
-  MenuItem,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-} from "@mui/material";
 
 const AddServicePage = () => {
   const [formData, setFormData] = useState({
@@ -21,15 +10,13 @@ const AddServicePage = () => {
     durationEstimate: "",
   });
 
-  const [serviceCategories, setServiceCategories] = useState([]); // State to store categories
+  const [serviceCategories, setServiceCategories] = useState([]);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // State to track loading status
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch service categories from the backend
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        // Get token from localStorage or sessionStorage
         const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
         
         if (!token) {
@@ -40,7 +27,7 @@ const AddServicePage = () => {
         
         const response = await axios.get("/api/service-categories/getAll", {
           headers: {
-            'Authorization': `Bearer ${token}`  // Add token as Bearer token
+            'Authorization': `Bearer ${token}`
           }
         });
         
@@ -62,7 +49,7 @@ const AddServicePage = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setIsPopupOpen(true); // Open the confirmation popup
+    setIsPopupOpen(true);
   };
 
   const handleConfirm = async () => {
@@ -76,8 +63,6 @@ const AddServicePage = () => {
         return;
       }
       
-      // Step 1: Get user ID from auth data
-      // Update this line to check both storage options
       const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
 
       if (!userId) {
@@ -85,43 +70,29 @@ const AddServicePage = () => {
         return;
       }
       
-      // Step 2: Fetch service provider details using user ID
-      // Since there's no direct endpoint to get provider by userId, we need to:
-      // 1. Get all providers
-      // 2. Filter to find the one matching current user
-// Step 2: Fetch service provider details using user ID
-const providerResponse = await axios.get("/api/service-providers/getAll", {
-  headers: {
-    'Authorization': `Bearer ${token}`
-  }
-});
+      const providerResponse = await axios.get("/api/service-providers/getAll", {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
 
-// Examine a single provider object to understand its structure
-console.log("Current user ID:", userId);
-console.log("Sample provider object structure:", 
-  providerResponse.data.length > 0 ? JSON.stringify(providerResponse.data[0], null, 2) : "No providers found");
+      console.log("Current user ID:", userId);
+      console.log("Sample provider object structure:", 
+        providerResponse.data.length > 0 ? JSON.stringify(providerResponse.data[0], null, 2) : "No providers found");
 
-    // Try different property paths to find the user ID
-    const providerData = providerResponse.data.find(provider => {
-      // Log the whole provider object to inspect all properties
-      console.log("Provider object:", provider);
+      const providerData = providerResponse.data.find(provider => {
+        console.log("Provider object:", provider);
+        return provider.userAuth?.userId == userId;
+      });
+
+      if (!providerData) {
+        console.error("No service provider found for this user");
+        return;
+      }
+
+      console.log("Found provider:", providerData);
+      const providerId = providerData.providerId;
       
-      // Check if the userAuth.userId matches the current user ID
-      return provider.userAuth?.userId == userId;
-    });
-
-    if (!providerData) {
-      console.error("No service provider found for this user");
-      return;
-    }
-
-// Log the found provider
-console.log("Found provider:", providerData);
-
-// Extract the provider ID (assuming it's called providerId)
-const providerId = providerData.providerId;
-      
-      // Create service entity that matches your backend expectations
       const serviceDetails = {
         serviceName: formData.name,
         serviceDescription: formData.serviceDescription, 
@@ -129,7 +100,6 @@ const providerId = providerData.providerId;
         durationEstimate: formData.durationEstimate
       };
       
-      // Use the correct API endpoint format
       const response = await axios.post(
         `/api/services/postService/${providerId}/${formData.category}`, 
         serviceDetails,
@@ -141,7 +111,6 @@ const providerId = providerData.providerId;
       );
       
       console.log("Service added successfully:", response.data);
-      // Clear form or redirect user after success
       setFormData({
         category: "",
         name: "",
@@ -149,174 +118,185 @@ const providerId = providerData.providerId;
         priceRange: "",
         durationEstimate: "",
       });
-      // Add success notification here
     } catch (error) {
       console.error("Error adding service:", error);
-      // Handle error - show error message to user
     }
   };
 
   return (
-    <Box sx={{ padding: "40px", maxWidth: "600px", margin: "0 auto" }}>
-      {/* Title */}
-      <Typography
-        variant="h2"
-        sx={{
-          textAlign: "center",
-          color: "#495E57",
-          marginBottom: "20px",
-          fontWeight: "bold",
-        }}
-      >
-        What is your service about?
-      </Typography>
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-[#495E57]">Add Your Service</h1>
+          <p className="mt-2 text-gray-600">Tell us about the service you offer</p>
+        </div>
 
-      {/* Form */}
-      <Box
-        component="form"
-        onSubmit={handleSubmit}
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "20px",
-          backgroundColor: "#f9f9f9",
-          padding: "20px",
-          borderRadius: "8px",
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-        }}
-      >
-        {/* Service Category */}
-        <TextField
-          select
-          label="Service Category"
-          name="category"
-          value={formData.category}
-          onChange={handleChange}
-          required
-          fullWidth
-          disabled={isLoading} // Disable dropdown while loading
-        >
-          {isLoading ? (
-            <MenuItem value="" disabled>
-              Loading categories...
-            </MenuItem>
-          ) : (
-            serviceCategories.map((category) => (
-              <MenuItem key={category.categoryId} value={category.categoryId}>
-                {category.categoryName}
-              </MenuItem>
-            ))
-          )}
-        </TextField>
+        <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+          <div className="bg-[#495E57] py-4 px-6">
+            <h2 className="text-xl font-semibold text-white">Service Details</h2>
+          </div>
 
-        {/* Service Name */}
-        <TextField
-          label="Service Name"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          required
-          fullWidth
-        />
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {/* Service Category */}
+            <div>
+              <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+                Service Category
+              </label>
+              <select
+                id="category"
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                required
+                disabled={isLoading}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-[#F4CE14] focus:border-[#F4CE14] disabled:bg-gray-100"
+              >
+                <option value="" disabled>
+                  {isLoading ? "Loading categories..." : "Select a category"}
+                </option>
+                {serviceCategories.map((category) => (
+                  <option key={category.categoryId} value={category.categoryId}>
+                    {category.categoryName}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        {/* serviceDescription */}
-        <TextField
-          label="serviceDescription"
-          name="serviceDescription"
-          value={formData.serviceDescription}
-          onChange={handleChange}
-          required
-          multiline
-          rows={3}
-          fullWidth
-        />
+            {/* Service Name */}
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                Service Name
+              </label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-[#F4CE14] focus:border-[#F4CE14]"
+              />
+            </div>
 
-        {/* Price Range */}
-        <TextField
-          label="Price Range"
-          name="priceRange"
-          value={formData.priceRange}
-          onChange={handleChange}
-          required
-          fullWidth
-        />
+            {/* Service Description */}
+            <div>
+              <label htmlFor="serviceDescription" className="block text-sm font-medium text-gray-700 mb-1">
+                Service Description
+              </label>
+              <textarea
+                id="serviceDescription"
+                name="serviceDescription"
+                value={formData.serviceDescription}
+                onChange={handleChange}
+                required
+                rows={4}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-[#F4CE14] focus:border-[#F4CE14]"
+              />
+            </div>
 
-        {/* durationEstimate */}
-        <TextField
-          label="durationEstimate"
-          name="durationEstimate"
-          value={formData.durationEstimate}
-          onChange={handleChange}
-          required
-          fullWidth
-        />
+            {/* Two-column layout for Price and Duration */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="priceRange" className="block text-sm font-medium text-gray-700 mb-1">
+                  Price Range
+                </label>
+                <input
+                  type="text"
+                  id="priceRange"
+                  name="priceRange"
+                  value={formData.priceRange}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-[#F4CE14] focus:border-[#F4CE14]"
+                  placeholder="e.g. $50-$100"
+                />
+              </div>
 
-        {/* Submit Button */}
-        <Button
-          type="submit"
-          variant="contained"
-          sx={{
-            backgroundColor: "#495E57",
-            color: "#fff",
-            textTransform: "none",
-            "&:hover": {
-              backgroundColor: "#3A4A47",
-            },
-          }}
-        >
-          Submit
-        </Button>
-      </Box>
+              <div>
+                <label htmlFor="durationEstimate" className="block text-sm font-medium text-gray-700 mb-1">
+                  Duration Estimate
+                </label>
+                <input
+                  type="text"
+                  id="durationEstimate"
+                  name="durationEstimate"
+                  value={formData.durationEstimate}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-[#F4CE14] focus:border-[#F4CE14]"
+                  placeholder="e.g. 1-2 hours"
+                />
+              </div>
+            </div>
 
-      {/* Confirmation Popup */}
-      <Dialog open={isPopupOpen} onClose={() => setIsPopupOpen(false)}>
-        <DialogTitle sx={{ textAlign: "center", fontWeight: "bold", color: "#495E57" }}>
-          Confirm Service Details
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body1" sx={{ marginBottom: "10px" }}>
-            <strong>Category:</strong>{" "}
-            {serviceCategories.find((cat) => cat.categoryId === formData.category)?.categoryName || ""}
-          </Typography>
-          <Typography variant="body1" sx={{ marginBottom: "10px" }}>
-            <strong>Name:</strong> {formData.name}
-          </Typography>
-          <Typography variant="body1" sx={{ marginBottom: "10px" }}>
-            <strong>serviceDescription:</strong> {formData.serviceDescription}
-          </Typography>
-          <Typography variant="body1" sx={{ marginBottom: "10px" }}>
-            <strong>Price Range:</strong> {formData.priceRange}
-          </Typography>
-          <Typography variant="body1" sx={{ marginBottom: "10px" }}>
-            <strong>durationEstimate:</strong> {formData.durationEstimate}
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => setIsPopupOpen(false)}
-            sx={{
-              color: "#f44336",
-              textTransform: "none",
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleConfirm}
-            sx={{
-              backgroundColor: "#495E57",
-              color: "#fff",
-              textTransform: "none",
-              "&:hover": {
-                backgroundColor: "#3A4A47",
-              },
-            }}
-          >
-            Confirm
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+            {/* Submit Button */}
+            <div className="pt-4">
+              <button
+                type="submit"
+                className="w-full bg-[#F4CE14] text-[#495E57] font-semibold py-3 px-4 rounded-md shadow hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors"
+              >
+                Add Service
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {/* Confirmation Dialog */}
+      {isPopupOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-md w-full overflow-hidden">
+            <div className="bg-[#495E57] px-6 py-4">
+              <h3 className="text-lg font-medium text-white">Confirm Service Details</h3>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-500">Category</p>
+                  <p className="font-medium">
+                    {serviceCategories.find((cat) => cat.categoryId === formData.category)?.categoryName || ""}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Service Name</p>
+                  <p className="font-medium">{formData.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Description</p>
+                  <p className="font-medium">{formData.serviceDescription}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Price Range</p>
+                    <p className="font-medium">{formData.priceRange}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Duration</p>
+                    <p className="font-medium">{formData.durationEstimate}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsPopupOpen(false)}
+                  className="text-gray-700 bg-gray-100 px-4 py-2 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirm}
+                  className="bg-[#F4CE14] text-[#495E57] px-4 py-2 font-medium rounded-md hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

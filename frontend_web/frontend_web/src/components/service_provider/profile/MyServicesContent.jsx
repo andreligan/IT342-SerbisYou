@@ -1,36 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Box,
-  Button,
-  Typography,
-  CircularProgress,
-  Alert,
-  Card,
-  CardContent,
-  CardActions,
-  Grid,
-  TextField,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Chip,
-  IconButton,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails
-} from '@mui/material';
 import axios from 'axios';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 function MyServicesContent() {
   // Add navigate for routing
@@ -47,17 +17,12 @@ function MyServicesContent() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   
-  // States for dialogs - removed openAddDialog
+  // States for dialogs
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
-  // State for tracking which category accordion is expanded
-  const [expandedCategory, setExpandedCategory] = useState(null);
-
-    // Handle accordion expansion change
-  const handleAccordionChange = (categoryId) => (event, isExpanded) => {
-    setExpandedCategory(isExpanded ? categoryId : null);
-  };
+  // State for active tab
+  const [activeTab, setActiveTab] = useState(null);
   
   // State for current service - only for edit/delete now
   const [currentService, setCurrentService] = useState({
@@ -163,6 +128,13 @@ function MyServicesContent() {
         });
         
         setServicesByCategory(grouped);
+        
+        // Set the first category as active if there are any
+        const categoryIds = Object.keys(grouped);
+        if (categoryIds.length > 0 && !activeTab) {
+          setActiveTab(categoryIds[0]);
+        }
+        
         setLoading(false);
       } catch (err) {
         console.error('Error fetching services:', err);
@@ -219,7 +191,6 @@ function MyServicesContent() {
         serviceDescription: currentService.serviceDescription,
         priceRange: currentService.priceRange,
         durationEstimate: currentService.durationEstimate
-        // Don't include provider and category here since they're in the URL path
       };
       
       // Use the correct URL format with path variables
@@ -316,6 +287,12 @@ function MyServicesContent() {
           }
         });
         
+        // If the active tab was deleted, set a new active tab
+        if (Object.keys(updatedServicesByCategory).length > 0 && 
+            !updatedServicesByCategory[activeTab]) {
+          setActiveTab(Object.keys(updatedServicesByCategory)[0]);
+        }
+        
         return updatedServicesByCategory;
       });
       
@@ -333,217 +310,346 @@ function MyServicesContent() {
   };
 
   return (
-    <>
-      <Box>
-        <Typography variant="h4" gutterBottom>My Services</Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-          Manage the services you offer
-        </Typography>
-      </Box>
+    <div className="max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-800">My Services</h1>
+        <p className="text-gray-600 mt-2">
+          Manage the services you offer to your clients
+        </p>
+      </div>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+        <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-md text-red-700 shadow">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium">{error}</p>
+            </div>
+          </div>
+        </div>
       )}
 
       {success && (
-        <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>
+        <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 rounded-md text-green-700 shadow">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium">{success}</p>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* Add Service Button - Now navigates to AddService page */}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-        <Button 
-          variant="contained" 
-          color="primary" 
-          startIcon={<AddIcon />}
+      {/* Add Service Button */}
+      <div className="flex justify-end mb-6">
+        <button 
+          className="flex items-center px-4 py-2 bg-[#F4CE14] text-[#495E57] font-medium rounded-md hover:bg-yellow-300 shadow-md transition-colors"
           onClick={handleAddClick}
         >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+          </svg>
           Add New Service
-        </Button>
-      </Box>
+        </button>
+      </div>
 
-      {/* Services List by Category */}
+      {/* Loading State */}
       {loading && !Object.keys(servicesByCategory).length ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-          <CircularProgress />
-        </Box>
+        <div className="flex justify-center items-center py-16 bg-gray-50 rounded-lg shadow">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#495E57]"></div>
+        </div>
       ) : !Object.keys(servicesByCategory).length ? (
-        <Typography variant="body1" sx={{ textAlign: 'center', py: 4 }}>
-          No services added yet. Click "Add New Service" to get started.
-        </Typography>
+        <div className="flex flex-col items-center justify-center py-16 px-4 bg-gray-50 rounded-lg shadow">
+          <svg className="w-16 h-16 mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          <p className="text-gray-600 text-lg font-medium mb-2">
+            No services added yet
+          </p>
+          <p className="text-gray-500 text-center mb-6">
+            Start by adding your first service to showcase to clients
+          </p>
+          <button 
+            className="flex items-center px-4 py-2 bg-[#F4CE14] text-[#495E57] font-medium rounded-md hover:bg-yellow-300 shadow transition-colors"
+            onClick={handleAddClick}
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+            Add New Service
+          </button>
+        </div>
       ) : (
-        <Box sx={{ mt: 2 }}>
-          {Object.entries(servicesByCategory).map(([categoryId, category]) => (
-            <Accordion 
-              key={categoryId} 
-              expanded={expandedCategory === categoryId}
-              onChange={handleAccordionChange(categoryId)}
-              sx={{ mb: 2 }}
-            >
-              <AccordionSummary
-                expandIcon={<ExpandMoreIcon />}
-                aria-controls={`category-${categoryId}-content`}
-                id={`category-${categoryId}-header`}
-              >
-                <Typography variant="h6">{category.categoryName}</Typography>
-                <Chip 
-                  label={`${category.services.length} service${category.services.length !== 1 ? 's' : ''}`} 
-                  size="small" 
-                  sx={{ ml: 2 }}
-                />
-              </AccordionSummary>
-              <AccordionDetails>
-                <Grid container spacing={2}>
-                  {category.services.map((service) => (
-                    <Grid item xs={12} md={6} lg={4} key={service.serviceId}>
-                      <Card variant="outlined">
-                        <CardContent>
-                          <Typography variant="h6" component="div">
-                            {service.serviceName}
-                          </Typography>
-                          <Typography sx={{ mb: 1.5 }} color="text.secondary">
-                            Price: {service.priceRange}
-                          </Typography>
-                          <Typography sx={{ mb: 1.5 }} color="text.secondary">
-                            Duration: {service.durationEstimate}
-                          </Typography>
-                          <Typography variant="body2">
-                            {service.serviceDescription}
-                          </Typography>
-                        </CardContent>
-                        <CardActions>
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => handleEditClick(service)}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleDeleteClick(service)}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </CardActions>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              </AccordionDetails>
-            </Accordion>
-          ))}
-        </Box>
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          {/* Horizontal Tabs */}
+          <div className="border-b border-gray-200">
+            <nav className="flex overflow-x-auto">
+              {Object.entries(servicesByCategory).map(([categoryId, category]) => (
+                <button
+                  key={categoryId}
+                  onClick={() => setActiveTab(categoryId)}
+                  className={`
+                    whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm flex items-center
+                    ${activeTab === categoryId 
+                      ? 'border-[#F4CE14] text-[#495E57]' 
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+                  `}
+                >
+                  {category.categoryName}
+                  <span className={`ml-2 py-0.5 px-2 rounded-full text-xs font-medium 
+                    ${activeTab === categoryId ? 'bg-[#F4CE14] text-[#495E57]' : 'bg-gray-100 text-gray-600'}`}>
+                    {category.services.length}
+                  </span>
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          {/* Services Container */}
+          <div className="p-6 bg-gray-50">
+            {activeTab && servicesByCategory[activeTab] && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {servicesByCategory[activeTab].services.map((service) => (
+                  <div key={service.serviceId} className="bg-white rounded-lg overflow-hidden shadow hover:shadow-md transition-shadow border border-gray-100">
+                    <div className="p-5">
+                      <h3 className="text-lg font-semibold text-[#495E57] mb-2">{service.serviceName}</h3>
+                      <div className="flex items-center text-sm text-gray-600 mb-1">
+                        <svg className="w-4 h-4 mr-1 text-[#F4CE14]" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-14a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V4z" clipRule="evenodd"></path>
+                        </svg>
+                        <span className="font-medium mr-1">Duration:</span> {service.durationEstimate}
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600 mb-3">
+                        <svg className="w-4 h-4 mr-1 text-[#F4CE14]" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                          <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"></path>
+                        </svg>
+                        <span className="font-medium mr-1">Price:</span> {service.priceRange}
+                      </div>
+                      <p className="text-gray-700 text-sm line-clamp-3">{service.serviceDescription}</p>
+                    </div>
+                    <div className="flex justify-end p-3 bg-gray-50 border-t border-gray-100">
+                      <button
+                        className="p-2 mr-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors flex items-center"
+                        onClick={() => handleEditClick(service)}
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                      </button>
+                      <button
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors flex items-center"
+                        onClick={() => handleDeleteClick(service)}
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Edit Service Dialog */}
-      <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Service</DialogTitle>
-        <DialogContent>
-          <Box component="form" sx={{ mt: 2 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <FormControl fullWidth required>
-                  <InputLabel id="category-edit-label">Service Category</InputLabel>
-                  <Select
-                    labelId="category-edit-label"
-                    id="categoryId-edit"
-                    name="categoryId"
-                    value={currentService.categoryId}
-                    onChange={handleInputChange}
-                    label="Service Category"
-                  >
-                    {categories.map((category) => (
-                      <MenuItem key={category.categoryId} value={category.categoryId}>
-                        {category.categoryName}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  required
-                  fullWidth
-                  id="serviceName-edit"
-                  name="serviceName"
-                  label="Service Name"
-                  value={currentService.serviceName}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  required
-                  fullWidth
-                  id="serviceDescription-edit"
-                  name="serviceDescription"
-                  label="Service Description"
-                  value={currentService.serviceDescription}
-                  onChange={handleInputChange}
-                  multiline
-                  rows={3}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  required
-                  fullWidth
-                  id="priceRange-edit"
-                  name="priceRange"
-                  label="Price Range"
-                  value={currentService.priceRange}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  required
-                  fullWidth
-                  id="durationEstimate-edit"
-                  name="durationEstimate"
-                  label="Duration Estimate"
-                  value={currentService.durationEstimate}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-            </Grid>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenEditDialog(false)}>Cancel</Button>
-          <Button 
-            onClick={handleUpdateService} 
-            variant="contained" 
-            color="primary"
-            disabled={loading || !currentService.categoryId || !currentService.serviceName}
-          >
-            {loading ? <CircularProgress size={24} /> : 'Update Service'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {openEditDialog && (
+        <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            {/* Background overlay */}
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setOpenEditDialog(false)}></div>
+
+            {/* Modal panel */}
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-[#495E57] px-4 py-3 flex justify-between items-center">
+                <h3 className="text-lg leading-6 font-medium text-white" id="modal-title">
+                  Edit Service
+                </h3>
+                <button
+                  onClick={() => setOpenEditDialog(false)}
+                  className="text-white hover:text-gray-200"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="categoryId" className="block text-sm font-medium text-gray-700">Service Category</label>
+                    <select
+                      id="categoryId"
+                      name="categoryId"
+                      value={currentService.categoryId}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-[#F4CE14] focus:border-[#F4CE14] sm:text-sm rounded-md"
+                      required
+                    >
+                      <option value="">Select a category</option>
+                      {categories.map((category) => (
+                        <option key={category.categoryId} value={category.categoryId}>
+                          {category.categoryName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="serviceName" className="block text-sm font-medium text-gray-700">Service Name</label>
+                    <input
+                      type="text"
+                      id="serviceName"
+                      name="serviceName"
+                      value={currentService.serviceName}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#F4CE14] focus:border-[#F4CE14] sm:text-sm"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="serviceDescription" className="block text-sm font-medium text-gray-700">Service Description</label>
+                    <textarea
+                      id="serviceDescription"
+                      name="serviceDescription"
+                      rows="3"
+                      value={currentService.serviceDescription}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#F4CE14] focus:border-[#F4CE14] sm:text-sm"
+                      required
+                    ></textarea>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="priceRange" className="block text-sm font-medium text-gray-700">Price Range</label>
+                      <input
+                        type="text"
+                        id="priceRange"
+                        name="priceRange"
+                        value={currentService.priceRange}
+                        onChange={handleInputChange}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#F4CE14] focus:border-[#F4CE14] sm:text-sm"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="durationEstimate" className="block text-sm font-medium text-gray-700">Duration Estimate</label>
+                      <input
+                        type="text"
+                        id="durationEstimate"
+                        name="durationEstimate"
+                        value={currentService.durationEstimate}
+                        onChange={handleInputChange}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#F4CE14] focus:border-[#F4CE14] sm:text-sm"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-[#F4CE14] text-base font-medium text-[#495E57] hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={handleUpdateService}
+                  disabled={loading || !currentService.categoryId || !currentService.serviceName}
+                >
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-[#495E57]" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Updating...
+                    </>
+                  ) : 'Update Service'}
+                </button>
+                <button
+                  type="button"
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#495E57] sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => setOpenEditDialog(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
-        <DialogTitle>Confirm Deletion</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete the service "{currentService.serviceName}"? This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
-          <Button 
-            onClick={handleDeleteService} 
-            color="error" 
-            variant="contained"
-            disabled={loading}
-          >
-            {loading ? <CircularProgress size={24} /> : 'Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
+      {openDeleteDialog && (
+        <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            {/* Background overlay */}
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setOpenDeleteDialog(false)}></div>
+
+            {/* Modal panel */}
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-red-600 px-4 py-3">
+                <h3 className="text-lg leading-6 font-medium text-white" id="modal-title">
+                  Confirm Deletion
+                </h3>
+              </div>
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-headline">
+                      Delete Service
+                    </h3>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500">
+                        Are you sure you want to delete the service "{currentService.serviceName}"? This action cannot be undone.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button 
+                  type="button" 
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={handleDeleteService}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : ''}
+                  Delete
+                </button>
+                <button 
+                  type="button" 
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#495E57] sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => setOpenDeleteDialog(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
