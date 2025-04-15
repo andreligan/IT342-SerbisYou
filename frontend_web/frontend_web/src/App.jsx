@@ -11,36 +11,33 @@ import AddServicePage from "./components/service_provider/AddServicePage";
 import LogoutConfirmationPopup from "./components/LogoutConfirmationPopup";
 import { useState, useEffect } from "react";
 import ServiceProviderProfile from "./components/service_provider/ServiceProviderProfile";
-
+import serbisyoLogo from "./assets/SerbisYo Logo.png";
 import API from "./utils/API";
 import axios from "axios";
-
-import serbisyoLogo from "./assets/Serbisyo Logo.png";
-
 
 // Protected Route component for role-based access control
 const ProtectedRoute = ({ element, allowedRoles }) => {
   const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
   const userRole = localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
-  
+
   // If not authenticated, redirect to landing page
   if (!token) {
     return <Navigate to="/" replace />;
   }
-  
+
   // If role restriction exists and user's role is not allowed, redirect
   if (allowedRoles && !allowedRoles.includes(userRole?.toLowerCase())) {
     console.log(`Access denied: User role ${userRole} not allowed for this page`);
     // Redirect to appropriate home page based on role
-    if (userRole?.toLowerCase() === 'customer') {
+    if (userRole?.toLowerCase() === "customer") {
       return <Navigate to="/customerHomePage" replace />;
-    } else if (userRole?.toLowerCase() === 'service provider') {
+    } else if (userRole?.toLowerCase() === "service provider") {
       return <Navigate to="/serviceProviderHomePage" replace />;
     } else {
       return <Navigate to="/" replace />;
     }
   }
-  
+
   // If authenticated and authorized, render the requested component
   return element;
 };
@@ -50,6 +47,7 @@ function App() {
   const [userRole, setUserRole] = useState(null); // Add state for user role
   const [isLoginPopupVisible, setIsLoginPopupVisible] = useState(false);
   const [isLogoutPopupVisible, setIsLogoutPopupVisible] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false); // For user profile dropdown
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -57,15 +55,11 @@ function App() {
   useEffect(() => {
     const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
     const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
-    
+
     setIsAuthenticated(!!token);
     setUserRole(role);
     console.log("Authentication check. isAuthenticated:", !!token, "Role:", role);
-  }, [location, /* empty dependency to run on mount as well */]);
-
-  const handleLogout = () => {
-    setIsLogoutPopupVisible(true);
-  };
+  }, [location]);
 
   const confirmLogout = () => {
     console.log("User has logged out.");
@@ -76,193 +70,200 @@ function App() {
     sessionStorage.removeItem("authToken");
     sessionStorage.removeItem("userRole");
     sessionStorage.removeItem("isAuthenticated");
-    
+
     setIsAuthenticated(false);
     setUserRole(null);
-    setIsLogoutPopupVisible(false);
+    setDropdownOpen(false); // Close the profile menu
+    setIsLogoutPopupVisible(false); // Close the logout confirmation popup
     navigate("/");
   };
 
-  // Define your styles here
-  const styles = {
-    appHeader: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '1rem 2rem',
-      height: '100px',
-      backgroundColor: '#fff',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-    },
-    leftSection: {
-      display: 'flex',
-      alignItems: 'center',
-    },
-    logo: {
-      height: '40px',
-      marginRight: '10px'
-    },
-    rightSection: {
-      display: 'flex',
-      gap: '10px'
-    },
-    button: {
-      padding: '8px 16px',
-      backgroundColor: '#F4CE14',
-      color: '#000',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer'
-    },
-    buttonHover: {
-      backgroundColor: '#e0b813'
-    }
+  const toggleDropdown = () => {
+    setDropdownOpen(!dropdownOpen);
   };
 
-  const HeaderContent = ({ isAuthenticated, userRole, onLogout, onLoginPopup }) => {
+  const renderNavigationLinks = () => {
+    if (!isAuthenticated) return null;
+
     return (
-      <>
-        <div style={styles.leftSection}>
-          <img src={serbisyoLogo} alt="SerbisYo Logo" style={styles.logo} />
-          <h1>Serbisyo</h1>
-        </div>
-        <div style={styles.rightSection}>
-          {!isAuthenticated ? (
-            <>
+      <div className="flex items-center gap-6"> {/* Increased gap between icons */}
+        {/* Home Link */}
+        <button
+          onClick={() => navigate(userRole === "customer" ? "/customerHomePage" : "/serviceProviderHomePage")}
+          className="p-2 rounded-full hover:bg-gray-200"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V10z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 21V9h6v12" />
+          </svg>
+        </button>
+
+        {/* Chat/Messages Link (Exclude for Admin) */}
+        {userRole !== "admin" && (
+          <button
+            onClick={() => navigate("/messages")}
+            className="p-2 rounded-full hover:bg-gray-200"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 10h.01M12 10h.01M16 10h.01M21 16.5a2.5 2.5 0 01-2.5 2.5H5.5A2.5 2.5 0 013 16.5V5.5A2.5 2.5 0 015.5 3h13a2.5 2.5 0 012.5 2.5v11z"
+              />
+            </svg>
+          </button>
+        )}
+
+        {/* Notifications Link */}
+        <button
+          onClick={() => navigate("/notifications")}
+          className="p-2 rounded-full hover:bg-gray-200"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0a3 3 0 11-6 0m6 0H9"
+            />
+          </svg>
+        </button>
+
+        {/* User Profile Dropdown */}
+        <div className="relative">
+          <button
+            onClick={toggleDropdown}
+            className="p-2 rounded-full hover:bg-gray-200"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+              />
+            </svg>
+          </button>
+          {dropdownOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg z-50">
+              <div className="p-4 border-b border-gray-200">
+                <p className="text-sm font-semibold text-gray-800">User Menu</p>
+              </div>
               <button
-                style={styles.button}
-                onMouseOver={(e) => (e.target.style.backgroundColor = styles.buttonHover.backgroundColor)}
-                onMouseOut={(e) => (e.target.style.backgroundColor = styles.button.backgroundColor)}
+                onClick={() => navigate("/profile")}
+                className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100"
+              >
+                Manage Profile
+              </button>
+              <button
+                onClick={() => setIsLogoutPopupVisible(true)} // Show the logout confirmation popup
+                className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100"
+              >
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <header className="flex justify-between items-center px-8 py-4 bg-white shadow-md">
+        <div className="flex items-center">
+          <img src={serbisyoLogo} alt="SerbisYo Logo" className="h-12 mr-4" />
+          <h1 className="text-2xl font-bold text-gray-800">Serbisyo</h1>
+        </div>
+        <div>
+          {!isAuthenticated ? (
+            <div className="flex gap-4">
+              <button
                 onClick={() => navigate("/signup")}
+                className="px-4 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500"
               >
                 Sign Up
               </button>
               <button
-                style={styles.button}
-                onMouseOver={(e) => (e.target.style.backgroundColor = styles.buttonHover.backgroundColor)}
-                onMouseOut={(e) => (e.target.style.backgroundColor = styles.button.backgroundColor)}
-                onClick={onLoginPopup}
+                onClick={() => setIsLoginPopupVisible(true)}
+                className="px-4 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500"
               >
                 Sign In
               </button>
-            </>
+            </div>
           ) : (
-            <>
-              {/* Optional: You can add role-specific navigation links here */}
-              <button
-                style={styles.button}
-                onMouseOver={(e) => (e.target.style.backgroundColor = styles.buttonHover.backgroundColor)}
-                onMouseOut={(e) => (e.target.style.backgroundColor = styles.button.backgroundColor)}
-                onClick={onLogout}
-              >
-                Logout
-              </button>
-            </>
+            renderNavigationLinks()
           )}
         </div>
-      </>
-    );
-  };
-
-  useEffect(() => {
-    // Make axios use our configured instance with interceptors
-    axios.defaults.baseURL = API.defaults.baseURL;
-    axios.interceptors.response.handlers = API.interceptors.response.handlers;
-    
-    // Check token validity on app load
-    const checkAuth = async () => {
-      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-      const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
-      
-      if (token) {
-        try {
-          // Make a lightweight call to verify token is still valid
-          // If your API endpoint is returning 403, you might need to check the endpoint
-          await axios.get('/api/user-auth/validate-token', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          
-          // If validation succeeds, set authentication state
-          setIsAuthenticated(true);
-          setUserRole(role);
-        } catch (error) {
-          console.log("Token validation failed:", error.message);
-          
-          // Option 1: Trust the token exists and is valid, don't clear auth
-          setIsAuthenticated(true);
-          setUserRole(role);
-          
-          // Option 2: Clear auth data (uncomment if you want this behavior)
-          /*
-          localStorage.removeItem("authToken");
-          localStorage.removeItem("userRole");
-          localStorage.removeItem("userId");
-          localStorage.removeItem("isAuthenticated");
-          sessionStorage.removeItem("authToken");
-          sessionStorage.removeItem("userRole");
-          sessionStorage.removeItem("userId");
-          sessionStorage.removeItem("isAuthenticated");
-          
-          setIsAuthenticated(false);
-          setUserRole(null);
-          */
-        }
-      }
-    };
-    
-    checkAuth();
-  }, []);
-
-  return (
-    <>
-      <header style={styles.appHeader}>
-        <HeaderContent
-          isAuthenticated={isAuthenticated}
-          userRole={userRole}
-          onLogout={handleLogout}
-          onLoginPopup={() => setIsLoginPopupVisible(true)}
-        />
       </header>
       <Routes>
-        {/* Public routes - accessible to anyone */}
+        {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/signup" element={<SignupStepWizard />} />
-        
-        {/* Protected routes with role-based access */}
-        <Route 
-          path="/customerHomePage" 
-          element={<ProtectedRoute element={<CustomerHomePage />} allowedRoles={['customer']} />} 
+
+        {/* Protected routes */}
+        <Route
+          path="/customerHomePage"
+          element={<ProtectedRoute element={<CustomerHomePage />} allowedRoles={["customer"]} />}
         />
-        <Route 
-          path="/browseServices" 
-          element={<ProtectedRoute element={<BrowseServicesPage />} allowedRoles={['customer']} />} 
+        <Route
+          path="/browseServices"
+          element={<ProtectedRoute element={<BrowseServicesPage />} allowedRoles={["customer"]} />}
         />
-        <Route 
-          path="/bookService" 
-          element={<ProtectedRoute element={<BookServicePage />} allowedRoles={['customer']} />} 
+        <Route
+          path="/bookService"
+          element={<ProtectedRoute element={<BookServicePage />} allowedRoles={["customer"]} />}
         />
-        <Route 
-          path="/serviceProviderHomePage" 
-          element={<ProtectedRoute element={<ServiceProviderHomePage />} allowedRoles={['service provider']} />} 
+        <Route
+          path="/serviceProviderHomePage"
+          element={<ProtectedRoute element={<ServiceProviderHomePage />} allowedRoles={["service provider"]} />}
         />
-        <Route 
-          path="/plumbingServices" 
-          element={<ProtectedRoute element={<PlumbingServicesPage />} allowedRoles={['customer']} />} 
+        <Route
+          path="/plumbingServices"
+          element={<ProtectedRoute element={<PlumbingServicesPage />} allowedRoles={["customer"]} />}
         />
-        <Route 
-          path="/addService" 
-          element={<ProtectedRoute element={<AddServicePage />} allowedRoles={['service provider']} />} 
+        <Route
+          path="/addService"
+          element={<ProtectedRoute element={<AddServicePage />} allowedRoles={["service provider"]} />}
         />
-        <Route 
+        <Route
           path="/serviceProviderProfile"
-          element={<ProtectedRoute element={<ServiceProviderProfile />} allowedRoles={['service provider']} />} 
+          element={<ProtectedRoute element={<ServiceProviderProfile />} allowedRoles={["service provider"]} />}
         />
       </Routes>
-      
+
+      {/* Login Popup */}
       <LoginPopup
         open={isLoginPopupVisible}
         onClose={() => setIsLoginPopupVisible(false)}
       />
+
+      {/* Logout Confirmation Popup */}
       <LogoutConfirmationPopup
         open={isLogoutPopupVisible}
         onClose={() => setIsLogoutPopupVisible(false)}
