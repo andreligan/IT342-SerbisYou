@@ -1,7 +1,4 @@
 import React, { useState } from 'react';
-import { Button, TextField, Typography, Box, Stepper, Step, StepLabel, Container, Paper } from '@mui/material';
-import { StepConnector } from '@mui/material';
-import { styled } from '@mui/system';
 import axios from 'axios';
 
 const SignupStepWizard = () => {
@@ -12,7 +9,7 @@ const SignupStepWizard = () => {
     firstName: '',
     phoneNumber: '',
     address: '',
-    businessName: '', // Added businessName for Service Provider
+    businessName: '',
     yearsOfExperience: '',
     userName: '',
     email: '',
@@ -21,7 +18,7 @@ const SignupStepWizard = () => {
   });
   const [errorMessage, setErrorMessage] = useState('');
 
-  const steps = ['Choose Account Type', 'User Details', 'Account Credentials', 'Complete'];
+  const steps = ['Type', 'Details', 'Credentials', 'Complete'];
 
   const handleSelection = (type) => {
     setFormData({ ...formData, accountType: type });
@@ -94,119 +91,235 @@ const SignupStepWizard = () => {
     }
   };
 
-  const CustomStepConnector = styled(StepConnector)(({ theme }) => ({
-    '& .MuiStepConnector-line': {
-      borderTopWidth: 5,
-      width: '80%',
-      marginLeft: '10%',
-      marginTop: '0.5rem',
-      transform: 'translateY(-50%)',
-    },
-  }));
-
   return (
-    <Container maxWidth="lg">
-      <Paper elevation={3} sx={{ p: 10, mt: 5, borderRadius: '20px' }}>
-        <Typography variant="h2" align="center" gutterBottom>
-          Get Started
-        </Typography>
+    <div className="container mx-auto px-4 py-8">
+      <div className="bg-white shadow-xl rounded p-8 md:p-10 max-w-4xl mx-auto">
+        <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">Get Started</h1>
 
-        <Stepper activeStep={currentStep} alternativeLabel connector={<CustomStepConnector />} sx={{ marginTop: 5 }}>
-          {steps.map((label, index) => (
-            <Step key={index}>
-              <StepLabel sx={{ '& .MuiStepIcon-root': { fontSize: '3rem' } }}>{label}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
+        {/* Fixed Stepper with properly aligned connectors */}
+        <div className="mb-12 relative">
+          <div className="flex justify-between">
+            {steps.map((label, index) => (
+              <div key={index} className="flex flex-col items-center z-10">
+                <div className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-semibold ${
+                  currentStep >= index 
+                    ? 'bg-[#F4CE14] text-[#495E57]' 
+                    : 'bg-gray-100 text-gray-300'
+                }`}>
+                  {index + 1}
+                </div>
+                <div className="text-sm mt-2 text-center">{label}</div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Connector lines positioned in the middle of the circles */}
+          <div className="absolute top-5 left-0 right-0 flex justify-center gap-8 w-4/5 mx-auto z-0">
+            {steps.map((_, index) => (
+              index < steps.length - 1 && (
+                <div key={`connector-${index}`} className="w-[50%] mt-5">
+                  <div className={`h-1 ${
+                    currentStep > index ? 'bg-[#F4CE14]' : 'bg-gray-200'
+                  }`} />
+                </div>
+              )
+            ))}
+          </div>
+        </div>
 
-        <Box mt={8}>
+        <div className="mt-8">
           {currentStep === 0 && (
-            <Box textAlign="center">
-              <Typography variant="h6">I am a</Typography>
-              <Box mt={8}>
-                <Button variant="contained" sx={{ m: 5, width: '200px', height: '50px' }} onClick={() => handleSelection('Customer')}>
+            <div className="text-center">
+              <h2 className="text-2xl font-semibold mb-8 text-[#495E57]">I am a</h2>
+              <div className="flex flex-col md:flex-row justify-center gap-6 mt-8">
+                <button 
+                  onClick={() => handleSelection('Customer')}
+                  className="w-45 bg-[#495E57] hover:bg-opacity-90 text-white py-4 px-8 rounded shadow-md transition-all transform hover:scale-105"
+                >
                   Customer
-                </Button>
-                <Button variant="contained" sx={{ m: 5, width: '200px', height: '50px' }} onClick={() => handleSelection('Service Provider')}>
+                </button>
+                <button 
+                  onClick={() => handleSelection('Service Provider')}
+                  className="w-45 bg-[#F4CE14] hover:bg-opacity-90 text-[#495E57] py-4 px-8 rounded shadow-md transition-all transform hover:scale-105"
+                >
                   Service Provider
-                </Button>
-              </Box>
-            </Box>
+                </button>
+              </div>
+            </div>
           )}
 
           {currentStep === 1 && (
-            <Box>
-              <Typography variant="h6" align="center">
-                Enter Your Details
-              </Typography>
-              <Box mt={3}>
-                <TextField fullWidth label="Last Name" name="lastName" value={formData.lastName} onChange={handleChange} margin="normal" />
-                <TextField fullWidth label="First Name" name="firstName" value={formData.firstName} onChange={handleChange} margin="normal" />
-                <TextField fullWidth label="Phone Number" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} margin="normal" />
-                <TextField fullWidth label="Address" name="address" value={formData.address} onChange={handleChange} margin="normal" />
+            <div>
+              <h2 className="text-2xl font-semibold mb-8 text-center text-[#495E57]">Enter Your Details</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-700 mb-1">Last Name</label>
+                  <input 
+                    type="text" 
+                    name="lastName" 
+                    value={formData.lastName} 
+                    onChange={handleChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 mb-1">First Name</label>
+                  <input 
+                    type="text" 
+                    name="firstName" 
+                    value={formData.firstName} 
+                    onChange={handleChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 mb-1">Phone Number</label>
+                  <input 
+                    type="tel" 
+                    name="phoneNumber" 
+                    value={formData.phoneNumber} 
+                    onChange={handleChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 mb-1">Address</label>
+                  <input 
+                    type="text" 
+                    name="address" 
+                    value={formData.address} 
+                    onChange={handleChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                  />
+                </div>
 
                 {formData.accountType === 'Service Provider' && (
                   <>
-                    <TextField fullWidth label="Business Name" name="businessName" value={formData.businessName} onChange={handleChange} margin="normal" />
-                    <TextField fullWidth label="Years of Experience" name="yearsOfExperience" value={formData.yearsOfExperience} onChange={handleChange} margin="normal" />
+                    <div>
+                      <label className="block text-gray-700 mb-1">Business Name</label>
+                      <input 
+                        type="text" 
+                        name="businessName" 
+                        value={formData.businessName} 
+                        onChange={handleChange}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 mb-1">Years of Experience</label>
+                      <input 
+                        type="number" 
+                        name="yearsOfExperience" 
+                        value={formData.yearsOfExperience} 
+                        onChange={handleChange}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                      />
+                    </div>
                   </>
                 )}
-              </Box>
-            </Box>
+              </div>
+            </div>
           )}
 
           {currentStep === 2 && (
-            <Box>
-              <Typography variant="h6" align="center">
-                Create Your Account
-              </Typography>
-              <Box mt={3}>
-                <TextField fullWidth label="Username" name="userName" value={formData.userName} onChange={handleChange} margin="normal" />
-                <TextField fullWidth label="Email" name="email" value={formData.email} onChange={handleChange} margin="normal" />
-                <TextField fullWidth label="Password" name="password" type="password" value={formData.password} onChange={handleChange} margin="normal" />
-                <TextField fullWidth label="Confirm Password" name="confirmPassword" type="password" value={formData.confirmPassword} onChange={handleChange} margin="normal" />
-              </Box>
-            </Box>
+            <div>
+              <h2 className="text-2xl font-semibold mb-8 text-center text-[#495E57]">Create Your Account</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-700 mb-1">Username</label>
+                  <input 
+                    type="text" 
+                    name="userName" 
+                    value={formData.userName} 
+                    onChange={handleChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 mb-1">Email</label>
+                  <input 
+                    type="email" 
+                    name="email" 
+                    value={formData.email} 
+                    onChange={handleChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 mb-1">Password</label>
+                  <input 
+                    type="password" 
+                    name="password" 
+                    value={formData.password} 
+                    onChange={handleChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 mb-1">Confirm Password</label>
+                  <input 
+                    type="password" 
+                    name="confirmPassword" 
+                    value={formData.confirmPassword} 
+                    onChange={handleChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                  />
+                </div>
+              </div>
+            </div>
           )}
 
           {currentStep === 3 && (
-            <Box textAlign="center">
-              <Typography variant="h5">Registration Complete!</Typography>
-              <Typography variant="body1" mt={2}>
-                Thank you for signing up. You can now access your account.
-              </Typography>
-              <Button variant="contained" color="success" sx={{ mt: 3 }}>
+            <div className="text-center py-8">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-3xl font-bold text-gray-800 mb-4">Registration Complete!</h2>
+              <p className="text-gray-600 mb-8">Thank you for signing up. You can now access your account.</p>
+              <button className="bg-[#495E57] text-white font-semibold py-3 px-8 rounded-lg hover:bg-opacity-90 transition-all">
                 Go to Dashboard
-              </Button>
-            </Box>
+              </button>
+            </div>
           )}
-        </Box>
+        </div>
 
         {errorMessage && (
-          <Typography color="error" align="center" mt={2}>
+          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-lg text-center">
             {errorMessage}
-          </Typography>
+          </div>
         )}
 
-        <Box mt={4} display="flex" justifyContent="space-between">
+        <div className="mt-10 flex justify-between">
           {currentStep > 0 && currentStep < 3 && (
-            <Button variant="outlined" onClick={handlePrevious}>
+            <button 
+              onClick={handlePrevious}
+              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            >
               Previous
-            </Button>
+            </button>
           )}
-          {currentStep < 2 && (
-            <Button variant="contained" onClick={handleNext}>
+          <div className="flex-1"></div>
+          {currentStep < 2 && currentStep > 0 && (
+            <button 
+              onClick={handleNext}
+              className="px-6 py-2 bg-[#F4CE14] text-[#495E57] font-semibold rounded-lg hover:bg-opacity-90"
+            >
               Next
-            </Button>
+            </button>
           )}
           {currentStep === 2 && (
-            <Button variant="contained" onClick={handleSubmit}>
+            <button 
+              onClick={handleSubmit}
+              className="px-6 py-2 bg-[#F4CE14] text-[#495E57] font-semibold rounded-lg hover:bg-opacity-90"
+            >
               Submit
-            </Button>
+            </button>
           )}
-        </Box>
-      </Paper>
-    </Container>
+        </div>
+      </div>
+    </div>
   );
 };
 

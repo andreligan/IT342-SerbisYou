@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { Box, Typography, Button, Grid, CircularProgress, Alert } from "@mui/material";
-import { styled } from "@mui/system"; // Removed unused 'style' import
 import { useNavigate } from "react-router-dom";
 import Footer from "../Footer";
 import axios from "axios";
@@ -12,83 +10,6 @@ import plumbing from "../../assets/plumbing.jpg";
 import pestControl from "../../assets/pest control.jpg";
 import homePainting from "../../assets/home painting.jpg";
 import lawnCare from "../../assets/lawn care.jpg";
-
-
-const HeroSection = styled(Box)({
-  display: "flex",
-  height: "80vh",
-  position: "relative",
-});
-
-const LeftContent = styled(Box)({
-  flex: 1,
-  backgroundColor: "#495E57",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "center",
-  alignItems: "center",
-  padding: "40px",
-  zIndex: 2,
-});
-
-const RightContent = styled(Box)({
-  flex: 1,
-  position: "relative",
-  overflow: "hidden",
-  },
-);
-
-const SlideshowImage = styled("img")({
-  width: "100%",
-  height: "100%",
-  objectFit: "cover",
-  position: "absolute",
-  animation: "fade 10s infinite",
-  "@keyframes fade": {
-    "0%": { opacity: 1 },
-    "33%": { opacity: 0 },
-    "66%": { opacity: 1 },
-    "100%": { opacity: 0 },
-  },
-});
-
-const ServicesOfferedSection = styled(Box)({
-  padding: "40px",
-  backgroundColor: "#F5F7F8",
-});
-
-const ServiceCard = styled(Box)({
-  border: "1px solid #ddd",
-  borderRadius: "8px",
-  padding: "20px",
-  backgroundColor: "white",
-  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-  transition: "transform 0.3s ease",
-  "&:hover": {
-    transform: "scale(1.05)",
-  },
-});
-
-const ServiceImage = styled("img")({
-  width: "100%",
-  height: "150px",
-  objectFit: "cover",
-  borderRadius: "8px",
-});
-
-const ServiceTitle = styled(Typography)({
-  fontSize: "18px",
-  fontWeight: "bold",
-  marginTop: "10px",
-  color: "#495E57",
-});
-
-// Keeping ServiceSubtitle but will use it in a future component update
-const ServiceSubtitle = styled(Typography)({
-  fontSize: "14px",
-  color: "#677483",
-  marginTop: "5px",
-});
 
 function ServiceProviderHomePage() {
   const navigate = useNavigate();
@@ -213,171 +134,140 @@ function ServiceProviderHomePage() {
   return (
     <>
       {/* Hero Section */}
-      <HeroSection>
-        <LeftContent>
-        <Typography variant="h4" sx={{ fontWeight: "bold", color: "#F4CE14", mb: 2 }}>
-  Welcome, {" "}
-  <Box 
-    component="span" 
-    onClick={() => navigate("/serviceProviderProfile")}
-    sx={{ 
-      cursor: "pointer",
-      textDecoration: "none",
-      "&:hover": {
-        textDecoration: "underline",
-      },
-      transition: "color 0.2s ease-in-out",
-      "&:active": {
-        color: "#E9C412"
-      }
-    }}
-  >
-    {providerName}
-  </Box>
-  !
-</Typography>
-          <Typography variant="body1" sx={{ color: "white", mb: 4, textAlign: "center" }}>
+      <div className="flex relative h-63">
+        {/* Left Content */}
+        <div className="flex-1 bg-[#495E57] flex flex-col justify-center items-center p-10 z-10">
+          <p className="font-bold text-4xl text-[#F4CE14] mb-2">
+            Welcome,{" "}
+            <span 
+              onClick={() => navigate("/serviceProviderProfile")}
+              className="cursor-pointer hover:underline transition-colors active:text-[#E9C412]"
+            >
+              {providerName}
+            </span>
+            !
+          </p>
+          <p className="text-white mb-4 text-center text-1xl">
             Add your services and start connecting with customers today.
-          </Typography>
-          <Button
-            variant="contained"
-            sx={{
-              backgroundColor: "#4caf50",
-              color: "#fff",
-              textTransform: "none",
-              "&:hover": {
-                backgroundColor: "#388e3c",
-              },
-            }}
-            onClick={() => navigate("/addService")}
+          </p>
+          <button
+          className="h-12 bg-[#F4CE14] hover:bg-[#e0b813] text-[#495E57] px-4 py-2 rounded transition-colors text-center shadow-md hover:shadow-lg"
+          onClick={() => navigate("/addService")}
           >
             Add a Service
-          </Button>
-        </LeftContent>
-        <RightContent>
-          <SlideshowImage src={serviceImage1} alt="Service 1" />
-          <SlideshowImage src={serviceImage2} alt="Service 2" style={{ animationDelay: "3.3s" }} />
-          <SlideshowImage src={serviceImage3} alt="Service 3" style={{ animationDelay: "6.6s" }} />
-        </RightContent>
-      </HeroSection>
+          </button>
+        </div>
+        
+        {/* Right Content - Slideshow */}
+        <div className="flex-1 relative overflow-hidden">
+          <img 
+            src={serviceImage1} 
+            alt="Service 1" 
+            className="w-full h-full object-cover absolute animate-fade"
+          />
+          <img 
+            src={serviceImage2} 
+            alt="Service 2" 
+            className="w-full h-full object-cover absolute animate-fade-delayed-1"
+            style={{ animationDelay: "3.3s" }}
+          />
+          <img 
+            src={serviceImage3} 
+            alt="Service 3" 
+            className="w-full h-full object-cover absolute animate-fade-delayed-2"
+            style={{ animationDelay: "6.6s" }}
+          />
+        </div>
+      </div>
 
       {/* Services Offered Section */}
-      <ServicesOfferedSection>
-        <Typography variant="h5" sx={{ fontWeight: "bold", color: "#495E57", mb: 4, textAlign: "center" }}>
+      <div className="p-10 bg-gray-50">
+        <h5 className="font-bold text-2xl text-[#495E57] mb-4 text-center">
           Your Services
-        </Typography>
+        </h5>
         
         {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", my: 8 }}>
-            <CircularProgress color="primary" />
-          </Box>
+          <div className="flex justify-center my-8">
+            <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
         ) : error ? (
-          <Alert severity="error" sx={{ maxWidth: "600px", mx: "auto", my: 4 }}>
+          <div className="max-w-xl mx-auto my-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
             {error}
-          </Alert>
+          </div>
         ) : services.length === 0 ? (
-          <Box sx={{ textAlign: "center", my: 6 }}>
-            <Typography variant="h6" color="text.secondary">
+          <div className="text-center my-6">
+            <h6 className="text-lg text-gray-600">
               You haven't added any services yet.
-            </Typography>
-            <Button 
-              variant="contained" 
-              sx={{ mt: 2, backgroundColor: "#4caf50", color: "#fff" }}
+            </h6>
+            <button 
+              className="mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-colors shadow-md hover:shadow-lg"
               onClick={() => navigate("/addService")}
             >
               Add Your First Service
-            </Button>
-          </Box>
+            </button>
+          </div>
         ) : (
-          <Box sx={{ 
-            overflowX: "auto", 
-            pb: 2,
-            '&::-webkit-scrollbar': {
-              height: '8px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              backgroundColor: '#d0d0d0',
-              borderRadius: '4px',
-            }
-          }}>
-            <Grid 
-              container 
-              spacing={3} 
-              sx={{ 
-                display: "flex", 
-                flexDirection: "row",
-                justifyContent: "center",
-                flexWrap: "nowrap", 
-                mt: 1,
-                pb: 1,
-                width: "max-content",
-                minWidth: "100%",
-              }}
-            >
+          <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-thumb-rounded">
+            <div className="flex flex-row justify-center flex-nowrap mt-1 pb-1 w-max min-w-full">
               {Object.keys(categoryGroups).map((categoryName, index) => (
-                <Grid item sx={{ width: "220px", flex: "0 0 auto" }} key={categoryName}>
-                  <ServiceCard>
-                    <ServiceImage 
+                <div className="w-56 flex-none mx-2" key={categoryName}>
+                  <div className="border border-gray-300 rounded-lg p-5 bg-white shadow-md hover:scale-105 transition-transform duration-300">
+                    <img 
                       src={categoryImageMap[categoryName] || defaultImages[index % defaultImages.length]} 
-                      alt={categoryName} 
+                      alt={categoryName}
+                      className="w-full h-40 object-cover rounded-lg" 
                     />
-                    <ServiceTitle sx={{ textAlign: "center" }}>{categoryName}</ServiceTitle>
-                    <Typography 
-                      sx={{ 
-                        fontSize: "14px", 
-                        color: "#555", 
-                        textAlign: "center",
-                        mt: 1
-                      }}
-                    >
+                    <h6 className="text-lg font-bold text-[#495E57] mt-2 text-center">{categoryName}</h6>
+                    <p className="text-sm text-gray-600 text-center mt-1">
                       {categoryGroups[categoryName].length} service{categoryGroups[categoryName].length !== 1 ? 's' : ''}
-                    </Typography>
-                  </ServiceCard>
-                </Grid>
+                    </p>
+                  </div>
+                </div>
               ))}
-            </Grid>
-          </Box>
+            </div>
+          </div>
         )}
         
-        <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 4 }}>
-          <Button
-            variant="contained"
-            sx={{
-              backgroundColor: "#4caf50",
-              color: "#fff",
-              textTransform: "none",
-              paddingX: 3,
-              paddingY: 1,
-              "&:hover": {
-                backgroundColor: "#388e3c",
-              },
-            }}
-            onClick={() => navigate("/addService")}
-          >
-            Add New Service
-          </Button>
+        <div className="flex justify-center gap-5 mt-4">
+        <button
+          className="w-40 h-12 bg-[#F4CE14] hover:bg-[#e0b813] text-[#495E57] px-4 py-2 rounded transition-colors text-center shadow-md hover:shadow-lg"
+          onClick={() => navigate("/addService")}
+        >
+          Add New Service
+        </button>
           
-          <Button
-            variant="contained"
-            sx={{
-              backgroundColor: "#495E57",
-              color: "#fff",
-              textTransform: "none",
-              paddingX: 3,
-              paddingY: 1,
-              "&:hover": {
-                backgroundColor: "#3a4a45",
-              },
-            }}
+        <button
+            className="w-40 bg-[#495E57] hover:bg-[#3a4a45] text-white px-4 py-2 rounded transition-colors text-center shadow-md hover:shadow-lg"
             onClick={() => navigate("/myServices")}
           >
             Manage Services
-          </Button>
-        </Box>
-      </ServicesOfferedSection>
+          </button>
+        </div>
+      </div>
 
       {/* Footer Section */}
       <Footer />
+
+      {/* Add these animation classes to your global CSS or tailwind config */}
+      <style jsx>{`
+        @keyframes fade {
+          0% { opacity: 1; }
+          33% { opacity: 0; }
+          66% { opacity: 1; }
+          100% { opacity: 0; }
+        }
+        .animate-fade {
+          animation: fade 10s infinite;
+        }
+        .animate-fade-delayed-1 {
+          animation: fade 10s infinite;
+          animation-delay: 3.3s;
+        }
+        .animate-fade-delayed-2 {
+          animation: fade 10s infinite;
+          animation-delay: 6.6s;
+        }
+      `}</style>
     </>
   );
 }

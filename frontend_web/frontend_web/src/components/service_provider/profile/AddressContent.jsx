@@ -1,25 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Button,
-  Grid,
-  TextField,
-  Typography,
-  CircularProgress,
-  Alert,
-  IconButton,
-  Card,
-  CardContent,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-} from '@mui/material';
 import axios from 'axios';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import AddIcon from '@mui/icons-material/Add';
 
 function AddressContent() {
   // Form state
@@ -47,8 +27,8 @@ function AddressContent() {
   const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
   const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
   
-// First fetch the service provider to get their addressId
-useEffect(() => {
+  // First fetch the service provider to get their addressId
+  useEffect(() => {
     const getServiceProviderDetails = async () => {
       try {
         setLoading(true);
@@ -166,51 +146,50 @@ useEffect(() => {
       setError(null);
       
       // If in edit mode, update the address
-// In your handleSubmit function, update this section:
-if (editMode && currentAddressId) {
-    const addressPayload = {
-      ...addressForm,
-      providerId: providerId,
-      // Include any other required fields for authorization
-      serviceProviderId: providerId  // Some backends use this to verify relationship
-    };
-    
-    console.log("Sending address update with payload:", addressPayload);
-    
-    try {
-      const response = await axios.put(
-        `/api/addresses/updateAddress/${currentAddressId}`, 
-        addressPayload,
-        {
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+      if (editMode && currentAddressId) {
+        const addressPayload = {
+          ...addressForm,
+          providerId: providerId,
+          // Include any other required fields for authorization
+          serviceProviderId: providerId  // Some backends use this to verify relationship
+        };
+        
+        console.log("Sending address update with payload:", addressPayload);
+        
+        try {
+          const response = await axios.put(
+            `/api/addresses/updateAddress/${currentAddressId}`, 
+            addressPayload,
+            {
+              headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          
+          console.log("Address update response:", response.data);
+          
+          setSuccess('Address updated successfully!');
+          
+          // Update the addresses list
+          setAddresses(prev => 
+            prev.map(addr => addr.addressId === currentAddressId ? response.data : addr)
+          );
+          
+          // If this is the provider's main address, we also need to update the provider
+          if (currentAddressId === providerAddressId) {
+            await axios.put(`/api/service-providers/update/${providerId}`, 
+              { addressId: currentAddressId },
+              { headers: { 'Authorization': `Bearer ${token}` }}
+            );
           }
+        } catch (updateErr) {
+          console.error('Error updating address:', updateErr);
+          console.error('Error response:', updateErr.response?.data);
+          throw updateErr; // Rethrow to be caught by the outer catch block
         }
-      );
-      
-      console.log("Address update response:", response.data);
-      
-      setSuccess('Address updated successfully!');
-      
-      // Update the addresses list
-      setAddresses(prev => 
-        prev.map(addr => addr.addressId === currentAddressId ? response.data : addr)
-      );
-      
-      // If this is the provider's main address, we also need to update the provider
-      if (currentAddressId === providerAddressId) {
-        await axios.put(`/api/service-providers/update/${providerId}`, 
-          { addressId: currentAddressId },
-          { headers: { 'Authorization': `Bearer ${token}` }}
-        );
-      }
-    } catch (updateErr) {
-      console.error('Error updating address:', updateErr);
-      console.error('Error response:', updateErr.response?.data);
-      throw updateErr; // Rethrow to be caught by the outer catch block
-    }
-  } else {
+      } else {
         // Create a new address
         const response = await axios.post(
           '/api/addresses/postAddress', 
@@ -359,192 +338,239 @@ if (editMode && currentAddressId) {
   };
 
   return (
-    <>
-      <Box>
-        <Typography variant="h4" gutterBottom>My Address</Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-          {editMode ? 'Edit your address' : 'Add a new address'}
-        </Typography>
-      </Box>
+    <div className="bg-white rounded-lg shadow-md">
+      {/* Header */}
+      <div className="bg-[#495E57] text-white p-6 rounded-t-lg">
+        <h1 className="text-3xl font-bold">My Addresses</h1>
+        <p className="text-gray-200 mt-2">
+          {editMode ? 'Edit your address details' : 'Add a new address to your profile'}
+        </p>
+      </div>
 
+      {/* Alerts */}
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 m-4 text-red-700">
+          {error}
+        </div>
       )}
 
       {success && (
-        <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>
+        <div className="bg-green-50 border-l-4 border-green-500 p-4 m-4 text-green-700">
+          {success}
+        </div>
       )}
 
-      <form onSubmit={handleSubmit}>
-        <Grid container spacing={2}>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              name="barangay"
-              label="Barangay"
-              variant="outlined"
-              value={addressForm.barangay}
-              onChange={handleChange}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              name="city"
-              label="City"
-              variant="outlined"
-              value={addressForm.city}
-              onChange={handleChange}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              name="province"
-              label="Province"
-              variant="outlined"
-              value={addressForm.province}
-              onChange={handleChange}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              name="streetName"
-              label="Street Name"
-              variant="outlined"
-              value={addressForm.streetName}
-              onChange={handleChange}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              name="zipCode"
-              label="Zip Code"
-              variant="outlined"
-              value={addressForm.zipCode}
-              onChange={handleChange}
-              required
-            />
-          </Grid>
-        </Grid>
+      {/* Address Form */}
+      <div className="p-6">
+        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
+          <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-6">
+            <h2 className="text-xl font-semibold text-[#495E57] mb-4 pb-2 border-b border-gray-200">
+              {editMode ? 'Edit Address' : 'Add New Address'}
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-gray-700 text-sm font-medium mb-2">Street Name</label>
+                <input
+                  type="text"
+                  name="streetName"
+                  value={addressForm.streetName}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]"
+                  placeholder="123 Main Street"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-gray-700 text-sm font-medium mb-2">Barangay</label>
+                <input
+                  type="text"
+                  name="barangay"
+                  value={addressForm.barangay}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]"
+                  placeholder="Barangay name"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-gray-700 text-sm font-medium mb-2">City</label>
+                <input
+                  type="text"
+                  name="city"
+                  value={addressForm.city}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]"
+                  placeholder="City"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-gray-700 text-sm font-medium mb-2">Province</label>
+                <input
+                  type="text"
+                  name="province"
+                  value={addressForm.province}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]"
+                  placeholder="Province"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-gray-700 text-sm font-medium mb-2">Zip Code</label>
+                <input
+                  type="text"
+                  name="zipCode"
+                  value={addressForm.zipCode}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]"
+                  placeholder="Zip Code"
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-center mt-8 space-x-4">
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="bg-[#F4CE14] text-[#495E57] font-bold py-3 px-8 rounded-lg hover:bg-yellow-400 transition shadow-md flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-t-2 border-[#495E57] rounded-full animate-spin mr-2"></div>
+                ) : editMode ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                )}
+                {editMode ? 'Update Address' : 'Save Address'}
+              </button>
+              
+              {editMode && (
+                <button 
+                  type="button" 
+                  onClick={handleCancel}
+                  className="border border-gray-300 text-gray-700 font-medium py-3 px-8 rounded-lg hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </div>
+        </form>
+      </div>
 
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, gap: 2 }}>
-          <Button 
-            type="submit" 
-            variant="contained" 
-            sx={{ width: 150 }}
-            disabled={loading}
-            startIcon={editMode ? <EditIcon /> : <AddIcon />}
-          >
-            {loading ? <CircularProgress size={24} /> : (editMode ? 'Update' : 'Save')}
-          </Button>
-          {editMode && (
-            <Button 
-              variant="outlined" 
-              sx={{ width: 150 }}
-              onClick={handleCancel}
-            >
-              Cancel
-            </Button>
-          )}
-        </Box>
-      </form>
-
-      {/* List of Addresses */}
-      <Box sx={{ mt: 6 }}>
-        <Typography variant="h5" gutterBottom>My Addresses</Typography>
+      {/* Address List */}
+      <div className="px-6 pb-6">
+        <h2 className="text-2xl font-semibold text-[#495E57] mb-4">Saved Addresses</h2>
         
         {loading && !addresses.length ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <CircularProgress />
-          </Box>
+          <div className="flex justify-center p-8">
+            <div className="w-12 h-12 border-4 border-t-4 border-t-[#F4CE14] rounded-full animate-spin border-gray-200"></div>
+          </div>
         ) : !addresses.length ? (
-          <Typography variant="body1" color="text.secondary" sx={{ my: 2 }}>
-            No addresses added yet.
-          </Typography>
+          <div className="bg-gray-50 p-8 text-center rounded-lg border border-gray-200">
+            <p className="text-gray-500">You haven't added any addresses yet.</p>
+          </div>
         ) : (
-          <Grid container spacing={2} sx={{ mt: 2 }}>
+          <div className="space-y-4">
             {addresses.map((address) => (
-              <Grid item xs={12} key={address.addressId}>
-                <Card sx={{
-                  border: address.addressId === providerAddressId ? '2px solid #4caf50' : 'none',
-                  boxShadow: address.addressId === providerAddressId ? '0 0 8px rgba(76, 175, 80, 0.5)' : undefined
-                }}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="h6">
-                            {address.streetName}, {address.barangay}
-                          </Typography>
-                          {address.addressId === providerAddressId && (
-                            <Alert severity="success" sx={{ py: 0, px: 1, height: 24 }}>Main</Alert>
-                          )}
-                        </Box>
-                        <Typography variant="body1">
-                          {address.city}, {address.province} {address.zipCode}
-                        </Typography>
-                      </Box>
-                      <Box>
-                        {address.addressId !== providerAddressId && (
-                          <Button 
-                            variant="outlined" 
-                            size="small" 
-                            sx={{ mr: 1 }}
-                            onClick={() => setAsMainAddress(address.addressId)}
-                          >
-                            Set as Main
-                          </Button>
+              <div 
+                key={address.addressId} 
+                className={`bg-white rounded-lg border ${address.addressId === providerAddressId ? 'border-[#F4CE14] shadow-md' : 'border-gray-200'}`}
+              >
+                <div className="p-4">
+                  <div className="flex flex-col md:flex-row justify-between">
+                    <div className="mb-4 md:mb-0">
+                      <div className="flex items-center mb-1">
+                        <h3 className="text-lg font-medium">
+                          {address.streetName}, {address.barangay}
+                        </h3>
+                        {address.addressId === providerAddressId && (
+                          <span className="ml-2 bg-[#F4CE14] text-[#495E57] text-xs font-bold px-2 py-1 rounded">
+                            Main Address
+                          </span>
                         )}
-                        <IconButton onClick={() => handleEdit(address)} color="primary">
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton 
-                          onClick={() => openDeleteDialog(address.addressId)} 
-                          color="error"
-                          disabled={address.addressId === providerAddressId}
+                      </div>
+                      <p className="text-gray-600">
+                        {address.city}, {address.province} {address.zipCode}
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      {address.addressId !== providerAddressId && (
+                        <button 
+                          onClick={() => setAsMainAddress(address.addressId)}
+                          className="text-[#495E57] border border-[#495E57] text-sm font-medium px-3 py-1 rounded hover:bg-[#495E57] hover:text-white transition"
                         >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
+                          Set as Main
+                        </button>
+                      )}
+                      
+                      <button 
+                        onClick={() => handleEdit(address)}
+                        className="bg-gray-100 text-gray-700 p-2 rounded hover:bg-gray-200 transition"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      
+                      <button 
+                        onClick={() => openDeleteDialog(address.addressId)}
+                        className={`p-2 rounded ${address.addressId === providerAddressId 
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                          : 'bg-gray-100 text-red-500 hover:bg-gray-200 transition'}`}
+                        disabled={address.addressId === providerAddressId}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             ))}
-          </Grid>
+          </div>
         )}
-      </Box>
+      </div>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-      >
-        <DialogTitle>Confirm Deletion</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete this address? This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button 
-            onClick={() => handleDelete(addressToDelete)} 
-            color="error" 
-            autoFocus
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
+      {deleteDialogOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Confirm Deletion</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this address? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setDeleteDialogOpen(false)}
+                className="border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(addressToDelete)}
+                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

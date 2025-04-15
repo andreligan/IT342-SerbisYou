@@ -15,6 +15,8 @@ import ServiceProviderProfile from "./components/service_provider/ServiceProvide
 import API from "./utils/API";
 import axios from "axios";
 
+import serbisyoLogo from "./assets/Serbisyo Logo.png";
+
 
 // Protected Route component for role-based access control
 const ProtectedRoute = ({ element, allowedRoles }) => {
@@ -88,6 +90,7 @@ function App() {
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: '1rem 2rem',
+      height: '100px',
       backgroundColor: '#fff',
       boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
     },
