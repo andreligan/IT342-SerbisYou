@@ -2,17 +2,6 @@ import React, { useState } from 'react';
 import { User, Home, MapPin, Briefcase, Lock, Package } from 'lucide-react';
 import Footer from '../Footer';
 import tate from '../../assets/tate.webp';
-import {
-  Box,
-  Container,
-  Grid,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Paper,
-  Typography,
-} from '@mui/material';
 
 // Import components from profile directory
 import ProfileContent from './profile/ProfileContent';
@@ -29,7 +18,7 @@ function ServiceProviderProfile() {
   const renderContent = () => {
     switch (activeSection) {
       case 'profile':
-        return <ProfileContent selectedImage={selectedImage}  setSelectedImage={setSelectedImage}/>;
+        return <ProfileContent selectedImage={selectedImage} setSelectedImage={setSelectedImage} />;
       case 'address':
         return <AddressContent />;
       case 'business':
@@ -44,76 +33,68 @@ function ServiceProviderProfile() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#F9FAFB' }}>
-      <Container maxWidth="lg" sx={{ py: 4,}}>
-        <Grid container spacing={3}>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto py-4 px-4 border-solid">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
           {/* Sidebar */}
-          <Grid item xs={12} md={3}>
-            <Paper sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <div className="md:col-span-3">
+            <div className="bg-white p-2 rounded shadow">
+              <div className="flex items-center gap-1 mb-2">
                 <User size={20} />
-                <Typography variant="h6">My Account</Typography>
-              </Box>
-              <List component="nav" disablePadding>
-                <ListItem 
-                  button 
-                  selected={activeSection === 'profile'} 
-                  onClick={() => setActiveSection('profile')}
-                  sx={{ borderRadius: 1, cursor: 'pointer' }}
-                >
-                  <ListItemIcon sx={{ minWidth: 40 }}><Home size={18} /></ListItemIcon>
-                  <ListItemText primary="Profile" />
-                </ListItem>
-                <ListItem 
-                  button 
-                  selected={activeSection === 'address'} 
-                  onClick={() => setActiveSection('address')}
-                  sx={{ borderRadius: 1, cursor: 'pointer' }}
-                >
-                  <ListItemIcon sx={{ minWidth: 40 }}><MapPin size={18} /></ListItemIcon>
-                  <ListItemText primary="Address" />
-                </ListItem>
-                <ListItem 
-                  button 
-                  selected={activeSection === 'business'} 
-                  onClick={() => setActiveSection('business')}
-                  sx={{ borderRadius: 1, cursor: 'pointer' }}
-                >
-                  <ListItemIcon sx={{ minWidth: 40 }}><Briefcase size={18} /></ListItemIcon>
-                  <ListItemText primary="Business Details" />
-                </ListItem>
-                <ListItem 
-                  button 
-                  selected={activeSection === 'services'} 
-                  onClick={() => setActiveSection('services')}
-                  sx={{ borderRadius: 1, cursor: 'pointer' }}
-                >
-                  <ListItemIcon sx={{ minWidth: 40 }}><Package size={18} /></ListItemIcon>
-                  <ListItemText primary="My Services" />
-                </ListItem>
-                <ListItem 
-                  button 
-                  selected={activeSection === 'password'} 
-                  onClick={() => setActiveSection('password')}
-                  sx={{ borderRadius: 1, cursor: 'pointer' }}
-                >
-                  <ListItemIcon sx={{ minWidth: 40 }}><Lock size={18} /></ListItemIcon>
-                  <ListItemText primary="Change Password" />
-                </ListItem>
-              </List>
-            </Paper>
-          </Grid>
+                <h2 className="text-lg font-semibold">My Account</h2>
+              </div>
+              <nav>
+                <ul>
+                  <li 
+                    className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'profile' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
+                    onClick={() => setActiveSection('profile')}
+                  >
+                    <span className="w-10"><Home size={18} /></span>
+                    <span>Profile</span>
+                  </li>
+                  <li 
+                    className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'address' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
+                    onClick={() => setActiveSection('address')}
+                  >
+                    <span className="w-10"><MapPin size={18} /></span>
+                    <span>Address</span>
+                  </li>
+                  <li 
+                    className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'business' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
+                    onClick={() => setActiveSection('business')}
+                  >
+                    <span className="w-10"><Briefcase size={18} /></span>
+                    <span>Business Details</span>
+                  </li>
+                  <li 
+                    className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'services' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
+                    onClick={() => setActiveSection('services')}
+                  >
+                    <span className="w-10"><Package size={18} /></span>
+                    <span>My Services</span>
+                  </li>
+                  <li 
+                    className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'password' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
+                    onClick={() => setActiveSection('password')}
+                  >
+                    <span className="w-10"><Lock size={18} /></span>
+                    <span>Change Password</span>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+          </div>
 
           {/* Main Content */}
-          <Grid item xs={12} md={7} >
-            <Paper sx={{ p: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div className="md:col-span-9">
+            <div className="bg-white p-4 rounded shadow flex flex-col gap-2">
               {renderContent()}
-            </Paper>
-          </Grid>
-        </Grid>
-      </Container>
+            </div>
+          </div>
+        </div>
+      </div>
       <Footer />
-    </Box>  
+    </div>  
   );
 }
 
