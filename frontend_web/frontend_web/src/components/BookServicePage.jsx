@@ -72,7 +72,7 @@ const BookServicePage = () => {
                 <strong>Duration:</strong> {service.durationEstimate || "Not specified"}
               </Typography>
               <Typography variant="body1" sx={{ mb: 1 }}>
-                <strong>Provider:</strong> {service.providerFirstName} {service.providerLastName}
+                <strong>Provider:</strong> {service.provider.firstName} {service.provider.lastName}
               </Typography>
             </CardContent>
           </Card>
