@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 function MyServicesContent() {
@@ -418,6 +418,11 @@ function MyServicesContent() {
             {activeTab && servicesByCategory[activeTab] && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {servicesByCategory[activeTab].services.map((service) => (
+                  <Link
+                  key={service.serviceId}
+                  to={`/service/${service.serviceId}`}
+                  className="block"
+                >
                   <div key={service.serviceId} className="bg-white rounded-lg overflow-hidden shadow hover:shadow-md transition-shadow border border-gray-100">
                     <div className="p-5">
                       <h3 className="text-lg font-semibold text-[#495E57] mb-2">{service.serviceName}</h3>
@@ -454,6 +459,7 @@ function MyServicesContent() {
                       </button>
                     </div>
                   </div>
+                  </Link>
                 ))}
               </div>
             )}
