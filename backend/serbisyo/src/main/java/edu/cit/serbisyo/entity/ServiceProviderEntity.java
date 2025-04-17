@@ -16,9 +16,9 @@ public class ServiceProviderEntity {
     @JoinColumn(name = "userId")
     private UserAuthEntity userAuth;
 
-    @ManyToOne
-    @JoinColumn(name = "addressId", nullable = false)
-    private AddressEntity address;
+    @JsonIgnore
+    @OneToMany(mappedBy = "serviceProvider", cascade = CascadeType.ALL)
+    private List<AddressEntity> addresses;
 
     @OneToOne(mappedBy = "serviceProvider")
     private VerificationEntity verification;
@@ -63,12 +63,12 @@ public class ServiceProviderEntity {
         this.userAuth = userAuth;
     }
 
-    public AddressEntity getAddress() {
-        return address;
+    public List<AddressEntity> getAddresses() {
+        return addresses;
     }
 
-    public void setAddress(AddressEntity address) {
-        this.address = address;
+    public void setAddresses(List<AddressEntity> addresses) {
+        this.addresses = addresses;
     }
 
     public String getFirstName() {

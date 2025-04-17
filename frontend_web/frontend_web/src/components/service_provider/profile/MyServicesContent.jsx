@@ -29,7 +29,7 @@ function MyServicesContent() {
     serviceId: null,
     serviceName: '',
     serviceDescription: '',
-    priceRange: '',
+    price: '',
     durationEstimate: '',
     categoryId: ''
   });
@@ -157,7 +157,7 @@ function MyServicesContent() {
       serviceId: service.serviceId,
       serviceName: service.serviceName,
       serviceDescription: service.serviceDescription,
-      priceRange: service.priceRange,
+      price: service.price,
       durationEstimate: service.durationEstimate,
       categoryId: service.category.categoryId
     });
@@ -189,7 +189,7 @@ function MyServicesContent() {
       const servicePayload = {
         serviceName: currentService.serviceName,
         serviceDescription: currentService.serviceDescription,
-        priceRange: currentService.priceRange,
+        price: currentService.price,
         durationEstimate: currentService.durationEstimate
       };
       
@@ -436,7 +436,7 @@ function MyServicesContent() {
                         <svg className="w-4 h-4 mr-1 text-[#F4CE14]" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                           <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"></path>
                         </svg>
-                        <span className="font-medium mr-1">Price:</span> {service.priceRange}
+                        <span className="font-medium mr-1">Price:</span> {service.price}
                       </div>
                       <p className="text-gray-700 text-sm line-clamp-3">{service.serviceDescription}</p>
                     </div>
@@ -538,12 +538,12 @@ function MyServicesContent() {
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="priceRange" className="block text-sm font-medium text-gray-700">Price Range</label>
+                      <label htmlFor="price" className="block text-sm font-medium text-gray-700">Price Range</label>
                       <input
                         type="text"
-                        id="priceRange"
-                        name="priceRange"
-                        value={currentService.priceRange}
+                        id="price"
+                        name="price"
+                        value={currentService.price}
                         onChange={handleInputChange}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#F4CE14] focus:border-[#F4CE14] sm:text-sm"
                         required

@@ -17,9 +17,9 @@ public class CustomerEntity {
     @JoinColumn(name = "userId", nullable = false)
     private UserAuthEntity userAuth;
 
-    @ManyToOne
-    @JoinColumn(name = "addressId", nullable = false)
-    private AddressEntity address;
+    @JsonIgnore
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL)
+    private List<AddressEntity> address;
 
     private String firstName;
     private String lastName;
@@ -48,14 +48,6 @@ public class CustomerEntity {
         this.userAuth = userAuth;
     }
 
-    public AddressEntity getAddress() {
-        return address;
-    }
-
-    public void setAddress(AddressEntity address) {
-        this.address = address;
-    }
-
     public String getFirstName() {
         return firstName;
     }
@@ -80,19 +72,11 @@ public class CustomerEntity {
         this.phoneNumber = phoneNumber;
     }
 
-    public List<BookingEntity> getBookings() {
-        return bookings;
+    public List<AddressEntity> getAddress() {
+        return address;
     }
 
-    public void setBookings(List<BookingEntity> bookings) {
-        this.bookings = bookings;
-    }
-
-    public List<ReviewEntity> getReviews() {
-        return reviews;
-    }
-
-    public void setReviews(List<ReviewEntity> reviews) {
-        this.reviews = reviews;
+    public void setAddress(List<AddressEntity> address) {
+        this.address = address;
     }
 }
