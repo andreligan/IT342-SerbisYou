@@ -243,7 +243,7 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/signup" element={<SignupStepWizard />} />
+        <Route path="/signup/*" element={<SignupStepWizard />} />
 
         {/* Protected routes */}
         <Route
