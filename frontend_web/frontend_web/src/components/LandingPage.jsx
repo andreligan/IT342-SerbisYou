@@ -28,9 +28,40 @@ const categories = [
   { name: "Lawn Care & Gardening", image: lawnCare },
 ];
 
+// Sign In Required Popup Component
+const SignInRequiredPopup = ({ isOpen, onClose, onOk }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-8 max-w-md w-full">
+        <h3 className="text-2xl font-semibold text-[#495E57] mb-4">Sign Up Required</h3>
+        <p className="text-gray-600 mb-6">
+          You need to create an account to browse services and make bookings.
+        </p>
+        <div className="flex justify-end space-x-4">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onOk}
+            className="px-6 py-2 bg-[#F4CE14] text-[#495E57] font-semibold rounded-lg hover:bg-opacity-90"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function LandingPage() {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
+  const [showSignInPopup, setShowSignInPopup] = useState(false);
 
   // Pagination logic
   const itemsPerPage = 5;
@@ -41,6 +72,28 @@ function LandingPage() {
 
   const handlePageChange = (newPage) => {
     setPage(newPage);
+  };
+
+  // Handle "Browse Services" button click
+  const handleBrowseServices = () => {
+    setShowSignInPopup(true);
+  };
+
+  // Handle "OK" button click in popup
+  const handleSignupAsCustomer = () => {
+    // Get existing form data or create new object
+    const existingData = sessionStorage.getItem('signupFormData');
+    const formData = existingData ? JSON.parse(existingData) : {};
+    
+    // Set account type to "Customer"
+    formData.accountType = "Customer";
+    
+    // Save to session storage
+    sessionStorage.setItem('signupFormData', JSON.stringify(formData));
+    
+    // Close popup and navigate to details page
+    setShowSignInPopup(false);
+    navigate('/signup/details');
   };
 
   // Handle "Be a Provider" button click
@@ -61,6 +114,13 @@ function LandingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Sign In Required Popup */}
+      <SignInRequiredPopup 
+        isOpen={showSignInPopup} 
+        onClose={() => setShowSignInPopup(false)}
+        onOk={handleSignupAsCustomer}
+      />
+
       {/* Hero Section */}
       <div className="bg-[#495E57] text-white">
         <div className="container mx-auto px-4 py-24 flex flex-col items-center justify-center text-center">
@@ -72,7 +132,7 @@ function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <button 
-              onClick={() => navigate('/signup/type')}
+              onClick={handleBrowseServices}
               className="bg-[#F4CE14] hover:bg-yellow-500 text-black font-medium px-8 py-3 rounded-lg transition duration-300 transform hover:scale-105"
             >
               Browse Services
