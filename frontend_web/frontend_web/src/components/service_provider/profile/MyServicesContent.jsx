@@ -538,7 +538,7 @@ function MyServicesContent() {
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="price" className="block text-sm font-medium text-gray-700">Price Range</label>
+                      <label htmlFor="price" className="block text-sm font-medium text-gray-700">Price</label>
                       <input
                         type="text"
                         id="price"
