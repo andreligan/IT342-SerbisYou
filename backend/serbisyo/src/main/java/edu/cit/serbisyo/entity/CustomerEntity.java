@@ -25,6 +25,9 @@ public class CustomerEntity {
     private String lastName;
     private String phoneNumber;
 
+    @Lob
+    private String profileImage;
+
     @JsonIgnore
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL)
     private List<BookingEntity> bookings;
@@ -78,5 +81,13 @@ public class CustomerEntity {
 
     public void setAddress(List<AddressEntity> address) {
         this.address = address;
+    }
+
+    public String getProfileImage() {
+        return profileImage;
+    }
+
+    public void setProfileImage(String profileImage) {
+        this.profileImage = profileImage;
     }
 }

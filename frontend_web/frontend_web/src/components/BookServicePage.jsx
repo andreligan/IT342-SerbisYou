@@ -197,6 +197,54 @@ const BookServicePage = () => {
         </div>
       )}
 
+      {/* Step 2: Price Details */}
+      {step === 2 && (
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h2 className="text-xl font-bold text-[#495E57] mb-4">Price Details</h2>
+          <p className="text-sm mb-2">
+            <strong>Service Fee:</strong> Php {serviceFee.toFixed(2)}
+          </p>
+          <p className="text-sm mb-2">
+            <strong>PayMongo Fee (2.5%):</strong> Php {payMongoFee.toFixed(2)}
+          </p>
+          <p className="text-sm mb-2">
+            <strong>App Fee (2%):</strong> Php {appFee.toFixed(2)}
+          </p>
+          <p className="text-sm mb-4">
+            <strong>Total:</strong> Php {total.toFixed(2)}
+          </p>
+          <div className="flex justify-between">
+            <button
+              onClick={handlePrevious}
+              className="bg-[#495E57] text-white py-2 px-4 rounded-lg hover:bg-[#3A4A47] transition"
+            >
+              Previous
+            </button>
+            <button
+              onClick={handleNext}
+              className="bg-[#495E57] text-white py-2 px-4 rounded-lg hover:bg-[#3A4A47] transition"
+            >
+              Book
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Booking Success */}
+      {step === 3 && (
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-[#495E57] mb-4">
+            Booking Successful!
+          </h2>
+          <button
+            onClick={() => navigate("/customerHomePage")}
+            className="bg-[#495E57] text-white py-2 px-6 rounded-lg hover:bg-[#3A4A47] transition"
+          >
+            Go back to Home
+          </button>
+        </div>
+      )}
+
       {/* Custom Time Picker */}
       {isTimePickerOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

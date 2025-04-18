@@ -1,7 +1,10 @@
 package edu.cit.serbisyo.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import edu.cit.serbisyo.entity.CustomerEntity;
 import edu.cit.serbisyo.service.CustomerService;
@@ -49,5 +52,31 @@ public class CustomerController {
     @DeleteMapping("/delete/{customerId}")
     public String deleteCustomer(@PathVariable Long customerId) {
         return customerService.deleteCustomer(customerId);
+    }
+
+    @PostMapping("/upload-image/{customerId}")
+    public ResponseEntity<String> uploadProfileImage(
+            @PathVariable Long customerId,
+            @RequestParam("image") MultipartFile image) {
+        try {
+            String result = customerService.uploadProfileImage(customerId, image);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to upload image.");
+        }
+    }
+
+    @GetMapping("/getProfileImage/{customerId}")
+    public ResponseEntity<String> getProfileImage(@PathVariable Long customerId) {
+        try {
+            String profileImagePath = customerService.getProfileImage(customerId);
+            return ResponseEntity.ok(profileImagePath);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to fetch profile image.");
+        }
     }
 }

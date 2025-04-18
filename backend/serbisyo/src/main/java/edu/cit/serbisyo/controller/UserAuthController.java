@@ -91,4 +91,19 @@ public class UserAuthController {
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("valid", false));
     }
+
+    @PutMapping("/change-password/{authId}")
+    public ResponseEntity<String> changePassword(
+            @PathVariable Long authId,
+            @RequestBody Map<String, String> passwordDetails) {
+        try {
+            String oldPassword = passwordDetails.get("oldPassword");
+            String newPassword = passwordDetails.get("newPassword");
+
+            String result = userAuthService.changePassword(authId, oldPassword, newPassword);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }
