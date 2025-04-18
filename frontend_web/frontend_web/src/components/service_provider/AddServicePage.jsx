@@ -6,7 +6,7 @@ const AddServicePage = () => {
     category: "",
     name: "",
     serviceDescription: "",
-    priceRange: "",
+    price: "",
     durationEstimate: "",
   });
 
@@ -96,7 +96,7 @@ const AddServicePage = () => {
       const serviceDetails = {
         serviceName: formData.name,
         serviceDescription: formData.serviceDescription, 
-        priceRange: formData.priceRange,
+        price: formData.price,
         durationEstimate: formData.durationEstimate
       };
       
@@ -115,7 +115,7 @@ const AddServicePage = () => {
         category: "",
         name: "",
         serviceDescription: "",
-        priceRange: "",
+        price: "",
         durationEstimate: "",
       });
     } catch (error) {
@@ -197,18 +197,18 @@ const AddServicePage = () => {
             {/* Two-column layout for Price and Duration */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="priceRange" className="block text-sm font-medium text-gray-700 mb-1">
-                  Price Range
+                <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
+                  Price
                 </label>
                 <input
                   type="text"
-                  id="priceRange"
-                  name="priceRange"
-                  value={formData.priceRange}
+                  id="price"
+                  name="price"
+                  value={formData.price}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-[#F4CE14] focus:border-[#F4CE14]"
-                  placeholder="e.g. $50-$100"
+                  placeholder="e.g. 100"
                 />
               </div>
 
@@ -267,8 +267,8 @@ const AddServicePage = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-500">Price Range</p>
-                    <p className="font-medium">{formData.priceRange}</p>
+                    <p className="text-sm text-gray-500">Price</p>
+                    <p className="font-medium">{formData.price}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Duration</p>
