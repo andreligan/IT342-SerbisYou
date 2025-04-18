@@ -368,15 +368,42 @@ function AddressContent() {
             main: true
           };
           
+          // First update the address to set it as main
           await axios.put(
             `/api/addresses/updateAddress/${newAddressId}`, 
             mainAddress,
             { headers: { 'Authorization': `Bearer ${token}` }}
           );
           
+          // CORRECT APPROACH: Get complete provider data to avoid nullifying fields
+          const providersResponse = await axios.get(
+            "/api/service-providers/getAll", 
+            { headers: { 'Authorization': `Bearer ${token}` }}
+          );
+          
+          const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+          const completeProvider = providersResponse.data.find(
+            p => p.userAuth && p.userAuth.userId == userId
+          );
+          
+          if (!completeProvider) {
+            throw new Error("Provider not found");
+          }
+          
+          // Send COMPLETE provider object with new addressId
           await axios.put(
             `/api/service-providers/update/${providerId}`, 
-            { addressId: newAddressId },
+            {
+              addressId: newAddressId,
+              firstName: completeProvider.firstName,
+              lastName: completeProvider.lastName,
+              phoneNumber: completeProvider.phoneNumber,
+              businessName: completeProvider.businessName,
+              yearsOfExperience: completeProvider.yearsOfExperience,
+              availabilitySchedule: completeProvider.availabilitySchedule,
+              paymentMethod: completeProvider.paymentMethod,
+              status: completeProvider.status
+            },
             { headers: { 'Authorization': `Bearer ${token}` }}
           );
           
