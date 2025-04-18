@@ -14,7 +14,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Service
 public class UserAuthService {
@@ -139,5 +141,22 @@ public Map<String, String> loginUser(UserAuthEntity userAuth) {
             }
         }
         return "User authentication record not found.";
+    }
+
+    public String changePassword(Long authId, String oldPassword, String newPassword) {
+        // Fetch the user by authId
+        UserAuthEntity userAuth = userAuthRepository.findById(authId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        // Check if the old password matches
+        if (!passwordEncoder.matches(oldPassword, userAuth.getPassword())) {
+            throw new IllegalArgumentException("Old password is incorrect");
+        }
+
+        // Update the password
+        userAuth.setPassword(passwordEncoder.encode(newPassword));
+        userAuthRepository.save(userAuth);
+
+        return "Password changed successfully";
     }
 }

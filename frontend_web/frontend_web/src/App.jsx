@@ -11,6 +11,7 @@ import AddServicePage from "./components/service_provider/AddServicePage";
 import LogoutConfirmationPopup from "./components/LogoutConfirmationPopup";
 import { useState, useEffect } from "react";
 import ServiceProviderProfile from "./components/service_provider/ServiceProviderProfile";
+import CustomerProfilePage from "./components/customer/CustomerProfilePage";
 import serbisyoLogo from "./assets/SerbisYo Logo.png";
 import API from "./utils/API";
 import axios from "axios";
@@ -84,9 +85,9 @@ function App() {
 
   const renderNavigationLinks = () => {
     if (!isAuthenticated) return null;
-
+  
     return (
-      <div className="flex items-center gap-6"> {/* Increased gap between icons */}
+      <div className="flex items-center gap-6">
         {/* Home Link */}
         <button
           onClick={() => navigate(userRole === "customer" ? "/customerHomePage" : "/serviceProviderHomePage")}
@@ -147,7 +148,7 @@ function App() {
             />
           </svg>
         </button>
-
+  
         {/* User Profile Dropdown */}
         <div className="relative">
           <button
@@ -175,7 +176,17 @@ function App() {
                 <p className="text-sm font-semibold text-gray-800">User Menu</p>
               </div>
               <button
-                onClick={() => navigate("/profile")}
+                onClick={() => {
+                  const normalizedRole = userRole?.toLowerCase();
+                  setDropdownOpen(false);
+                  if (normalizedRole === "customer") {
+                    navigate("/customerProfile");
+                  } else if (normalizedRole === "service provider") {
+                    navigate("/serviceProviderProfile");
+                  } else {
+                    console.error("Unknown user role:", userRole);
+                  }
+                }}
                 className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100"
               >
                 Manage Profile
@@ -230,6 +241,10 @@ function App() {
         <Route
           path="/customerHomePage"
           element={<ProtectedRoute element={<CustomerHomePage />} allowedRoles={["customer"]} />}
+        />
+        <Route
+          path="/customerProfile"
+          element={<ProtectedRoute element={<CustomerProfilePage />} allowedRoles={["customer"]} />}
         />
         <Route
           path="/browseServices"

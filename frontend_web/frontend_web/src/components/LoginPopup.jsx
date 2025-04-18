@@ -1,18 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogTitle,
-  TextField,
-  Button,
-  Checkbox,
-  FormControlLabel,
-  Typography,
-  IconButton,
-  Box,
-  Divider,
-  Link
-} from '@mui/material';
+import { Dialog, DialogContent, DialogTitle, TextField, Button, Checkbox, FormControlLabel, Typography, IconButton, Box, Divider, Link } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import GoogleIcon from '@mui/icons-material/Google';
 import axios from 'axios';
