@@ -3,24 +3,92 @@ import ChatHeader from './ChatHeader';
 import MessageBubble from './MessageBubble';
 import ChatService from '../../services/ChatService';
 
-function Conversation({ user, messages, onBack, onClose }) {
+function Conversation({ user, messages: initialMessages, onBack, onClose }) {
   const [newMessage, setNewMessage] = useState('');
+  const [messages, setMessages] = useState(initialMessages || []);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState(null);
   const messageEndRef = useRef(null);
-  const currentUserId = ChatService.getCurrentUserId() || 1; // Fallback to 1 for testing
+  const currentUserId = ChatService.getCurrentUserId();
   
-  const handleSendMessage = (e) => {
+  // Fetch conversation history when component mounts
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        if (user?.userId) {
+          const conversationHistory = await ChatService.getConversation(user.userId);
+          if (conversationHistory && conversationHistory.length > 0) {
+            setMessages(conversationHistory);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load conversation history:', err);
+        // If API call fails, keep showing the initial messages
+      }
+    };
+    
+    fetchMessages();
+  }, [user?.userId]);
+  
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (newMessage.trim() === '') return;
+    if (newMessage.trim() === '' || !user?.userId) return;
     
-    // In a real app, you would send this to your API
-    console.log('Sending message:', { 
-      sender: { userId: currentUserId }, 
-      receiver: user, 
+    const tempMessage = {
+      id: `temp-${Date.now()}`,
+      sender: { userId: currentUserId },
+      receiver: { userId: user.userId },
       messageText: newMessage,
-      sentAt: new Date()
-    });
+      sentAt: new Date().toISOString(),
+      status: 'SENDING',
+      isTemporary: true
+    };
     
+    // Add message to UI immediately (optimistic update)
+    setMessages(prevMessages => [...prevMessages, tempMessage]);
     setNewMessage('');
+    setSending(true);
+    setError(null);
+    
+    try {
+      // Send message to server
+      const sentMessage = await ChatService.sendMessage(user.userId, newMessage);
+      
+      // Replace temporary message with the real one from server
+      setMessages(prevMessages => 
+        prevMessages.map(msg => 
+          msg.id === tempMessage.id ? sentMessage : msg
+        )
+      );
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      setError('Failed to send message. Please try again.');
+      
+      // Update temporary message to show error state
+      setMessages(prevMessages => 
+        prevMessages.map(msg => 
+          msg.id === tempMessage.id 
+            ? {...msg, status: 'ERROR'} 
+            : msg
+        )
+      );
+    } finally {
+      setSending(false);
+    }
+  };
+  
+  // Resend a failed message
+  const handleResend = async (tempMessageId, messageText) => {
+    // Remove the failed message
+    setMessages(prevMessages => 
+      prevMessages.filter(msg => msg.id !== tempMessageId)
+    );
+    
+    // Set the message text and trigger send
+    setNewMessage(messageText);
+    setTimeout(() => {
+      handleSendMessage({ preventDefault: () => {} });
+    }, 0);
   };
 
   useEffect(() => {
@@ -42,17 +110,32 @@ function Conversation({ user, messages, onBack, onClose }) {
       />
       
       <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-        <div className="space-y-4">
-          {messages.map((message, index) => (
-            <MessageBubble 
-              key={index}
-              message={message}
-              isCurrentUser={message.sender.userId === currentUserId}
-            />
-          ))}
-          <div ref={messageEndRef} />
-        </div>
+        {messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-gray-500">No messages yet. Say hello!</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {messages.map((message, index) => (
+              <MessageBubble 
+                key={message.messageId || message.id || index}
+                message={message}
+                isCurrentUser={message.sender?.userId === currentUserId}
+                onResend={message.status === 'ERROR' ? 
+                  () => handleResend(message.id, message.messageText) : 
+                  undefined}
+              />
+            ))}
+            <div ref={messageEndRef} />
+          </div>
+        )}
       </div>
+      
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-2 text-red-700 text-sm">
+          {error}
+        </div>
+      )}
       
       <form onSubmit={handleSendMessage} className="p-3 border-t border-gray-200 flex items-center space-x-2">
         <div className="flex items-center space-x-2">
@@ -74,16 +157,21 @@ function Conversation({ user, messages, onBack, onClose }) {
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder="Type a message here"
           className="flex-1 py-2 px-3 border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-[#F4CE14]"
+          disabled={sending}
         />
         
         <button 
           type="submit" 
-          disabled={!newMessage.trim()}
+          disabled={!newMessage.trim() || sending}
           className="bg-[#F4CE14] text-[#495E57] p-2 rounded-full disabled:opacity-50"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-          </svg>
+          {sending ? (
+            <div className="h-5 w-5 border-2 border-t-transparent border-[#495E57] rounded-full animate-spin"></div>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          )}
         </button>
       </form>
     </>

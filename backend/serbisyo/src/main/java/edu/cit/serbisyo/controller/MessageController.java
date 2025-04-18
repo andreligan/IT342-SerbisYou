@@ -47,4 +47,12 @@ public class MessageController {
     public String deleteMessage(@PathVariable Long messageId) {
         return messageService.deleteMessage(messageId);
     }
+    
+    // New endpoint for conversation history
+    @GetMapping("/conversation/{userId1}/{userId2}")
+    public List<MessageEntity> getConversationBetweenUsers(
+        @PathVariable Long userId1, 
+        @PathVariable Long userId2) {
+        return messageService.getConversationBetweenUsers(userId1, userId2);
+    }
 }

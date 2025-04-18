@@ -117,6 +117,52 @@ const ChatService = {
     if (userId) return parseInt(userId, 10);
     
     return 1; // Default to user ID 1 if not found
+  },
+
+  // Send a message to another user
+  sendMessage: async (receiverId, messageText) => {
+    try {
+      const authHeaders = ChatService.getAuthHeaders();
+      const currentUserId = ChatService.getCurrentUserId();
+      
+      if (!currentUserId) {
+        throw new Error("No authenticated user found");
+      }
+      
+      const messageData = {
+        sender: { userId: currentUserId },
+        receiver: { userId: receiverId },
+        messageText: messageText,
+        sentAt: new Date().toISOString(),
+        status: "SENT"
+      };
+      
+      const response = await axios.post('/api/messages/postMessage', messageData, authHeaders);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      throw error;
+    }
+  },
+  
+  // Get conversation history between two users
+  getConversation: async (otherUserId) => {
+    try {
+      const authHeaders = ChatService.getAuthHeaders();
+      const currentUserId = ChatService.getCurrentUserId();
+      
+      if (!currentUserId) {
+        throw new Error("No authenticated user found");
+      }
+      
+      // This endpoint would need to be implemented on your backend
+      const response = await axios.get(`/api/messages/conversation/${currentUserId}/${otherUserId}`, authHeaders);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch conversation:', error);
+      // Return empty array as fallback
+      return [];
+    }
   }
 };
 

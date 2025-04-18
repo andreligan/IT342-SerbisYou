@@ -39,4 +39,11 @@ public class MessageService {
         }
         return "Message not found.";
     }
+    
+    // New method for conversation history
+    public List<MessageEntity> getConversationBetweenUsers(Long userId1, Long userId2) {
+        // Find messages where these users are either sender or receiver
+        return messageRepository.findBySenderUserIdAndReceiverUserIdOrSenderUserIdAndReceiverUserId(
+            userId1, userId2, userId2, userId1);
+    }
 }
