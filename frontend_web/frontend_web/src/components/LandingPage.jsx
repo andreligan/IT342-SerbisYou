@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Footer from "./Footer";
+import { useNavigate } from "react-router-dom";
 
 // Import images - adjust path as needed for your project structure
 import plumbing from "../assets/plumbing.jpg";
@@ -28,6 +29,7 @@ const categories = [
 ];
 
 function LandingPage() {
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
 
   // Pagination logic
@@ -39,6 +41,22 @@ function LandingPage() {
 
   const handlePageChange = (newPage) => {
     setPage(newPage);
+  };
+
+  // Handle "Be a Provider" button click
+  const handleBeProvider = () => {
+    // Get existing form data or create new object
+    const existingData = sessionStorage.getItem('signupFormData');
+    const formData = existingData ? JSON.parse(existingData) : {};
+    
+    // Set account type to "Service Provider"
+    formData.accountType = "Service Provider";
+    
+    // Save to session storage
+    sessionStorage.setItem('signupFormData', JSON.stringify(formData));
+    
+    // Navigate directly to details page
+    navigate('/signup/details');
   };
 
   return (
@@ -53,10 +71,16 @@ function LandingPage() {
             Book services from verified professionals with ease and security.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
-            <button className="bg-[#F4CE14] hover:bg-yellow-500 text-black font-medium px-8 py-3 rounded-lg transition duration-300 transform hover:scale-105">
+            <button 
+              onClick={() => navigate('/signup/type')}
+              className="bg-[#F4CE14] hover:bg-yellow-500 text-black font-medium px-8 py-3 rounded-lg transition duration-300 transform hover:scale-105"
+            >
               Browse Services
             </button>
-            <button className="bg-white hover:bg-gray-100 text-[#495E57] font-medium px-8 py-3 rounded-lg transition duration-300 transform hover:scale-105">
+            <button 
+              onClick={handleBeProvider}
+              className="bg-white hover:bg-gray-100 text-[#495E57] font-medium px-8 py-3 rounded-lg transition duration-300 transform hover:scale-105"
+            >
               Be a Provider
             </button>
           </div>

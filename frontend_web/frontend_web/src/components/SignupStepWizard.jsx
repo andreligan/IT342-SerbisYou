@@ -17,6 +17,7 @@ const SignupStepWizard = () => {
     password: '',
     confirmPassword: '',
   });
+  const [formDataLoaded, setFormDataLoaded] = useState(false); // Add this state variable
   const [errorMessage, setErrorMessage] = useState('');
   
   const steps = ['Type', 'Details', 'Credentials', 'Complete'];
@@ -38,22 +39,27 @@ const SignupStepWizard = () => {
     if (savedData) {
       setFormData(JSON.parse(savedData));
     }
+    setFormDataLoaded(true); // Mark that we've loaded data from session storage
   }, []);
 
   // Save form data to session storage on change
   useEffect(() => {
-    sessionStorage.setItem('signupFormData', JSON.stringify(formData));
-  }, [formData]);
+    if (formDataLoaded) { // Only save after initial load completes
+      sessionStorage.setItem('signupFormData', JSON.stringify(formData));
+    }
+  }, [formData, formDataLoaded]);
   
-  // Navigation guards
+  // Navigation guards - Only run after data is loaded from sessionStorage
   useEffect(() => {
+    if (!formDataLoaded) return; // Skip if data hasn't loaded yet
+    
     // Redirect if trying to access a step without completing previous steps
     if (currentStep === 1 && !formData.accountType) {
       navigate('/signup/type');
     } else if (currentStep === 2 && (!formData.firstName || !formData.lastName)) {
       navigate('/signup/details');
     }
-  }, [currentStep, formData, navigate]);
+  }, [currentStep, formData, navigate, formDataLoaded]);
 
   const handleSelection = (type) => {
     setFormData({ ...formData, accountType: type });
