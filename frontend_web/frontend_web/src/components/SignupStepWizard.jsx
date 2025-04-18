@@ -17,8 +17,9 @@ const SignupStepWizard = () => {
     password: '',
     confirmPassword: '',
   });
-  const [formDataLoaded, setFormDataLoaded] = useState(false); // Add this state variable
+  const [formDataLoaded, setFormDataLoaded] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [validationErrors, setValidationErrors] = useState({});
   
   const steps = ['Type', 'Details', 'Credentials', 'Complete'];
   
@@ -61,31 +62,81 @@ const SignupStepWizard = () => {
     }
   }, [currentStep, formData, navigate, formDataLoaded]);
 
+  // Validate details step fields
+  const validateDetailsStep = () => {
+    const errors = {};
+    
+    if (!formData.lastName.trim()) errors.lastName = 'Last name is required';
+    if (!formData.firstName.trim()) errors.firstName = 'First name is required';
+    if (!formData.phoneNumber.trim()) errors.phoneNumber = 'Phone number is required';
+    
+    if (formData.accountType === 'Service Provider') {
+      if (!formData.businessName.trim()) errors.businessName = 'Business name is required';
+      if (!formData.yearsOfExperience) errors.yearsOfExperience = 'Years of experience is required';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Validate credentials step fields
+  const validateCredentialsStep = () => {
+    const errors = {};
+    
+    if (!formData.userName.trim()) errors.userName = 'Username is required';
+    if (!formData.email.trim()) errors.email = 'Email is required';
+    if (!formData.password) errors.password = 'Password is required';
+    if (!formData.confirmPassword) errors.confirmPassword = 'Confirm password is required';
+    
+    if (formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSelection = (type) => {
     setFormData({ ...formData, accountType: type });
     navigate('/signup/details');
   };
 
   const handleNext = () => {
+    if (currentStep === 1) {
+      // Validate details step before proceeding
+      if (!validateDetailsStep()) return;
+    }
+    
     const nextRoutes = ['/signup/type', '/signup/details', '/signup/credentials', '/signup/complete'];
     navigate(nextRoutes[currentStep + 1]);
   };
 
   const handlePrevious = () => {
+    // Clear validation errors when going back
+    setValidationErrors({});
+    
     const prevRoutes = ['/signup/type', '/signup/details', '/signup/credentials', '/signup/complete'];
     navigate(prevRoutes[currentStep - 1]);
   };
 
   const handleChange = (event) => {
+    // Clear specific validation error when field changes
+    if (validationErrors[event.target.name]) {
+      setValidationErrors({
+        ...validationErrors,
+        [event.target.name]: ''
+      });
+    }
+    
     setFormData({ ...formData, [event.target.name]: event.target.value });
   };
 
   const handleSubmit = async () => {
-    if (formData.password !== formData.confirmPassword) {
-      setErrorMessage('Passwords do not match.');
-      return;
-    }
-  
+    // Validate credentials step before submission
+    if (!validateCredentialsStep()) return;
+    
+    setErrorMessage(''); // Clear any previous error messages
+    
     try {
       // Prepare UserAuthEntity
       const userAuth = {
@@ -156,57 +207,95 @@ const SignupStepWizard = () => {
           <h2 className="text-2xl font-semibold mb-8 text-center text-[#495E57]">Enter Your Details</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-gray-700 mb-1">Last Name</label>
+              <label className="block text-gray-700 mb-1">
+                Last Name <span className="text-red-500">*</span>
+              </label>
               <input 
                 type="text" 
                 name="lastName" 
                 value={formData.lastName} 
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                required
+                className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 
+                  ${validationErrors.lastName ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#F4CE14]'}`}
               />
+              {validationErrors.lastName && (
+                <p className="text-red-500 text-sm mt-1">{validationErrors.lastName}</p>
+              )}
             </div>
+            
             <div>
-              <label className="block text-gray-700 mb-1">First Name</label>
+              <label className="block text-gray-700 mb-1">
+                First Name <span className="text-red-500">*</span>
+              </label>
               <input 
                 type="text" 
                 name="firstName" 
                 value={formData.firstName} 
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                required
+                className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 
+                  ${validationErrors.firstName ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#F4CE14]'}`}
               />
+              {validationErrors.firstName && (
+                <p className="text-red-500 text-sm mt-1">{validationErrors.firstName}</p>
+              )}
             </div>
+            
             <div>
-              <label className="block text-gray-700 mb-1">Phone Number</label>
+              <label className="block text-gray-700 mb-1">
+                Phone Number <span className="text-red-500">*</span>
+              </label>
               <input 
                 type="tel" 
                 name="phoneNumber" 
                 value={formData.phoneNumber} 
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                required
+                className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 
+                  ${validationErrors.phoneNumber ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#F4CE14]'}`}
               />
+              {validationErrors.phoneNumber && (
+                <p className="text-red-500 text-sm mt-1">{validationErrors.phoneNumber}</p>
+              )}
             </div>
 
             {formData.accountType === 'Service Provider' && (
               <>
                 <div>
-                  <label className="block text-gray-700 mb-1">Business Name</label>
+                  <label className="block text-gray-700 mb-1">
+                    Business Name <span className="text-red-500">*</span>
+                  </label>
                   <input 
                     type="text" 
                     name="businessName" 
                     value={formData.businessName} 
                     onChange={handleChange}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                    required
+                    className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 
+                      ${validationErrors.businessName ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#F4CE14]'}`}
                   />
+                  {validationErrors.businessName && (
+                    <p className="text-red-500 text-sm mt-1">{validationErrors.businessName}</p>
+                  )}
                 </div>
+                
                 <div>
-                  <label className="block text-gray-700 mb-1">Years of Experience</label>
+                  <label className="block text-gray-700 mb-1">
+                    Years of Experience <span className="text-red-500">*</span>
+                  </label>
                   <input 
                     type="number" 
                     name="yearsOfExperience" 
                     value={formData.yearsOfExperience} 
                     onChange={handleChange}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                    required
+                    className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 
+                      ${validationErrors.yearsOfExperience ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#F4CE14]'}`}
                   />
+                  {validationErrors.yearsOfExperience && (
+                    <p className="text-red-500 text-sm mt-1">{validationErrors.yearsOfExperience}</p>
+                  )}
                 </div>
               </>
             )}
@@ -219,44 +308,75 @@ const SignupStepWizard = () => {
           <h2 className="text-2xl font-semibold mb-8 text-center text-[#495E57]">Create Your Account</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-gray-700 mb-1">Username</label>
+              <label className="block text-gray-700 mb-1">
+                Username <span className="text-red-500">*</span>
+              </label>
               <input 
                 type="text" 
                 name="userName" 
                 value={formData.userName} 
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                required
+                className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 
+                  ${validationErrors.userName ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#F4CE14]'}`}
               />
+              {validationErrors.userName && (
+                <p className="text-red-500 text-sm mt-1">{validationErrors.userName}</p>
+              )}
             </div>
+            
             <div>
-              <label className="block text-gray-700 mb-1">Email</label>
+              <label className="block text-gray-700 mb-1">
+                Email <span className="text-red-500">*</span>
+              </label>
               <input 
                 type="email" 
                 name="email" 
                 value={formData.email} 
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                required
+                className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 
+                  ${validationErrors.email ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#F4CE14]'}`}
               />
+              {validationErrors.email && (
+                <p className="text-red-500 text-sm mt-1">{validationErrors.email}</p>
+              )}
             </div>
+            
             <div>
-              <label className="block text-gray-700 mb-1">Password</label>
+              <label className="block text-gray-700 mb-1">
+                Password <span className="text-red-500">*</span>
+              </label>
               <input 
                 type="password" 
                 name="password" 
                 value={formData.password} 
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                required
+                className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 
+                  ${validationErrors.password ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#F4CE14]'}`}
               />
+              {validationErrors.password && (
+                <p className="text-red-500 text-sm mt-1">{validationErrors.password}</p>
+              )}
             </div>
+            
             <div>
-              <label className="block text-gray-700 mb-1">Confirm Password</label>
+              <label className="block text-gray-700 mb-1">
+                Confirm Password <span className="text-red-500">*</span>
+              </label>
               <input 
                 type="password" 
                 name="confirmPassword" 
                 value={formData.confirmPassword} 
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
+                required
+                className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 
+                  ${validationErrors.confirmPassword ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#F4CE14]'}`}
               />
+              {validationErrors.confirmPassword && (
+                <p className="text-red-500 text-sm mt-1">{validationErrors.confirmPassword}</p>
+              )}
             </div>
           </div>
         </div>
