@@ -16,6 +16,8 @@ import ServiceDetails from "./components/service_provider/ServiceDetails";
 import serbisyoLogo from "./assets/SerbisYo Logo.png";
 import API from "./utils/API";
 import axios from "axios";
+import ChatIcon from './components/chat/ChatIcon';
+import ChatWindow from './components/chat/ChatWindow';
 
 // Protected Route component for role-based access control
 const ProtectedRoute = ({ element, allowedRoles }) => {
@@ -50,6 +52,7 @@ function App() {
   const [isLoginPopupVisible, setIsLoginPopupVisible] = useState(false);
   const [isLogoutPopupVisible, setIsLogoutPopupVisible] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false); // For user profile dropdown
+  const [isChatOpen, setIsChatOpen] = useState(false); // State for chat window
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -82,6 +85,10 @@ function App() {
 
   const toggleDropdown = () => {
     setDropdownOpen(!dropdownOpen);
+  };
+
+  const toggleChat = () => {
+    setIsChatOpen(!isChatOpen);
   };
 
   const renderNavigationLinks = () => {
@@ -276,6 +283,14 @@ function App() {
           element={<ProtectedRoute element={<ServiceDetails />} allowedRoles={["service provider"]} />}
         />
       </Routes>
+
+      {/* Chat components */}
+      {isAuthenticated && (
+        <>
+          <ChatIcon isOpen={isChatOpen} onClick={toggleChat} />
+          {isChatOpen && <ChatWindow onClose={toggleChat} />}
+        </>
+      )}
 
       {/* Login Popup */}
       <LoginPopup

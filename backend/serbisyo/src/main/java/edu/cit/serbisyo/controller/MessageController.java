@@ -1,6 +1,7 @@
 package edu.cit.serbisyo.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -46,5 +47,17 @@ public class MessageController {
     @DeleteMapping("/delete/{messageId}")
     public String deleteMessage(@PathVariable Long messageId) {
         return messageService.deleteMessage(messageId);
+    }
+    
+    @GetMapping("/conversation/{userId1}/{userId2}")
+    public List<MessageEntity> getConversationBetweenUsers(
+        @PathVariable Long userId1, 
+        @PathVariable Long userId2) {
+        return messageService.getConversationBetweenUsers(userId1, userId2);
+    }
+
+    @GetMapping("/conversation-partners/{userId}")
+    public List<Map<String, Object>> getConversationPartners(@PathVariable Long userId) {
+        return messageService.getConversationPartners(userId);
     }
 }
