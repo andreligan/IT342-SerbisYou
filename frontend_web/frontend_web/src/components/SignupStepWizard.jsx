@@ -8,7 +8,6 @@ const SignupStepWizard = () => {
     lastName: '',
     firstName: '',
     phoneNumber: '',
-    address: '',
     businessName: '',
     yearsOfExperience: '',
     userName: '',
@@ -59,9 +58,6 @@ const SignupStepWizard = () => {
               firstName: formData.firstName,
               lastName: formData.lastName,
               phoneNumber: formData.phoneNumber,
-              address: {
-                addressId: 1, // Replace with actual address ID or logic
-              },
             }
           : null;
   
@@ -73,9 +69,6 @@ const SignupStepWizard = () => {
               phoneNumber: formData.phoneNumber,
               businessName: formData.businessName,
               yearsOfExperience: parseInt(formData.yearsOfExperience, 10),
-              address: {
-                addressId: 1, // Replace with actual address ID or logic
-              },
             }
           : null;
   
@@ -178,16 +171,6 @@ const SignupStepWizard = () => {
                     type="tel" 
                     name="phoneNumber" 
                     value={formData.phoneNumber} 
-                    onChange={handleChange}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 mb-1">Address</label>
-                  <input 
-                    type="text" 
-                    name="address" 
-                    value={formData.address} 
                     onChange={handleChange}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]" 
                   />

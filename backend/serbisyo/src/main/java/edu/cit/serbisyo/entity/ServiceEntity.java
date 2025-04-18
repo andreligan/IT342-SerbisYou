@@ -23,7 +23,7 @@ public class ServiceEntity {
 
     private String serviceName;
     private String serviceDescription;
-    private String priceRange;
+    private int price; // Changed from String priceRange
     private String durationEstimate;
 
     @JsonIgnore
@@ -70,12 +70,13 @@ public class ServiceEntity {
         this.serviceDescription = serviceDescription;
     }
 
-    public String getPriceRange() {
-        return priceRange;
+    // Modified getter and setter for price
+    public int getPrice() {
+        return price;
     }
-
-    public void setPriceRange(String priceRange) {
-        this.priceRange = priceRange;
+    
+    public void setPrice(int price) {
+        this.price = price;
     }
 
     public String getDurationEstimate() {

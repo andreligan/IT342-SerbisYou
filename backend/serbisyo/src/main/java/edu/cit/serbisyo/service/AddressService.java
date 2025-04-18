@@ -31,6 +31,7 @@ public class AddressService {
         existingAddress.setBarangay(updatedAddress.getBarangay());
         existingAddress.setStreetName(updatedAddress.getStreetName());
         existingAddress.setZipCode(updatedAddress.getZipCode());
+        existingAddress.setMain(updatedAddress.isMain());
 
         return addressRepository.save(existingAddress);
     }

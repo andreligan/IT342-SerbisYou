@@ -11,6 +11,14 @@ function AddressContent() {
     zipCode: ''
   });
   
+  // PSGC API data states
+  const [provinces, setProvinces] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [barangays, setBarangays] = useState([]);
+  const [selectedProvinceCode, setSelectedProvinceCode] = useState('');
+  const [selectedCityCode, setSelectedCityCode] = useState('');
+  const [selectedBarangayCode, setSelectedBarangayCode] = useState('');
+  
   // State for addresses list, error handling, loading states
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -23,112 +31,257 @@ function AddressContent() {
   const [providerId, setProviderId] = useState(null);
   const [providerAddressId, setProviderAddressId] = useState(null);
   
+  // Extended loading state for address data
+  const [isLoading, setIsLoading] = useState({
+    provinces: false,
+    cities: false,
+    barangays: false
+  });
+  
+  // Store the complete provider data to avoid refetching
+  const [providerData, setProviderData] = useState(null);
+  
   // Get userId and token from localStorage or sessionStorage
   const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
   const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
   
-  // First fetch the service provider to get their addressId
+  // First fetch provinces on component mount
   useEffect(() => {
-    const getServiceProviderDetails = async () => {
+    const fetchProvinces = async () => {
+      setIsLoading(prev => ({ ...prev, provinces: true }));
+      try {
+        const response = await axios.get('https://psgc.gitlab.io/api/provinces');
+        setProvinces(response.data);
+      } catch (error) {
+        console.error("Failed to fetch provinces:", error);
+        setError("Failed to fetch provinces. Please try again later.");
+      } finally {
+        setIsLoading(prev => ({ ...prev, provinces: false }));
+      }
+    };
+    
+    fetchProvinces();
+  }, []);
+  
+  // Modified approach for fetching and displaying addresses
+  useEffect(() => {
+    const fetchProviderAddresses = async () => {
       try {
         setLoading(true);
+        setError(null);
         
-        // Get all service providers
+        // Step 1: Get userId from storage
+        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        
+        if (!userId || !token) {
+          setError("Authentication information missing. Please login again.");
+          setLoading(false);
+          return;
+        }
+        
+        // Step 2: Get user role (optional - can be skipped if all users of this component are service providers)
+        // If you have role stored in localStorage/sessionStorage:
+        const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
+        
+        if (userRole !== 'Service Provider') {
+          setError("Only service providers can manage addresses");
+          setLoading(false);
+          return;
+        }
+        
+        // Step 3: Get all service providers and find match by userId
         const providersResponse = await axios.get("/api/service-providers/getAll", {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
-        // Find the provider that matches the current user
         const provider = providersResponse.data.find(
           p => p.userAuth && p.userAuth.userId == userId
         );
+
+        console.log("Provider data:", provider);
         
-        if (provider) {
-          console.log('Found provider:', provider);
-          setProviderId(provider.providerId);
-          
-          // Check if provider has a nested address object
-          if (provider.address) {
-            console.log('Provider address:', provider.address);
-            setProviderAddressId(provider.address.addressId);
-            
-            // Directly populate the form with provider's address data
-            setAddressForm({
-              barangay: provider.address.barangay || '',
-              city: provider.address.city || '',
-              province: provider.address.province || '',
-              streetName: provider.address.streetName || '',
-              zipCode: provider.address.zipCode || ''
-            });
-            
-            // Add this address to addresses list
-            setAddresses([provider.address]);
-            setEditMode(true);
-            setCurrentAddressId(provider.address.addressId);
-          } else if (provider.addressId) {
-            // If address is not nested but referenced by ID
-            setProviderAddressId(provider.addressId);
-            // Will fetch address details in the next useEffect
-          } else {
-            console.log('No address found for this provider');
-          }
-        } else {
+        if (!provider) {
           setError("No service provider profile found for this account.");
+          setLoading(false);
+          return;
         }
         
+        // Step 4: Store the provider ID and complete provider data
+        setProviderId(provider.providerId);
+        setProviderData(provider);
+        
+        // If provider has a main address, store its ID
+        if (provider.address) {
+          setProviderAddressId(provider.address.addressId);
+        }
+        
+        // Step 5: Get all addresses
+        const addressesResponse = await axios.get('/api/addresses/getAll', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        console.log("All addresses:", addressesResponse.data);
+        
+        // Step 6: Filter addresses by providerId
+        const providerAddresses = addressesResponse.data.filter(
+          address => address.serviceProvider?.providerId === provider.providerId || address.providerId === provider.providerId
+        );
+
+        console.log("Filtered provider addresses:", providerAddresses);
+        
+        // Step 7: Set the addresses to display
+        setAddresses(providerAddresses);
+        
         setLoading(false);
+        
       } catch (err) {
-        console.error('Error fetching provider details:', err);
-        setError('Failed to load provider details. Please try again later.');
+        console.error('Error fetching provider addresses:', err);
+        setError('Failed to load addresses. Please try again later.');
         setLoading(false);
       }
     };
     
-    if (userId && token) {
-      getServiceProviderDetails();
-    }
-  }, [userId, token]);
-  
-  // Then fetch addresses once we have the provider addressId
+    fetchProviderAddresses();
+  }, [token]); // Re-run when token changes
+
+  // Add this new useEffect that depends on both provinces and addresses
   useEffect(() => {
-    if (providerAddressId) {
-      fetchAddresses();
-    }
-  }, [providerAddressId]);
-  
-  // Fetch all addresses
-  const fetchAddresses = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await axios.get('/api/addresses/getAll', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      // Filter addresses by addressId that match the provider's addressId
-      const providerAddresses = response.data.filter(address => 
-        // Include the provider's address and any addresses specifically linked to this provider
-        address.addressId === providerAddressId || address.providerId === providerId
-      );
-      
-      setAddresses(providerAddresses);
-      setLoading(false);
-      
-      // If there's a matched address and we're not in edit mode, populate the form
-      if (providerAddresses.length > 0 && !editMode) {
-        const mainAddress = providerAddresses.find(addr => addr.addressId === providerAddressId) || providerAddresses[0];
-        handleEdit(mainAddress);
+    const initializeFormData = async () => {
+      // Only proceed when both data sets are available
+      if (provinces.length > 0 && addresses.length > 0) {
+        // Find the main address or use the first one
+        const mainAddress = addresses.find(addr => 
+          addr.addressId === providerAddressId
+        ) || addresses[0];
+        
+        // Try to populate the form with this address data
+        await populateAddressForm(mainAddress);
       }
+    };
+    
+    initializeFormData();
+  }, [provinces, addresses, providerAddressId]);
+  
+  // New function to populate form without entering edit mode
+  const populateAddressForm = async (address) => {
+    setAddressForm({
+      barangay: address.barangay || '',
+      city: address.city || '',
+      province: address.province || '',
+      streetName: address.streetName || '',
+      zipCode: address.zipCode || ''
+    });
+    
+    // Find and select the province code that matches the province name
+    setIsLoading(prev => ({ ...prev, provinces: true }));
+    try {
+      // Find the province code matching the province name in the database
+      const matchedProvince = provinces.find(p => p.name === address.province);
       
-    } catch (err) {
-      console.error('Error fetching addresses:', err);
-      setError('Failed to load addresses. Please try again.');
-      setLoading(false);
+      if (matchedProvince) {
+        setSelectedProvinceCode(matchedProvince.code);
+        
+        // Load cities for this province
+        setIsLoading(prev => ({ ...prev, cities: true }));
+        const citiesResponse = await axios.get(`https://psgc.gitlab.io/api/provinces/${matchedProvince.code}/cities-municipalities`);
+        setCities(citiesResponse.data);
+        setIsLoading(prev => ({ ...prev, cities: false }));
+        
+        // Find and select the city code matching the city name
+        const matchedCity = citiesResponse.data.find(c => c.name === address.city);
+        
+        if (matchedCity) {
+          setSelectedCityCode(matchedCity.code);
+          
+          // Load barangays for this city
+          setIsLoading(prev => ({ ...prev, barangays: true }));
+          const barangaysResponse = await axios.get(`https://psgc.gitlab.io/api/cities-municipalities/${matchedCity.code}/barangays`);
+          setBarangays(barangaysResponse.data);
+          
+          // Find and select the barangay that matches the address
+          const matchedBarangay = barangaysResponse.data.find(b => b.name === address.barangay);
+          if (matchedBarangay) {
+            setSelectedBarangayCode(matchedBarangay.code);
+          }
+          
+          setIsLoading(prev => ({ ...prev, barangays: false }));
+        }
+      }
+    } catch (error) {
+      console.error("Error loading address location data:", error);
+    } finally {
+      setIsLoading(prev => ({ ...prev, provinces: false }));
     }
   };
   
-  // Handle input changes
+  // Handle province change - fetch cities
+  const handleProvinceChange = async (e) => {
+    const provinceCode = e.target.value;
+    const provinceName = e.target.options[e.target.selectedIndex].text;
+    
+    setSelectedProvinceCode(provinceCode);
+    setAddressForm(prev => ({ 
+      ...prev, 
+      province: provinceName,
+      city: '',
+      barangay: '' 
+    }));
+    
+    setCities([]);
+    setBarangays([]);
+    
+    if (!provinceCode) return;
+    
+    setIsLoading(prev => ({ ...prev, cities: true }));
+    try {
+      const response = await axios.get(`https://psgc.gitlab.io/api/provinces/${provinceCode}/cities-municipalities`);
+      setCities(response.data);
+    } catch (error) {
+      console.error("Failed to fetch cities:", error);
+      setError("Failed to load cities for the selected province.");
+    } finally {
+      setIsLoading(prev => ({ ...prev, cities: false }));
+    }
+  };
+  
+  // Handle city change - fetch barangays
+  const handleCityChange = async (e) => {
+    const cityCode = e.target.value;
+    const cityName = e.target.options[e.target.selectedIndex].text;
+    
+    setSelectedCityCode(cityCode);
+    setAddressForm(prev => ({ 
+      ...prev, 
+      city: cityName,
+      barangay: '' 
+    }));
+    
+    setBarangays([]);
+    
+    if (!cityCode) return;
+    
+    setIsLoading(prev => ({ ...prev, barangays: true }));
+    try {
+      const response = await axios.get(`https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays`);
+      setBarangays(response.data);
+    } catch (error) {
+      console.error("Failed to fetch barangays:", error);
+      setError("Failed to load barangays for the selected city.");
+    } finally {
+      setIsLoading(prev => ({ ...prev, barangays: false }));
+    }
+  };
+  
+  // Handle barangay selection
+  const handleBarangayChange = (e) => {
+    const barangayCode = e.target.value;
+    setSelectedBarangayCode(barangayCode);
+    const barangayName = e.target.options[e.target.selectedIndex].text;
+    setAddressForm(prev => ({ ...prev, barangay: barangayName }));
+  };
+  
+  // Handle other input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setAddressForm(prev => ({
@@ -147,11 +300,15 @@ function AddressContent() {
       
       // If in edit mode, update the address
       if (editMode && currentAddressId) {
+        // Find the current address to get its main status
+        const currentAddress = addresses.find(addr => addr.addressId === currentAddressId);
+        
         const addressPayload = {
           ...addressForm,
           providerId: providerId,
-          // Include any other required fields for authorization
-          serviceProviderId: providerId  // Some backends use this to verify relationship
+          serviceProviderId: providerId,
+          // Preserve the main status when editing
+          main: currentAddress?.main || false
         };
         
         console.log("Sending address update with payload:", addressPayload);
@@ -177,25 +334,21 @@ function AddressContent() {
             prev.map(addr => addr.addressId === currentAddressId ? response.data : addr)
           );
           
-          // If this is the provider's main address, we also need to update the provider
-          if (currentAddressId === providerAddressId) {
-            await axios.put(`/api/service-providers/update/${providerId}`, 
-              { addressId: currentAddressId },
-              { headers: { 'Authorization': `Bearer ${token}` }}
-            );
-          }
         } catch (updateErr) {
           console.error('Error updating address:', updateErr);
           console.error('Error response:', updateErr.response?.data);
-          throw updateErr; // Rethrow to be caught by the outer catch block
+          throw updateErr;
         }
       } else {
-        // Create a new address
+        // Create a new address with main explicitly set to false
         const response = await axios.post(
           '/api/addresses/postAddress', 
           {
             ...addressForm,
-            providerId: providerId // Link address to provider instead of user
+            main: false, // Always set main to false for new addresses
+            serviceProvider: {
+              providerId: providerId
+            }
           },
           {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -205,13 +358,59 @@ function AddressContent() {
         const newAddressId = response.data.addressId;
         
         // If this is the first address, set it as the provider's main address
-        if (!providerAddressId) {
-          await axios.put(`/api/service-providers/update/${providerId}`, 
-            { addressId: newAddressId },
+        if (addresses.length === 0) {
+          // Get the full address object from response
+          const newAddress = response.data;
+          
+          // Create complete object with main=true
+          const mainAddress = {
+            ...newAddress,
+            main: true
+          };
+          
+          // First update the address to set it as main
+          await axios.put(
+            `/api/addresses/updateAddress/${newAddressId}`, 
+            mainAddress,
+            { headers: { 'Authorization': `Bearer ${token}` }}
+          );
+          
+          // CORRECT APPROACH: Get complete provider data to avoid nullifying fields
+          const providersResponse = await axios.get(
+            "/api/service-providers/getAll", 
+            { headers: { 'Authorization': `Bearer ${token}` }}
+          );
+          
+          const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+          const completeProvider = providersResponse.data.find(
+            p => p.userAuth && p.userAuth.userId == userId
+          );
+          
+          if (!completeProvider) {
+            throw new Error("Provider not found");
+          }
+          
+          // Send COMPLETE provider object with new addressId
+          await axios.put(
+            `/api/service-providers/update/${providerId}`, 
+            {
+              addressId: newAddressId,
+              firstName: completeProvider.firstName,
+              lastName: completeProvider.lastName,
+              phoneNumber: completeProvider.phoneNumber,
+              businessName: completeProvider.businessName,
+              yearsOfExperience: completeProvider.yearsOfExperience,
+              availabilitySchedule: completeProvider.availabilitySchedule,
+              paymentMethod: completeProvider.paymentMethod,
+              status: completeProvider.status
+            },
             { headers: { 'Authorization': `Bearer ${token}` }}
           );
           
           setProviderAddressId(newAddressId);
+          
+          // Update the response data to reflect main status
+          response.data.main = true;
         }
         
         setSuccess('New address added successfully!');
@@ -228,6 +427,11 @@ function AddressContent() {
         streetName: '',
         zipCode: ''
       });
+      setSelectedProvinceCode('');
+      setSelectedCityCode('');
+      setSelectedBarangayCode('');
+      setCities([]);
+      setBarangays([]);
       setEditMode(false);
       setCurrentAddressId(null);
       setLoading(false);
@@ -248,8 +452,11 @@ function AddressContent() {
       setLoading(true);
       setError(null);
       
-      // Check if this is the provider's main address
-      if (addressId === providerAddressId) {
+      // Find the address to check if it's main
+      const addressToDelete = addresses.find(addr => addr.addressId === addressId);
+      
+      // Check if this is a main address
+      if (addressToDelete && addressToDelete.main) {
         setError("Cannot delete your main address. Please set another address as primary first.");
         setLoading(false);
         setDeleteDialogOpen(false);
@@ -284,12 +491,112 @@ function AddressContent() {
     try {
       setLoading(true);
       
-      await axios.put(`/api/service-providers/update/${providerId}`, 
-        { addressId: addressId },
+      // CORRECT APPROACH: Get all providers and find by userId
+      const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+      
+      // Get all service providers
+      const providersResponse = await axios.get(
+        "/api/service-providers/getAll", 
+        { headers: { 'Authorization': `Bearer ${token}` }}
+      );
+      
+      // Find the one that matches our userId
+      const completeProvider = providersResponse.data.find(
+        p => p.userAuth && p.userAuth.userId == userId
+      );
+      
+      if (!completeProvider) {
+        throw new Error("Provider not found");
+      }
+      
+      console.log("Complete provider data:", completeProvider);
+      
+      // Find the address to update
+      const addressToUpdate = addresses.find(addr => addr.addressId === addressId);
+      
+      if (!addressToUpdate) {
+        throw new Error("Address not found");
+      }
+      
+      console.log("Setting as main address:", addressToUpdate);
+      
+      // Send complete address object with main set to true AND include complete provider
+      const updatedMainAddress = {
+        ...addressToUpdate,
+        main: true,
+        // Include the COMPLETE service provider to maintain all attributes
+        serviceProvider: {
+          providerId: providerId,
+          businessName: completeProvider.businessName,
+          firstName: completeProvider.firstName,
+          lastName: completeProvider.lastName,
+          paymentMethod: completeProvider.paymentMethod,
+          phoneNumber: completeProvider.phoneNumber,
+          status: completeProvider.status,
+        }
+      };
+      
+      console.log("Complete provider data:", completeProvider);
+      
+      // Update the address to set main to true
+      const updateResponse = await axios.put(
+        `/api/addresses/updateAddress/${addressId}`, 
+        updatedMainAddress,
+        { headers: { 'Authorization': `Bearer ${token}` }}
+      );
+      
+      console.log("Update response:", updateResponse.data);
+      console.log("Complete provider data:", completeProvider);
+      
+      // Set all other addresses to main: false (also preserving full serviceProvider)
+      for (const addr of addresses) {
+        if (addr.addressId !== addressId && addr.main) {
+          const otherAddress = {
+            ...addr,
+            main: false,
+            // Include the COMPLETE service provider to maintain all attributes
+            serviceProvider: {
+              providerId: providerId,
+              businessName: completeProvider.businessName,
+              firstName: completeProvider.firstName,
+              lastName: completeProvider.lastName,
+              paymentMethod: completeProvider.paymentMethod,
+              phoneNumber: completeProvider.phoneNumber,
+              status: completeProvider.status,
+            }
+          };
+          
+          await axios.put(
+            `/api/addresses/updateAddress/${addr.addressId}`, 
+            otherAddress,
+            { headers: { 'Authorization': `Bearer ${token}` }}
+          );
+        }
+      }
+    
+      // Update the provider's primary address in the provider entity
+      await axios.put(
+        `/api/service-providers/update/${completeProvider.providerId}`, 
+        {
+          addressId: addressId,
+          firstName: completeProvider.firstName,
+          lastName: completeProvider.lastName,
+          phoneNumber: completeProvider.phoneNumber,
+          businessName: completeProvider.businessName,
+          yearsOfExperience: completeProvider.yearsOfExperience,
+          status: completeProvider.status
+        },
         { headers: { 'Authorization': `Bearer ${token}` }}
       );
       
       setProviderAddressId(addressId);
+      
+      // Update addresses in local state
+      setAddresses(prev => prev.map(addr => ({
+        ...addr,
+        main: addr.addressId === addressId
+      })));
+      
       setSuccess('Main address updated successfully!');
       setLoading(false);
       
@@ -302,15 +609,9 @@ function AddressContent() {
     }
   };
   
-  // Load address data for editing
-  const handleEdit = (address) => {
-    setAddressForm({
-      barangay: address.barangay || '',
-      city: address.city || '',
-      province: address.province || '',
-      streetName: address.streetName || '',
-      zipCode: address.zipCode || ''
-    });
+  // Update handleEdit to use the common populateAddressForm function
+  const handleEdit = async (address) => {
+    await populateAddressForm(address);
     setEditMode(true);
     setCurrentAddressId(address.addressId);
     
@@ -327,6 +628,11 @@ function AddressContent() {
       streetName: '',
       zipCode: ''
     });
+    setSelectedProvinceCode('');
+    setSelectedCityCode('');
+    setSelectedBarangayCode('');
+    setCities([]);
+    setBarangays([]);
     setEditMode(false);
     setCurrentAddressId(null);
   };
@@ -369,6 +675,84 @@ function AddressContent() {
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Province Dropdown - Using PSGC API */}
+              <div>
+                <label className="block text-gray-700 text-sm font-medium mb-2">Province *</label>
+                <select
+                  name="province"
+                  value={selectedProvinceCode}
+                  onChange={handleProvinceChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]"
+                >
+                  <option value="">Select Province</option>
+                  {provinces.map(province => (
+                    <option key={province.code} value={province.code}>
+                      {province.name}
+                    </option>
+                  ))}
+                </select>
+                {isLoading.provinces && <span className="text-sm text-gray-500">Loading provinces...</span>}
+                {editMode && !selectedProvinceCode && addressForm.province && (
+                  <p className="text-sm text-amber-600 mt-1">
+                    Current value: {addressForm.province}. Select from dropdown to change.
+                  </p>
+                )}
+              </div>
+              
+              {/* City Dropdown - Using PSGC API */}
+              <div>
+                <label className="block text-gray-700 text-sm font-medium mb-2">City/Municipality *</label>
+                <select
+                  name="city"
+                  value={selectedCityCode}
+                  onChange={handleCityChange}
+                  disabled={!selectedProvinceCode && !editMode}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]"
+                >
+                  <option value="">Select City/Municipality</option>
+                  {cities.map(city => (
+                    <option key={city.code} value={city.code}>
+                      {city.name}
+                    </option>
+                  ))}
+                </select>
+                {isLoading.cities && <span className="text-sm text-gray-500">Loading cities...</span>}
+                {editMode && !selectedCityCode && addressForm.city && (
+                  <p className="text-sm text-amber-600 mt-1">
+                    Current value: {addressForm.city}. Select province first to update.
+                  </p>
+                )}
+              </div>
+              
+              {/* Barangay Dropdown - Using PSGC API */}
+              <div>
+                <label className="block text-gray-700 text-sm font-medium mb-2">Barangay *</label>
+                <select
+                  name="barangay"
+                  value={selectedBarangayCode}
+                  onChange={handleBarangayChange}
+                  disabled={!selectedCityCode && !editMode}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]"
+                >
+                  <option value="">Select Barangay</option>
+                  {barangays.map(barangay => (
+                    <option key={barangay.code} value={barangay.code}>
+                      {barangay.name}
+                    </option>
+                  ))}
+                </select>
+                {isLoading.barangays && <span className="text-sm text-gray-500">Loading barangays...</span>}
+                {editMode && !barangays.length && addressForm.barangay && (
+                  <p className="text-sm text-amber-600 mt-1">
+                    Current value: {addressForm.barangay}. Select city first to update.
+                  </p>
+                )}
+              </div>
+              
+              {/* Street Name Input */}
               <div>
                 <label className="block text-gray-700 text-sm font-medium mb-2">Street Name</label>
                 <input
@@ -382,45 +766,7 @@ function AddressContent() {
                 />
               </div>
               
-              <div>
-                <label className="block text-gray-700 text-sm font-medium mb-2">Barangay</label>
-                <input
-                  type="text"
-                  name="barangay"
-                  value={addressForm.barangay}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]"
-                  placeholder="Barangay name"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-gray-700 text-sm font-medium mb-2">City</label>
-                <input
-                  type="text"
-                  name="city"
-                  value={addressForm.city}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]"
-                  placeholder="City"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-gray-700 text-sm font-medium mb-2">Province</label>
-                <input
-                  type="text"
-                  name="province"
-                  value={addressForm.province}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]"
-                  placeholder="Province"
-                />
-              </div>
-              
+              {/* Zip Code Input */}
               <div>
                 <label className="block text-gray-700 text-sm font-medium mb-2">Zip Code</label>
                 <input
@@ -470,7 +816,9 @@ function AddressContent() {
       </div>
 
       {/* Address List */}
+      {/* Rest of the component remains the same */}
       <div className="px-6 pb-6">
+        {/* Address list code remains unchanged */}
         <h2 className="text-2xl font-semibold text-[#495E57] mb-4">Saved Addresses</h2>
         
         {loading && !addresses.length ? (
@@ -486,7 +834,7 @@ function AddressContent() {
             {addresses.map((address) => (
               <div 
                 key={address.addressId} 
-                className={`bg-white rounded-lg border ${address.addressId === providerAddressId ? 'border-[#F4CE14] shadow-md' : 'border-gray-200'}`}
+                className={`bg-white rounded-lg border ${address.main ? 'border-[#F4CE14] shadow-md' : 'border-gray-200'}`}
               >
                 <div className="p-4">
                   <div className="flex flex-col md:flex-row justify-between">
@@ -495,7 +843,7 @@ function AddressContent() {
                         <h3 className="text-lg font-medium">
                           {address.streetName}, {address.barangay}
                         </h3>
-                        {address.addressId === providerAddressId && (
+                        {address.main && (
                           <span className="ml-2 bg-[#F4CE14] text-[#495E57] text-xs font-bold px-2 py-1 rounded">
                             Main Address
                           </span>
@@ -507,7 +855,7 @@ function AddressContent() {
                     </div>
                     
                     <div className="flex items-center space-x-2">
-                      {address.addressId !== providerAddressId && (
+                      {!address.main && (
                         <button 
                           onClick={() => setAsMainAddress(address.addressId)}
                           className="text-[#495E57] border border-[#495E57] text-sm font-medium px-3 py-1 rounded hover:bg-[#495E57] hover:text-white transition"
@@ -527,10 +875,10 @@ function AddressContent() {
                       
                       <button 
                         onClick={() => openDeleteDialog(address.addressId)}
-                        className={`p-2 rounded ${address.addressId === providerAddressId 
+                        className={`p-2 rounded ${address.main 
                           ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
                           : 'bg-gray-100 text-red-500 hover:bg-gray-200 transition'}`}
-                        disabled={address.addressId === providerAddressId}
+                        disabled={address.main}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

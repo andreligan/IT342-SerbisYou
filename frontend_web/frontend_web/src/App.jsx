@@ -12,6 +12,7 @@ import LogoutConfirmationPopup from "./components/LogoutConfirmationPopup";
 import { useState, useEffect } from "react";
 import ServiceProviderProfile from "./components/service_provider/ServiceProviderProfile";
 import CustomerProfilePage from "./components/customer/CustomerProfilePage";
+import ServiceDetails from "./components/service_provider/ServiceDetails";
 import serbisyoLogo from "./assets/SerbisYo Logo.png";
 import API from "./utils/API";
 import axios from "axios";
@@ -269,6 +270,10 @@ function App() {
         <Route
           path="/serviceProviderProfile"
           element={<ProtectedRoute element={<ServiceProviderProfile />} allowedRoles={["service provider"]} />}
+        />
+        <Route
+          path="/service/:serviceId"
+          element={<ProtectedRoute element={<ServiceDetails />} allowedRoles={["service provider"]} />}
         />
       </Routes>
 
