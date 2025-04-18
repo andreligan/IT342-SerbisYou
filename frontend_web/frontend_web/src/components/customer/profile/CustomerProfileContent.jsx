@@ -19,6 +19,7 @@ const CustomerProfileContent = () => {
   const [uploadMessage, setUploadMessage] = useState(""); // Message for image upload success/failure
   const [showUploadPopup, setShowUploadPopup] = useState(false); // State for image upload popup
 
+  // Fetch customer profile data
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -31,13 +32,30 @@ const CustomerProfileContent = () => {
           return;
         }
   
-        // Fetch the customer details using the userId
-        const customerResponse = await axios.get(`/api/customers/getById/${userId}`, {
+        // Step 1: Get all customers
+        const allCustomersResponse = await axios.get("/api/customers/getAll", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-  
+
+        console.log("All customers:", allCustomersResponse.data);
+        
+        // Step 2: Find the customer that matches this user's ID
+        const matchingCustomer = allCustomersResponse.data.find(
+          customer => customer.userAuth && customer.userAuth.userId == userId
+        );
+        
+        if (!matchingCustomer) {
+          console.error("No matching customer found for userId:", userId);
+          setError("Customer profile not found. Please contact support.");
+          setIsLoading(false);
+          return;
+        }
+        
+        console.log("Found matching customer:", matchingCustomer);
+        
+        // Step 3: Get user auth details
         const userAuthResponse = await axios.get("/api/user-auth/getAll", {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -52,28 +70,24 @@ const CustomerProfileContent = () => {
           return;
         }
   
-        // Set the profile and customerId
+        // Step 4: Set the profile data and customerId
+        setCustomerId(matchingCustomer.customerId); // Store customerId
+        
         setProfile({
-          ...customerResponse.data,
-          email: userAuth.email,
-          userName: userAuth.userName,
-          role: userAuth.role,
+          firstName: matchingCustomer.firstName || "",
+          lastName: matchingCustomer.lastName || "",
+          phoneNumber: matchingCustomer.phoneNumber || "",
+          email: userAuth.email || "",
+          userName: userAuth.userName || "",
+          role: userAuth.role || "",
         });
-        setCustomerId(customerResponse.data.customerId); // Store customerId
-  
-        // Fetch the profile image
-        const profileImageResponse = await axios.get(`/api/customers/getProfileImage/${userId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        
+        console.log("Profile data set:", {
+          customerId: matchingCustomer.customerId,
+          firstName: matchingCustomer.firstName,
+          lastName: matchingCustomer.lastName,
+          phoneNumber: matchingCustomer.phoneNumber,
         });
-
-        console.log("Fetched Profile Image URL:", profileImageResponse.data);
-  
-        // Prepend the base URL to the image path
-        const baseURL = "http://localhost:8080"; // Backend base URL
-        const fullImageURL = `${baseURL}${profileImageResponse.data}`;
-        setSelectedImage(fullImageURL); // Set the full image URL
   
         setIsLoading(false);
       } catch (err) {
@@ -85,6 +99,40 @@ const CustomerProfileContent = () => {
   
     fetchProfile();
   }, []);
+
+  // Fetch profile image after customerId is available
+  useEffect(() => {
+    const fetchProfileImage = async () => {
+      if (!customerId) return;
+      
+      try {
+        const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+        
+        console.log("Fetching profile image for customerId:", customerId);
+        
+        const profileImageResponse = await axios.get(`/api/customers/getProfileImage/${customerId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        console.log("Fetched Profile Image URL:", profileImageResponse.data);
+  
+        if (profileImageResponse.data) {
+          // Prepend the base URL to the image path
+          const baseURL = "http://localhost:8080"; // Backend base URL
+          const fullImageURL = `${baseURL}${profileImageResponse.data}`;
+          setSelectedImage(fullImageURL); // Set the full image URL
+        }
+      } catch (err) {
+        console.error("Error fetching profile image:", err);
+        // Don't set an error state for image loading failure
+        // as it's not critical to the overall functionality
+      }
+    };
+    
+    fetchProfileImage();
+  }, [customerId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -108,6 +156,8 @@ const CustomerProfileContent = () => {
           const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
           const formData = new FormData();
           formData.append("image", file);
+
+          console.log("Uploading image for customerId:", customerId);
 
           const response = await axios.post(`/api/customers/upload-image/${customerId}`, formData, {
             headers: {
@@ -138,22 +188,29 @@ const CustomerProfileContent = () => {
       if (!token) {
         setError("Authentication token not found.");
         setSuccessMessage("");
-        setShowPopup(true); // Show popup for error
-        setTimeout(() => setShowPopup(false), 3000); // Auto-hide popup after 2 seconds
+        setShowPopup(true);
+        setTimeout(() => setShowPopup(false), 3000);
         return;
       }
 
       if (!customerId) {
         setError("Customer ID not found. Cannot update profile.");
         setSuccessMessage("");
-        setShowPopup(true); // Show popup for error
-        setTimeout(() => setShowPopup(false), 2000); // Auto-hide popup after 2 seconds
+        setShowPopup(true);
+        setTimeout(() => setShowPopup(false), 2000);
         return;
       }
 
+      console.log("Updating profile for customerId:", customerId);
+      console.log("Profile data to update:", profile);
+
       const response = await axios.put(
-        `/api/customers/updateCustomer/${customerId}`, // Use customerId in the endpoint
-        profile,
+        `/api/customers/updateCustomer/${customerId}`,
+        {
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          phoneNumber: profile.phoneNumber
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -161,18 +218,29 @@ const CustomerProfileContent = () => {
         }
       );
 
+      console.log("Profile update response:", response.data);
+
       setSuccessMessage("Profile updated successfully.");
       setError("");
-      setShowPopup(true); // Show popup for success
-      setTimeout(() => setShowPopup(false), 2000); // Auto-hide popup after 2 seconds
+      setShowPopup(true);
+      setTimeout(() => setShowPopup(false), 2000);
     } catch (err) {
       console.error("Error updating profile:", err);
       setError(err.response?.data?.message || "Failed to update profile.");
       setSuccessMessage("");
-      setShowPopup(true); // Show popup for error
-      setTimeout(() => setShowPopup(false), 2000); // Auto-hide popup after 2 seconds
+      setShowPopup(true);
+      setTimeout(() => setShowPopup(false), 2000);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-8 flex justify-center items-center min-h-[200px]">
+        <div className="w-12 h-12 border-4 border-t-4 border-[#F4CE14] rounded-full animate-spin"></div>
+        <span className="ml-3 text-gray-700">Loading profile...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-md">
@@ -181,6 +249,13 @@ const CustomerProfileContent = () => {
         <h1 className="text-3xl font-bold">My Profile</h1>
         <p className="text-gray-200 mt-2">Manage and protect your account</p>
       </div>
+
+      {/* Error message outside of popup */}
+      {error && !showPopup && (
+        <div className="mx-6 mt-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
+          {error}
+        </div>
+      )}
 
       {/* Popup for Profile Update */}
       {showPopup && (
@@ -225,7 +300,7 @@ const CustomerProfileContent = () => {
                 {selectedImage ? (
                   <>
                     <img
-                      src={selectedImage} // Use the full URL
+                      src={selectedImage}
                       alt="Profile"
                       className="w-full h-full object-cover"
                     />
@@ -279,8 +354,9 @@ const CustomerProfileContent = () => {
                     type="text"
                     name="userName"
                     value={profile.userName}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]"
+                    readOnly
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 bg-gray-50 rounded-lg focus:outline-none"
                   />
                 </div>
                 <div>
@@ -289,8 +365,9 @@ const CustomerProfileContent = () => {
                     type="email"
                     name="email"
                     value={profile.email}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F4CE14]"
+                    readOnly
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 bg-gray-50 rounded-lg focus:outline-none"
                   />
                 </div>
               </div>
