@@ -14,6 +14,15 @@ public class AddressEntity {
     private String barangay;
     private String streetName;
     private String zipCode;
+    private boolean isMain; // New field
+    
+    @ManyToOne
+    @JoinColumn(name = "customer_id")
+    private CustomerEntity customer;
+    
+    @ManyToOne
+    @JoinColumn(name = "provider_id")
+    private ServiceProviderEntity serviceProvider;
 
     // Getters and Setters
 
@@ -63,5 +72,29 @@ public class AddressEntity {
 
     public void setZipCode(String zipCode) {
         this.zipCode = zipCode;
+    }
+
+    public boolean isMain() {
+        return isMain;
+    }
+
+    public void setMain(boolean isMain) {
+        this.isMain = isMain;
+    }
+    
+    public CustomerEntity getCustomer() {
+        return customer;
+    }
+    
+    public void setCustomer(CustomerEntity customer) {
+        this.customer = customer;
+    }
+    
+    public ServiceProviderEntity getServiceProvider() {
+        return serviceProvider;
+    }
+    
+    public void setServiceProvider(ServiceProviderEntity serviceProvider) {
+        this.serviceProvider = serviceProvider;
     }
 }

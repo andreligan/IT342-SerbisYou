@@ -180,55 +180,55 @@ function ServiceProviderHomePage() {
         </div>
       </div>
 
-      {/* Services Offered Section */}
-      <div className="p-10 bg-gray-50">
-        <h5 className="font-bold text-2xl text-[#495E57] mb-4 text-center">
-          Your Services
-        </h5>
-        
-        {loading ? (
-          <div className="flex justify-center my-8">
-            <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        ) : error ? (
-          <div className="max-w-xl mx-auto my-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
-          </div>
-        ) : services.length === 0 ? (
-          <div className="text-center my-6">
-            <h6 className="text-lg text-gray-600">
-              You haven't added any services yet.
-            </h6>
-            <button 
-              className="mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-colors shadow-md hover:shadow-lg"
-              onClick={() => navigate("/addService")}
-            >
-              Add Your First Service
-            </button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-thumb-rounded">
-            <div className="flex flex-row justify-center flex-nowrap mt-1 pb-1 w-max min-w-full">
-              {Object.keys(categoryGroups).map((categoryName, index) => (
-                <div className="w-56 flex-none mx-2" key={categoryName}>
-                  <div className="border border-gray-300 rounded-lg p-5 bg-white shadow-md hover:scale-105 transition-transform duration-300">
-                    <img 
-                      src={categoryImageMap[categoryName] || defaultImages[index % defaultImages.length]} 
-                      alt={categoryName}
-                      className="w-full h-40 object-cover rounded-lg" 
-                    />
-                    <h6 className="text-lg font-bold text-[#495E57] mt-2 text-center">{categoryName}</h6>
-                    <p className="text-sm text-gray-600 text-center mt-1">
-                      {categoryGroups[categoryName].length} service{categoryGroups[categoryName].length !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-                </div>
-              ))}
+{/* Services Offered Section */}
+<div className="p-10 bg-gray-50">
+  <h5 className="font-bold text-2xl text-[#495E57] mb-4 text-center">
+    Your Services
+  </h5>
+  
+  {loading ? (
+    <div className="flex justify-center my-8">
+      <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  ) : error ? (
+    <div className="max-w-xl mx-auto my-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+      {error}
+    </div>
+  ) : services.length === 0 ? (
+    <div className="text-center my-6">
+      <h6 className="text-lg text-gray-600">
+        You haven't added any services yet.
+      </h6>
+      <button 
+        className="mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-colors shadow-md hover:shadow-lg"
+        onClick={() => navigate("/addService")}
+      >
+        Add Your First Service
+      </button>
+    </div>
+  ) : (
+    <>
+      <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-thumb-rounded">
+        <div className="flex flex-row justify-center flex-nowrap mt-1 pb-1 w-max min-w-full">
+          {Object.keys(categoryGroups).map((categoryName, index) => (
+            <div className="w-56 flex-none mx-2" key={categoryName}>
+              <div className="border border-gray-300 rounded-lg p-5 bg-white shadow-md hover:scale-105 transition-transform duration-300">
+                <img 
+                  src={categoryImageMap[categoryName] || defaultImages[index % defaultImages.length]} 
+                  alt={categoryName}
+                  className="w-full h-40 object-cover rounded-lg" 
+                />
+                <h6 className="text-lg font-bold text-[#495E57] mt-2 text-center">{categoryName}</h6>
+                <p className="text-sm text-gray-600 text-center mt-1">
+                  {categoryGroups[categoryName].length} service{categoryGroups[categoryName].length !== 1 ? 's' : ''}
+                </p>
+              </div>
             </div>
-          </div>
-        )}
-        
-        <div className="flex justify-center gap-5 mt-4">
+          ))}
+        </div>
+      </div>
+      
+      <div className="flex justify-center gap-5 mt-4">
         <button
           className="w-40 h-12 bg-[#F4CE14] hover:bg-[#e0b813] text-[#495E57] px-4 py-2 rounded transition-colors text-center shadow-md hover:shadow-lg"
           onClick={() => navigate("/addService")}
@@ -237,13 +237,15 @@ function ServiceProviderHomePage() {
         </button>
           
         <button
-            className="w-40 bg-[#495E57] hover:bg-[#3a4a45] text-white px-4 py-2 rounded transition-colors text-center shadow-md hover:shadow-lg"
-            onClick={() => navigate("/myServices")}
-          >
-            Manage Services
-          </button>
-        </div>
+          className="w-40 bg-[#495E57] hover:bg-[#3a4a45] text-white px-4 py-2 rounded transition-colors text-center shadow-md hover:shadow-lg"
+          onClick={() => navigate("/myServices")}
+        >
+          Manage Services
+        </button>
       </div>
+    </>
+  )}
+</div>
 
       {/* Footer Section */}
       <Footer />

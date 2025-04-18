@@ -34,6 +34,7 @@ public class ServiceProviderService {
         existingProvider.setBusinessName(updatedProvider.getBusinessName());
         existingProvider.setYearsOfExperience(updatedProvider.getYearsOfExperience());
         existingProvider.setStatus(updatedProvider.getStatus());
+        existingProvider.setPaymentMethod(updatedProvider.getPaymentMethod());
         return serviceProviderRepository.save(existingProvider);
     }
 

@@ -89,4 +89,16 @@ public class ReviewEntity {
     public void setBooking(BookingEntity booking) {
         this.booking = booking;
     }
+
+    public Long getCustomerId() {
+        return customer != null ? customer.getCustomerId() : null;
+    }
+
+    public Long getProviderId() {
+        return provider != null ? provider.getProviderId() : null;
+    }
+    
+    public Long getBookingId() {
+        return booking != null ? booking.getBookingId() : null;
+    }
 }

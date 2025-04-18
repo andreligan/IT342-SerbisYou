@@ -69,7 +69,7 @@ public class ServiceService {
         existingService.setCategory(category);
         existingService.setServiceName(newServiceDetails.getServiceName());
         existingService.setServiceDescription(newServiceDetails.getServiceDescription());
-        existingService.setPriceRange(newServiceDetails.getPriceRange());
+        existingService.setPrice(newServiceDetails.getPrice()); // Updated from priceRange to price
         existingService.setDurationEstimate(newServiceDetails.getDurationEstimate());
 
         return serviceRepository.save(existingService);

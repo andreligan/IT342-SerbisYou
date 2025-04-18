@@ -29,7 +29,7 @@ function MyServicesContent() {
     serviceId: null,
     serviceName: '',
     serviceDescription: '',
-    priceRange: '',
+    price: '',
     durationEstimate: '',
     categoryId: ''
   });
@@ -157,7 +157,7 @@ function MyServicesContent() {
       serviceId: service.serviceId,
       serviceName: service.serviceName,
       serviceDescription: service.serviceDescription,
-      priceRange: service.priceRange,
+      price: service.price,
       durationEstimate: service.durationEstimate,
       categoryId: service.category.categoryId
     });
@@ -189,7 +189,7 @@ function MyServicesContent() {
       const servicePayload = {
         serviceName: currentService.serviceName,
         serviceDescription: currentService.serviceDescription,
-        priceRange: currentService.priceRange,
+        price: currentService.price,
         durationEstimate: currentService.durationEstimate
       };
       
@@ -418,32 +418,38 @@ function MyServicesContent() {
             {activeTab && servicesByCategory[activeTab] && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {servicesByCategory[activeTab].services.map((service) => (
-                  <Link
-                  key={service.serviceId}
-                  to={`/service/${service.serviceId}`}
-                  className="block"
-                >
                   <div key={service.serviceId} className="bg-white rounded-lg overflow-hidden shadow hover:shadow-md transition-shadow border border-gray-100">
-                    <div className="p-5">
-                      <h3 className="text-lg font-semibold text-[#495E57] mb-2">{service.serviceName}</h3>
-                      <div className="flex items-center text-sm text-gray-600 mb-1">
-                        <svg className="w-4 h-4 mr-1 text-[#F4CE14]" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-14a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V4z" clipRule="evenodd"></path>
-                        </svg>
-                        <span className="font-medium mr-1">Duration:</span> {service.durationEstimate}
+                    {/* Clickable area for service details */}
+                    <Link
+                      to={`/service/${service.serviceId}`}
+                      className="block"
+                    >
+                      <div className="p-5">
+                        <h3 className="text-lg font-semibold text-[#495E57] mb-2">{service.serviceName}</h3>
+                        <div className="flex items-center text-sm text-gray-600 mb-1">
+                          <svg className="w-4 h-4 mr-1 text-[#F4CE14]" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-14a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V4z" clipRule="evenodd"></path>
+                          </svg>
+                          <span className="font-medium mr-1">Duration:</span> {service.durationEstimate}
+                        </div>
+                        <div className="flex items-center text-sm text-gray-600 mb-3">
+                          <svg className="w-4 h-4 mr-1 text-[#F4CE14]" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                            <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"></path>
+                          </svg>
+                          <span className="font-medium mr-1">Price:</span> {service.price}
+                        </div>
+                        <p className="text-gray-700 text-sm line-clamp-3">{service.serviceDescription}</p>
                       </div>
-                      <div className="flex items-center text-sm text-gray-600 mb-3">
-                        <svg className="w-4 h-4 mr-1 text-[#F4CE14]" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                          <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"></path>
-                        </svg>
-                        <span className="font-medium mr-1">Price:</span> {service.priceRange}
-                      </div>
-                      <p className="text-gray-700 text-sm line-clamp-3">{service.serviceDescription}</p>
-                    </div>
+                    </Link>
+                    
+                    {/* Separate action buttons section (not wrapped in Link) */}
                     <div className="flex justify-end p-3 bg-gray-50 border-t border-gray-100">
                       <button
                         className="p-2 mr-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors flex items-center"
-                        onClick={() => handleEditClick(service)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditClick(service);
+                        }}
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
@@ -451,7 +457,10 @@ function MyServicesContent() {
                       </button>
                       <button
                         className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors flex items-center"
-                        onClick={() => handleDeleteClick(service)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteClick(service);
+                        }}
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -459,7 +468,6 @@ function MyServicesContent() {
                       </button>
                     </div>
                   </div>
-                  </Link>
                 ))}
               </div>
             )}
@@ -538,12 +546,12 @@ function MyServicesContent() {
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="priceRange" className="block text-sm font-medium text-gray-700">Price Range</label>
+                      <label htmlFor="price" className="block text-sm font-medium text-gray-700">Price</label>
                       <input
                         type="text"
-                        id="priceRange"
-                        name="priceRange"
-                        value={currentService.priceRange}
+                        id="price"
+                        name="price"
+                        value={currentService.price}
                         onChange={handleInputChange}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#F4CE14] focus:border-[#F4CE14] sm:text-sm"
                         required
