@@ -128,7 +128,7 @@ const BrowseServicesPage = () => {
 
               {/* Price Range */}
               <div className="absolute bottom-0 right-0 bg-yellow-400 text-black text-sm font-semibold px-4 py-2 rounded-tl-lg">
-                {service.priceRange}
+                {"PHP " + service.price}
               </div>
             </div>
           ))}
@@ -230,7 +230,7 @@ const BrowseServicesPage = () => {
                 </p>
                 <div className="mt-2 flex items-center justify-end gap-2">
                   <p className="text-sm font-bold bg-yellow-400 text-black px-4 py-2 rounded-lg">
-                    {selectedService.priceRange}
+                    {"PHP " + selectedService.price}
                   </p>
                 </div>
               </div>
