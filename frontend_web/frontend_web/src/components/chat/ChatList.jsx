@@ -1,15 +1,37 @@
 import React, { useState, useEffect } from 'react';
+import ChatService from '../../services/ChatService';
 import { mockUsers } from './mockData';
 
 function ChatList({ onSelectUser, searchQuery }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // In a real implementation, we would fetch recent chats from the API
-    // For now, we're using mock data
-    setUsers(mockUsers);
-    setLoading(false);
+    const fetchConversationPartners = async () => {
+      try {
+        setLoading(true);
+        // Fetch users that the current user has had conversations with
+        const conversationPartners = await ChatService.getConversationPartners();
+        
+        if (conversationPartners && conversationPartners.length > 0) {
+          setUsers(conversationPartners);
+        } else {
+          console.warn('No conversation partners found, using mock data');
+          setUsers(mockUsers);
+        }
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch conversation partners:', err);
+        setError('Failed to load conversations');
+        // Fall back to mock data
+        setUsers(mockUsers);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchConversationPartners();
   }, []);
 
   // Filter users based on search query
@@ -28,6 +50,14 @@ function ChatList({ onSelectUser, searchQuery }) {
     return (
       <div className="flex-1 flex justify-center items-center bg-gray-50">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#495E57]"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center p-6 text-red-500">
+        {error}
       </div>
     );
   }
@@ -71,7 +101,10 @@ function ChatList({ onSelectUser, searchQuery }) {
                 </span>
                 <span className="text-xs text-gray-500">{user.lastMessageTime}</span>
               </div>
-              <p className="text-sm text-gray-600 truncate">{user.lastMessage}</p>
+              <p className={`text-sm ${user.isUnread ? 'font-semibold text-black' : 'text-gray-600'} truncate`}>
+                {user.lastMessage}
+                {user.isUnread && <span className="ml-1 inline-block w-2 h-2 bg-blue-500 rounded-full"></span>}
+              </p>
             </div>
           </div>
         ))

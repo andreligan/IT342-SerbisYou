@@ -163,6 +163,72 @@ const ChatService = {
       // Return empty array as fallback
       return [];
     }
+  },
+
+  // Get conversation partners
+  getConversationPartners: async () => {
+    try {
+      const authHeaders = ChatService.getAuthHeaders();
+      const currentUserId = ChatService.getCurrentUserId();
+      
+      if (!currentUserId) {
+        throw new Error("No authenticated user found");
+      }
+      
+      // Try to use the dedicated endpoint
+      try {
+        const response = await axios.get(`/api/messages/conversation-partners/${currentUserId}`, authHeaders);
+        return response.data;
+      } catch (error) {
+        console.warn('Conversation partners endpoint not available, falling back to alternative method');
+        
+        // Fallback: Fetch all messages for this user and process them
+        const messagesResponse = await axios.get(`/api/messages/getAll`, authHeaders);
+        const allMessages = messagesResponse.data || [];
+        
+        // Filter messages where current user is sender or receiver
+        const relevantMessages = allMessages.filter(msg => 
+          msg.sender?.userId === currentUserId || msg.receiver?.userId === currentUserId
+        );
+        
+        // Group by partner
+        const conversationsByPartner = {};
+        const partnerIds = new Set();
+        
+        relevantMessages.forEach(msg => {
+          const isCurrentUserSender = msg.sender.userId === currentUserId;
+          const partnerId = isCurrentUserSender ? msg.receiver.userId : msg.sender.userId;
+          partnerIds.add(partnerId);
+          
+          if (!conversationsByPartner[partnerId]) {
+            conversationsByPartner[partnerId] = [];
+          }
+          conversationsByPartner[partnerId].push(msg);
+        });
+        
+        // We need to fetch the user details for all these partners
+        const users = await ChatService.getAllUsers();
+        const partners = users.filter(user => partnerIds.has(user.userId));
+        
+        // Add the latest message to each partner
+        return partners.map(partner => {
+          const conversations = conversationsByPartner[partner.userId] || [];
+          // Sort by sent time (newest first)
+          conversations.sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+          const latestMessage = conversations[0];
+          
+          return {
+            ...partner,
+            lastMessage: latestMessage?.messageText || "No messages yet",
+            lastMessageTime: latestMessage?.sentAt ? new Date(latestMessage.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "",
+            isUnread: latestMessage && latestMessage.receiver.userId === currentUserId && latestMessage.status !== 'READ'
+          };
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch conversation partners:', error);
+      return [];
+    }
   }
 };
 

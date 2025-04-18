@@ -10,6 +10,7 @@ function ChatWindow({ onClose }) {
   const [view, setView] = useState('list'); // 'list', 'search', or 'conversation'
   const [searchQuery, setSearchQuery] = useState('');
   const chatWindowRef = useRef(null);
+  const [refreshList, setRefreshList] = useState(0); // Add state to refresh list after sending a message
 
   const handleUserSelect = (user) => {
     setSelectedUser(user);
@@ -19,6 +20,8 @@ function ChatWindow({ onClose }) {
   const handleBackToList = () => {
     setView('list');
     setSelectedUser(null);
+    // Refresh the list to show updated message status
+    setRefreshList(prev => prev + 1);
   };
 
   // Toggle between list and search views based on search query
@@ -61,6 +64,7 @@ function ChatWindow({ onClose }) {
           )} 
           onBack={handleBackToList}
           onClose={onClose}
+          onMessageSent={() => setRefreshList(prev => prev + 1)}
         />
       ) : (
         <>
@@ -79,7 +83,8 @@ function ChatWindow({ onClose }) {
           ) : (
             <ChatList 
               onSelectUser={handleUserSelect}
-              searchQuery={searchQuery}
+              searchQuery=""
+              key={refreshList} // Add key to force refresh when sending a message
             />
           )}
         </>

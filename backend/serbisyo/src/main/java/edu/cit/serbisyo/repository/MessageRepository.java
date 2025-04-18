@@ -22,4 +22,12 @@ public interface MessageRepository extends JpaRepository<MessageEntity, Long> {
         @Param("receiverId") Long receiverId,
         @Param("alternateSenderId") Long alternateSenderId,
         @Param("alternateReceiverId") Long alternateReceiverId);
+        
+    // New method to find all messages for a specific user
+    @Query("SELECT m FROM MessageEntity m WHERE " +
+           "m.sender.userId = :userId OR m.receiver.userId = :userId " +
+           "ORDER BY m.sentAt DESC")
+    List<MessageEntity> findBySenderUserIdOrReceiverUserId(
+        @Param("userId") Long userId,
+        @Param("userId") Long sameUserId);
 }
