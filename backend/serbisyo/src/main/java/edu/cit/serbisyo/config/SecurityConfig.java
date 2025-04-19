@@ -51,15 +51,15 @@ public class SecurityConfig {
                 .authorizeHttpRequests(request -> request
                         .requestMatchers("/api/user-auth/register", "/api/user-auth/login").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers("/", "/error").permitAll()  // Add these paths
                         // Allow OAuth2 endpoints
-                        .requestMatchers("/login/oauth2/**", "/oauth2/**").permitAll()
+                        .requestMatchers("/login", "/login/oauth2/**", "/oauth2/**").permitAll()
                         .anyRequest().authenticated())
                 // Configure session management
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // Add OAuth2 login
                 .oauth2Login(oauth2 -> oauth2
-                        .loginPage("/login")
-                        .defaultSuccessUrl("/login/oauth2/code/google", true)
+                        .loginPage("/oauth2/authorization/google")  // Change this
                         .successHandler(oAuth2LoginSuccessHandler))
                 // Add JWT filter
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)

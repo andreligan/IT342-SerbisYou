@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-const OAuth2RedirectHandler = () => {
+function OAuth2RedirectHandler() {
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -20,9 +20,9 @@ const OAuth2RedirectHandler = () => {
       localStorage.setItem('isAuthenticated', 'true');
       
       // Redirect based on role
-      if (role.toLowerCase() === 'customer') {
+      if (role?.toLowerCase() === 'customer') {
         navigate('/customerHomePage');
-      } else if (role.toLowerCase() === 'service provider') {
+      } else if (role?.toLowerCase() === 'service provider') {
         navigate('/serviceProviderHomePage');
       } else {
         navigate('/');
@@ -33,12 +33,11 @@ const OAuth2RedirectHandler = () => {
   }, [location, navigate]);
   
   return (
-    <div className="d-flex justify-content-center">
-      <div className="spinner-border" role="status">
-        <span className="visually-hidden">Loading...</span>
-      </div>
+    <div className="flex justify-center items-center h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div>
+      <p className="ml-3 text-lg">Processing authentication...</p>
     </div>
   );
-};
+}
 
 export default OAuth2RedirectHandler;

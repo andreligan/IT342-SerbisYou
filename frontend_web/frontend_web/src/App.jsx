@@ -18,7 +18,7 @@ import API from "./utils/API";
 import axios from "axios";
 import ChatIcon from './components/chat/ChatIcon';
 import ChatWindow from './components/chat/ChatWindow';
-import OAuth2RedirectHandler from './components/OAuth2RedirectHandler';
+import OAuth2RedirectHandler from "./components/OAuth2RedirectHandler";
 
 // Protected Route component for role-based access control
 const ProtectedRoute = ({ element, allowedRoles }) => {
