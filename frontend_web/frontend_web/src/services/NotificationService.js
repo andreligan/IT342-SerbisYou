@@ -50,10 +50,33 @@ const NotificationService = {
     try {
       const authHeaders = NotificationService.getAuthHeaders();
       const response = await axios.get('/api/notifications/getAll', authHeaders);
-      return response.data;
+      
+      // Extract the current user's ID from localStorage
+      const currentUserId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+      
+      // Filter notifications to only show those for the current user
+      if (currentUserId && response.data) {
+        const userNotifications = response.data.filter(
+          notification => notification.user && notification.user.userId === parseInt(currentUserId)
+        );
+        return userNotifications;
+      }
+      
+      return response.data || [];
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
-      throw error;
+      return []; // Return empty array as fallback
+    }
+  },
+  
+  // Get unread notifications count
+  getUnreadCount: async () => {
+    try {
+      const notifications = await NotificationService.getNotifications();
+      return notifications.filter(n => !n.read).length;
+    } catch (error) {
+      console.error('Failed to get unread count:', error);
+      return 0;
     }
   },
   
@@ -68,6 +91,29 @@ const NotificationService = {
       return response.data;
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
+      throw error;
+    }
+  },
+  
+  // Mark all notifications as read
+  markAllAsRead: async () => {
+    try {
+      const notifications = await NotificationService.getNotifications();
+      const unreadNotifications = notifications.filter(n => !n.read);
+      
+      const authHeaders = NotificationService.getAuthHeaders();
+      const updatePromises = unreadNotifications.map(notification => 
+        axios.put(
+          `/api/notifications/update/${notification.notificationId}`, 
+          { read: true }, 
+          authHeaders
+        )
+      );
+      
+      await Promise.all(updatePromises);
+      return true;
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
       throw error;
     }
   }
