@@ -2,7 +2,6 @@ package edu.cit.serbisyo.security;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,34 +43,34 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         // Extract email and name from Google user info
         String email = (String) attributes.get("email");
         String name = (String) attributes.get("name");
+        String picture = (String) attributes.get("picture");
         
-        // Check if user exists, or create a new one
-        Optional<UserAuthEntity> existingUser = Optional.ofNullable(userAuthRepository.findByEmail(email));
-        UserAuthEntity user = existingUser.orElseGet(() -> {
-            // Create a new user with Google OAuth info
-            UserAuthEntity newUser = new UserAuthEntity();
-            newUser.setEmail(email);
-            newUser.setUserName(email); // Use email as username initially
-            // Generate a random password since OAuth2 users don't need it
-            newUser.setPassword(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(java.util.UUID.randomUUID().toString()));
-            newUser.setRole("Customer"); // Default role
-            return userAuthRepository.save(newUser);
-        });
+        // Check if user exists
+        UserAuthEntity existingUser = userAuthRepository.findByEmail(email);
         
-        // Generate JWT token
-        String token = jwtUtil.generateToken(user.getUserName(), user.getEmail(), user.getRole());
+        String redirectUrl;
         
-        // Build redirect URL with token parameters
-        String redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/oauth2/redirect")
-                .queryParam("token", token)
-                .queryParam("userId", user.getUserId())
-                .queryParam("role", user.getRole())
+        if (existingUser == null) {
+            // For new users, redirect to role selection
+            redirectUrl = UriComponentsBuilder
+                .fromUriString(frontendUrl + "/oauth-role-selection")
+                .queryParam("email", email)
+                .queryParam("name", name)
+                .queryParam("picture", picture)
                 .build().toUriString();
+        } else {
+            // For existing users, generate token and redirect to home
+            String token = jwtUtil.generateToken(existingUser.getUserName(), existingUser.getEmail(), existingUser.getRole());
+            
+            redirectUrl = UriComponentsBuilder
+                .fromUriString(frontendUrl + "/oauth2/redirect")
+                .queryParam("token", token)
+                .queryParam("userId", existingUser.getUserId())
+                .queryParam("role", existingUser.getRole())
+                .build().toUriString();
+        }
         
-        // Set status to OK
-        response.setStatus(HttpServletResponse.SC_OK);
-        
-        // Redirect to frontend with token
+        // Redirect to frontend
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
 }

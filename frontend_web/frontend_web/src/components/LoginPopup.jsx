@@ -92,6 +92,24 @@ const LoginPopup = ({ open, onClose }) => {
       </DialogTitle>
       
       <DialogContent>
+        <Box sx={{ textAlign: 'center', mb: 3 }}>
+          <div className="flex items-center justify-center mb-6">
+            <button
+              onClick={handleGoogleLogin}
+              className="flex items-center justify-center w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <img src="/google-icon.svg" alt="Google" className="h-5 w-5 mr-2" />
+              Continue with Google
+            </button>
+          </div>
+
+          <div className="relative flex py-4 items-center">
+            <div className="flex-grow border-t border-gray-300"></div>
+            <span className="flex-shrink mx-4 text-gray-400">or</span>
+            <div className="flex-grow border-t border-gray-300"></div>
+          </div>
+        </Box>
+
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
           {errorMessage && (
             <Typography color="error" sx={{ mb: 2 }}>

@@ -49,9 +49,9 @@ public class SecurityConfig {
                 .csrf(customizer -> customizer.disable())
                 // Configure authorization rules
                 .authorizeHttpRequests(request -> request
-                        .requestMatchers("/api/user-auth/register", "/api/user-auth/login").permitAll()
+                        .requestMatchers("/api/user-auth/register", "/api/user-auth/login", "/api/oauth/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
-                        .requestMatchers("/", "/error").permitAll()  // Add these paths
+                        .requestMatchers("/", "/error").permitAll()
                         // Allow OAuth2 endpoints
                         .requestMatchers("/login", "/login/oauth2/**", "/oauth2/**").permitAll()
                         .anyRequest().authenticated())

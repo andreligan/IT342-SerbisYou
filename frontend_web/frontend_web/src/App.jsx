@@ -1,6 +1,8 @@
 import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 import LandingPage from "./components/LandingPage";
 import SignupStepWizard from "./components/SignupStepWizard";
+import SignupOptions from "./components/SignupOptions"; // Add this import
+import OAuthRoleSelection from "./components/OAuthRoleSelection"; // Add this import
 import LoginPopup from "./components/LoginPopup";
 import CustomerHomePage from "./components/CustomerHomePage";
 import BrowseServicesPage from "./components/BrowseServicesPage";
@@ -258,7 +260,11 @@ function App() {
               : <LandingPage />
           } 
         />
+        {/* Change the signup route to point to options */}
+        <Route path="/signup" element={<SignupOptions />} />
+        {/* Keep the wizard for the manual flow */}
         <Route path="/signup/*" element={<SignupStepWizard />} />
+        <Route path="/oauth-role-selection" element={<OAuthRoleSelection />} />
         <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
 
         {/* Protected routes */}
