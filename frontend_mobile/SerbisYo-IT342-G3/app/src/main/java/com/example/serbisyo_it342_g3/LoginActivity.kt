@@ -67,8 +67,14 @@ class LoginActivity : AppCompatActivity() {
                 
                 val requestBody = jsonObject.toString()
                     .toRequestBody("application/json".toMediaTypeOrNull())
-                
-                val requestUrl = "http://10.0.2.2:8080/api/user-auth/login"
+
+                //if using android emulator
+                //val requestUrl = "http://10.0.2.2:8080/api/user-auth/login"
+
+                //if using the physical device
+                val requestUrl = "http://192.168.254.103:8080/api/user-auth/login"
+
+                //val requestUrl = "http://192.168.17.136:8080/api/user-auth/login" // guada
                 Log.d(TAG, "Sending login request to: $requestUrl")
                 Log.d(TAG, "Request body: $jsonObject")
                 

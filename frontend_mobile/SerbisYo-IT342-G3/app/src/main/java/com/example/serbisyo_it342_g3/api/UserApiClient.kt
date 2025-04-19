@@ -15,7 +15,13 @@ import java.io.IOException
 class UserApiClient(private val context: Context) {
     private val client = OkHttpClient()
     private val gson = Gson()
-    private val BASE_URL = "http://10.0.2.2:8080" // Use your actual backend URL
+
+    //if using the android emulator
+    //private val BASE_URL = "http://10.0.2.2:8080" // Use your actual backend URL
+
+    //if using the physical device
+    private val BASE_URL = "http://192.168.254.103:8080" // sa dalaguete
+    //private val BASE_URL = "http://192.168.17.136:8080" // Your computer's IP address sa guada
     private val TAG = "UserApiClient"
 
     // Get customer profile
