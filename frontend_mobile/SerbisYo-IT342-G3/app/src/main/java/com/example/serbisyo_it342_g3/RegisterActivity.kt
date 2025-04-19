@@ -161,7 +161,13 @@ class RegisterActivity : AppCompatActivity() {
                     .toRequestBody("application/json".toMediaTypeOrNull())
 
                 val request = Request.Builder()
-                    .url("http://10.0.2.2:8080/api/user-auth/register") // Using 10.0.2.2 for emulator
+                        //if using the android emulator
+                    //.url("http://10.0.2.2:8080/api/user-auth/register") // Using 10.0.2.2 for emulator
+
+                        //if using the physical device
+
+                    .url("http://192.168.254.103:8080/api/user-auth/register")
+                    //.url("http://192.168.17.136:8080/api/user-auth/register")//guada
                     .post(requestBody)
                     .build()
 
