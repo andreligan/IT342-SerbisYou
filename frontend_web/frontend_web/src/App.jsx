@@ -1,8 +1,8 @@
 import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 import LandingPage from "./components/LandingPage";
 import SignupStepWizard from "./components/SignupStepWizard";
-import SignupOptions from "./components/SignupOptions"; // Add this import
-import OAuthRoleSelection from "./components/OAuthRoleSelection"; // Add this import
+import SignupOptionsPopup from "./components/SignupOptionsPopup"; // Update import
+import OAuthRoleSelection from "./components/OAuthRoleSelection";
 import LoginPopup from "./components/LoginPopup";
 import CustomerHomePage from "./components/CustomerHomePage";
 import BrowseServicesPage from "./components/BrowseServicesPage";
@@ -51,15 +51,15 @@ const ProtectedRoute = ({ element, allowedRoles }) => {
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState(null); // Add state for user role
+  const [userRole, setUserRole] = useState(null);
   const [isLoginPopupVisible, setIsLoginPopupVisible] = useState(false);
   const [isLogoutPopupVisible, setIsLogoutPopupVisible] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false); // For user profile dropdown
-  const [isChatOpen, setIsChatOpen] = useState(false); // State for chat window
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isSignupPopupVisible, setIsSignupPopupVisible] = useState(false); // Add state for signup popup visibility
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Update the dependency array to include an empty dependency
   useEffect(() => {
     const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
     const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
@@ -71,7 +71,6 @@ function App() {
 
   const confirmLogout = () => {
     console.log("User has logged out.");
-    // Clear all authentication data
     localStorage.removeItem("authToken");
     localStorage.removeItem("userRole");
     localStorage.removeItem("userId");
@@ -83,8 +82,8 @@ function App() {
 
     setIsAuthenticated(false);
     setUserRole(null);
-    setDropdownOpen(false); // Close the profile menu
-    setIsLogoutPopupVisible(false); // Close the logout confirmation popup
+    setDropdownOpen(false);
+    setIsLogoutPopupVisible(false);
     navigate("/");
   };
 
@@ -98,10 +97,9 @@ function App() {
 
   const renderNavigationLinks = () => {
     if (!isAuthenticated) return null;
-  
+
     return (
       <div className="flex items-center gap-6">
-        {/* Home Link */}
         <button
           onClick={() => navigate(userRole === "customer" ? "/customerHomePage" : "/serviceProviderHomePage")}
           className="p-2 rounded-full hover:bg-gray-200"
@@ -118,7 +116,6 @@ function App() {
           </svg>
         </button>
 
-        {/* Chat/Messages Link (Exclude for Admin) */}
         {userRole !== "admin" && (
           <button
             onClick={() => navigate("/messages")}
@@ -141,7 +138,6 @@ function App() {
           </button>
         )}
 
-        {/* Notifications Link */}
         <button
           onClick={() => navigate("/notifications")}
           className="p-2 rounded-full hover:bg-gray-200"
@@ -161,8 +157,7 @@ function App() {
             />
           </svg>
         </button>
-  
-        {/* User Profile Dropdown */}
+
         <div className="relative">
           <button
             onClick={toggleDropdown}
@@ -205,7 +200,7 @@ function App() {
                 Manage Profile
               </button>
               <button
-                onClick={() => setIsLogoutPopupVisible(true)} // Show the logout confirmation popup
+                onClick={() => setIsLogoutPopupVisible(true)}
                 className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100"
               >
                 Logout
@@ -228,7 +223,7 @@ function App() {
           {!isAuthenticated ? (
             <div className="flex gap-4">
               <button
-                onClick={() => navigate("/signup")}
+                onClick={() => setIsSignupPopupVisible(true)}
                 className="px-4 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500"
               >
                 Sign Up
@@ -246,7 +241,6 @@ function App() {
         </div>
       </header>
       <Routes>
-        {/* Public routes */}
         <Route 
           path="/" 
           element={
@@ -260,14 +254,9 @@ function App() {
               : <LandingPage />
           } 
         />
-        {/* Change the signup route to point to options */}
-        <Route path="/signup" element={<SignupOptions />} />
-        {/* Keep the wizard for the manual flow */}
         <Route path="/signup/*" element={<SignupStepWizard />} />
         <Route path="/oauth-role-selection" element={<OAuthRoleSelection />} />
         <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
-
-        {/* Protected routes */}
         <Route
           path="/customerHomePage"
           element={<ProtectedRoute element={<CustomerHomePage />} allowedRoles={["customer"]} />}
@@ -306,26 +295,28 @@ function App() {
         />
       </Routes>
 
-      {/* Chat components */}
+      <SignupOptionsPopup
+        open={isSignupPopupVisible}
+        onClose={() => setIsSignupPopupVisible(false)}
+      />
+
+      <LoginPopup
+        open={isLoginPopupVisible}
+        onClose={() => setIsLoginPopupVisible(false)}
+      />
+
+      <LogoutConfirmationPopup
+        open={isLogoutPopupVisible}
+        onClose={() => setIsLogoutPopupVisible(false)}
+        onConfirm={confirmLogout}
+      />
+
       {isAuthenticated && (
         <>
           <ChatIcon isOpen={isChatOpen} onClick={toggleChat} />
           {isChatOpen && <ChatWindow onClose={toggleChat} />}
         </>
       )}
-
-      {/* Login Popup */}
-      <LoginPopup
-        open={isLoginPopupVisible}
-        onClose={() => setIsLoginPopupVisible(false)}
-      />
-
-      {/* Logout Confirmation Popup */}
-      <LogoutConfirmationPopup
-        open={isLogoutPopupVisible}
-        onClose={() => setIsLogoutPopupVisible(false)}
-        onConfirm={confirmLogout}
-      />
     </>
   );
 }
