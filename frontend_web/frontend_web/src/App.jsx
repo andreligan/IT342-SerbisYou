@@ -160,7 +160,13 @@ function App() {
 
         <div className="relative">
           <button
-            onClick={toggleDropdown}
+            onMouseEnter={() => setDropdownOpen(true)}
+            onMouseLeave={() => setTimeout(() => {
+              // Small timeout to allow cursor to move to dropdown
+              if (!document.querySelector('.dropdown-menu:hover')) {
+                setDropdownOpen(false);
+              }
+            }, 100)}
             className="p-2 rounded-full hover:bg-gray-200"
           >
             <svg
@@ -179,7 +185,11 @@ function App() {
             </svg>
           </button>
           {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg z-50">
+            <div 
+              className="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg z-50 dropdown-menu"
+              onMouseEnter={() => setDropdownOpen(true)}
+              onMouseLeave={() => setDropdownOpen(false)}
+            >
               <div className="p-4 border-b border-gray-200">
                 <p className="text-sm font-semibold text-gray-800">User Menu</p>
               </div>
