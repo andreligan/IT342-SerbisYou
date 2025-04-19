@@ -319,6 +319,26 @@ const ChatService = {
       console.error('Failed to fetch conversation partners:', error);
       return [];
     }
+  },
+
+  // Mark a message as read
+  markMessageAsRead: async (messageId) => {
+    try {
+      const authHeaders = ChatService.getAuthHeaders();
+      
+      // Update message status to READ
+      const updateData = {
+        status: "READ"
+      };
+      
+      console.log(`Updating message ${messageId} status to READ`);
+      const response = await axios.put(`/api/messages/updateMessage/${messageId}`, updateData, authHeaders);
+      console.log('Message marked as read:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to mark message ${messageId} as read:`, error);
+      throw error;
+    }
   }
 };
 

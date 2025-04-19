@@ -18,17 +18,56 @@ const NotificationsPage = () => {
       setLoading(true);
       setError(null);
       const data = await NotificationService.getNotifications();
-      // Sort by created date (newest first)
-      const sortedNotifications = data.sort((a, b) => 
-        new Date(b.createdAt) - new Date(a.createdAt)
-      );
-      setNotifications(sortedNotifications);
+      
+      // Process notifications to group messages by sender
+      const processedNotifications = processNotifications(data);
+      
+      setNotifications(processedNotifications);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
       setError('Failed to load notifications. Please try again later.');
     } finally {
       setLoading(false);
     }
+  };
+  
+  // Process notifications to group messages by sender
+  const processNotifications = (notificationsList) => {
+    // First, separate message notifications from other types
+    const messageNotifications = notificationsList.filter(
+      notification => notification.type?.toLowerCase() === 'message'
+    );
+    const otherNotifications = notificationsList.filter(
+      notification => notification.type?.toLowerCase() !== 'message'
+    );
+    
+    // Group message notifications by sender
+    const messageGroups = {};
+    
+    messageNotifications.forEach(notification => {
+      // Extract sender info from message content
+      const messageContent = notification.message || '';
+      const senderMatch = messageContent.match(/^([^:]+) sent you a message/);
+      const senderName = senderMatch ? senderMatch[1] : 'Unknown';
+      
+      if (!messageGroups[senderName]) {
+        messageGroups[senderName] = [];
+      }
+      messageGroups[senderName].push(notification);
+    });
+    
+    // For each sender, only keep the most recent message
+    const latestMessages = Object.values(messageGroups).map(group => {
+      // Sort by timestamp (newest first)
+      group.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      return group[0]; // Return only the most recent
+    });
+    
+    // Combine with other notifications and sort by timestamp (newest first)
+    const combinedNotifications = [...latestMessages, ...otherNotifications];
+    combinedNotifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    return combinedNotifications;
   };
   
   useEffect(() => {
@@ -63,26 +102,23 @@ const NotificationsPage = () => {
 
   const markAllAsRead = async () => {
     try {
-      const unreadNotifications = notifications.filter(n => !n.read);
+      // Pass the full notifications array
+      await NotificationService.markAllAsRead(notifications);
       
-      // Update each unread notification
-      await Promise.all(unreadNotifications.map(notification => 
-        NotificationService.markAsRead(notification.notificationId)
-      ));
-      
-      // Update local state
-      setNotifications(notifications.map(n => ({ ...n, read: true })));
+      // Refresh notifications list
+      fetchNotifications();
     } catch (error) {
       console.error('Failed to mark notifications as read:', error);
     }
   };
   
-  const markAsRead = async (notificationId) => {
+  const markAsRead = async (notificationId, notificationData) => {
     try {
-      await NotificationService.markAsRead(notificationId);
-      setNotifications(notifications.map(n => 
-        n.notificationId === notificationId ? { ...n, read: true } : n
-      ));
+      // Pass both ID and notification data
+      await NotificationService.markAsRead(notificationId, notificationData);
+      
+      // Refresh notifications list after marking as read (and possibly deleting)
+      fetchNotifications();
     } catch (error) {
       console.error(`Failed to mark notification ${notificationId} as read:`, error);
     }
@@ -174,7 +210,7 @@ const NotificationsPage = () => {
                 referenceId: notification.referenceId,
                 referenceType: notification.referenceType
               }}
-              onMarkAsRead={() => markAsRead(notification.notificationId)}
+              onMarkAsRead={() => markAsRead(notification.notificationId, notification)}
             />
           ))
         ) : (

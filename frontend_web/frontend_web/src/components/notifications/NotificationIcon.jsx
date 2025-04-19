@@ -18,9 +18,9 @@ const NotificationIcon = () => {
   
   const fetchUnreadCount = async () => {
     try {
-      const notifications = await NotificationService.getNotifications();
-      const unreadNotifications = notifications.filter(n => !n.read);
-      setUnreadCount(unreadNotifications.length);
+      // Use the enhanced unread count method that groups messages by sender
+      const count = await NotificationService.getUnreadCount();
+      setUnreadCount(count);
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
     }

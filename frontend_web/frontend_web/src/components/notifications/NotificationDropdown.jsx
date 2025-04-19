@@ -22,17 +22,57 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
       setLoading(true);
       setError(null);
       const data = await NotificationService.getNotifications();
-      // Sort by created date (newest first)
-      const sortedNotifications = data.sort((a, b) => 
-        new Date(b.createdAt) - new Date(a.createdAt)
-      );
-      setNotifications(sortedNotifications);
+      
+      // Process notifications to group messages by sender
+      const processedNotifications = processNotifications(data);
+      
+      setNotifications(processedNotifications);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
       setError('Failed to load notifications');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Process notifications to group messages by sender
+  const processNotifications = (notificationsList) => {
+    // First, separate message notifications from other types
+    const messageNotifications = notificationsList.filter(
+      notification => notification.type?.toLowerCase() === 'message'
+    );
+    const otherNotifications = notificationsList.filter(
+      notification => notification.type?.toLowerCase() !== 'message'
+    );
+    
+    // Group message notifications by senderId (using referenceId as the key)
+    const messageGroups = {};
+    
+    messageNotifications.forEach(notification => {
+      // Extract sender ID from message (assuming the format includes sender information)
+      // This might need adjustment based on your actual data structure
+      const messageContent = notification.message || '';
+      const senderMatch = messageContent.match(/^([^:]+) sent you a message/);
+      const senderName = senderMatch ? senderMatch[1] : 'Unknown';
+      
+      if (!messageGroups[senderName]) {
+        messageGroups[senderName] = [];
+      }
+      messageGroups[senderName].push(notification);
+    });
+    
+    // For each sender, only keep the most recent message
+    const latestMessages = Object.values(messageGroups).map(group => {
+      // Sort by timestamp (newest first)
+      group.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      return group[0]; // Return only the most recent
+    });
+    
+    // Combine with other notifications and sort by timestamp (newest first)
+    const combinedNotifications = [...latestMessages, ...otherNotifications];
+    combinedNotifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    return combinedNotifications;
   };
   
   // Handle scroll within the notification list
@@ -70,24 +110,23 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
     try {
       const unreadNotifications = notifications.filter(n => !n.read);
       
-      // Update each unread notification
-      await Promise.all(unreadNotifications.map(notification => 
-        NotificationService.markAsRead(notification.notificationId)
-      ));
+      // Pass the full notifications array to markAllAsRead
+      await NotificationService.markAllAsRead(notifications);
       
-      // Update local state
-      setNotifications(notifications.map(n => ({ ...n, read: true })));
+      // After marking all as read (and possibly deleting), refresh the list
+      fetchNotifications();
     } catch (error) {
       console.error('Failed to mark notifications as read:', error);
     }
   };
   
-  const markAsRead = async (notificationId) => {
+  const markAsRead = async (notificationId, notificationData) => {
     try {
-      await NotificationService.markAsRead(notificationId);
-      setNotifications(notifications.map(n => 
-        n.notificationId === notificationId ? { ...n, read: true } : n
-      ));
+      // Pass both ID and notification data
+      await NotificationService.markAsRead(notificationId, notificationData);
+      
+      // After marking as read (and possibly deleting), refresh the list
+      fetchNotifications();
     } catch (error) {
       console.error(`Failed to mark notification ${notificationId} as read:`, error);
     }
@@ -148,7 +187,7 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
                 referenceId: notification.referenceId,
                 referenceType: notification.referenceType
               }}
-              onMarkAsRead={() => markAsRead(notification.notificationId)}
+              onMarkAsRead={() => markAsRead(notification.notificationId, notification)}
             />
           ))
         ) : (

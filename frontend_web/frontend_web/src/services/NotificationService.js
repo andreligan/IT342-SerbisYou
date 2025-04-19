@@ -1,4 +1,5 @@
 import axios from 'axios';
+import ChatService from './ChatService';
 
 const NotificationService = {
   // Get auth token and headers (reusing the pattern from ChatService)
@@ -69,25 +70,97 @@ const NotificationService = {
     }
   },
   
-  // Get unread notifications count
+  // Get unread notifications count (update to account for grouped messages)
   getUnreadCount: async () => {
     try {
       const notifications = await NotificationService.getNotifications();
-      return notifications.filter(n => !n.read).length;
+      
+      // Process notifications to group messages by sender
+      const processedNotifications = NotificationService.processNotificationsForCount(notifications);
+      
+      return processedNotifications.filter(n => !n.read).length;
     } catch (error) {
       console.error('Failed to get unread count:', error);
       return 0;
     }
   },
   
+  // Helper method to process notifications for unread count
+  processNotificationsForCount: (notificationsList) => {
+    // First, separate message notifications from other types
+    const messageNotifications = notificationsList.filter(
+      notification => notification.type?.toLowerCase() === 'message'
+    );
+    const otherNotifications = notificationsList.filter(
+      notification => notification.type?.toLowerCase() !== 'message'
+    );
+    
+    // Group message notifications by sender
+    const messageGroups = {};
+    
+    messageNotifications.forEach(notification => {
+      // Extract sender info from message content
+      const messageContent = notification.message || '';
+      const senderMatch = messageContent.match(/^([^:]+) sent you a message/);
+      const senderName = senderMatch ? senderMatch[1] : 'Unknown';
+      
+      if (!messageGroups[senderName]) {
+        messageGroups[senderName] = [];
+      }
+      messageGroups[senderName].push(notification);
+    });
+    
+    // For each sender, only keep the most recent message
+    const latestMessages = Object.values(messageGroups).map(group => {
+      // Sort by timestamp (newest first)
+      group.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      return group[0]; // Return only the most recent
+    });
+    
+    // Combine with other notifications
+    const combinedNotifications = [...latestMessages, ...otherNotifications];
+    
+    return combinedNotifications;
+  },
+  
   // Mark a notification as read
-  markAsRead: async (notificationId) => {
+  markAsRead: async (notificationId, notificationData) => {
     try {
       const authHeaders = NotificationService.getAuthHeaders();
+      
+      // Since we don't have a GET endpoint for a single notification,
+      // we'll use the notification data passed from the components
+      const notification = notificationData;
+      
+      // If it's a message notification, update the message status too
+      if (notification && notification.type?.toLowerCase() === 'message' && notification.referenceId) {
+        try {
+          // Update the message status
+          await ChatService.markMessageAsRead(notification.referenceId);
+          console.log(`Updated message ${notification.referenceId} status to READ`);
+        } catch (msgError) {
+          console.error('Failed to update message status:', msgError);
+          // Continue even if message update fails
+        }
+      }
+      
+      // Mark notification as read
       const updatedNotification = {
         read: true
       };
+      
+      console.log(`Marking notification ${notificationId} as read`);
       const response = await axios.put(`/api/notifications/update/${notificationId}`, updatedNotification, authHeaders);
+      
+      // Delete notification after marking it as read
+      try {
+        console.log(`Deleting notification ${notificationId} after marking as read`);
+        await NotificationService.deleteNotification(notificationId);
+      } catch (deleteError) {
+        console.error('Failed to delete notification:', deleteError);
+        // Continue even if deletion fails
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
@@ -95,22 +168,29 @@ const NotificationService = {
     }
   },
   
-  // Mark all notifications as read
-  markAllAsRead: async () => {
+  // Delete a notification
+  deleteNotification: async (notificationId) => {
     try {
-      const notifications = await NotificationService.getNotifications();
+      const authHeaders = NotificationService.getAuthHeaders();
+      const response = await axios.delete(`/api/notifications/delete/${notificationId}`, authHeaders);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to delete notification:', error);
+      throw error;
+    }
+  },
+  
+  // Mark all notifications as read
+  markAllAsRead: async (notifications) => {
+    try {
+      // We need the notifications data since we can't fetch a single notification by ID
       const unreadNotifications = notifications.filter(n => !n.read);
       
-      const authHeaders = NotificationService.getAuthHeaders();
-      const updatePromises = unreadNotifications.map(notification => 
-        axios.put(
-          `/api/notifications/update/${notification.notificationId}`, 
-          { read: true }, 
-          authHeaders
-        )
-      );
+      // Process each notification individually to handle message-specific logic
+      for (const notification of unreadNotifications) {
+        await NotificationService.markAsRead(notification.notificationId, notification);
+      }
       
-      await Promise.all(updatePromises);
       return true;
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
