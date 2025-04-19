@@ -59,6 +59,10 @@ const LoginPopup = ({ open, onClose }) => {
     }
   };
 
+  const handleGoogleLogin = () => {
+    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+  };
+
   return (
     <Dialog 
       open={open} 
@@ -166,6 +170,7 @@ const LoginPopup = ({ open, onClose }) => {
             variant="outlined"
             startIcon={<GoogleIcon />}
             sx={{ textTransform: 'none', mb: 2 }}
+            onClick={handleGoogleLogin}
           >
             Log in with Google
           </Button>

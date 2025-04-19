@@ -18,6 +18,7 @@ import API from "./utils/API";
 import axios from "axios";
 import ChatIcon from './components/chat/ChatIcon';
 import ChatWindow from './components/chat/ChatWindow';
+import OAuth2RedirectHandler from './components/OAuth2RedirectHandler';
 
 // Protected Route component for role-based access control
 const ProtectedRoute = ({ element, allowedRoles }) => {
@@ -258,6 +259,7 @@ function App() {
           } 
         />
         <Route path="/signup/*" element={<SignupStepWizard />} />
+        <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
 
         {/* Protected routes */}
         <Route
