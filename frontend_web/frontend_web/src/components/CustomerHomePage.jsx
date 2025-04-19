@@ -16,6 +16,7 @@ import lawnCare from "../assets/lawn care.jpg";
 import serviceImage1 from "../assets/appliance repair.jpg";
 import serviceImage2 from "../assets/carpentry.jpg";
 import serviceImage3 from "../assets/cleaning.jpg";
+import API from "../utils/API";
 
 const HeroSection = styled(Box)({
   display: "flex",
@@ -183,15 +184,12 @@ function CustomerHomePage() {
           return;
         }
 
-        const response = await axios.get("/api/service-categories/getAll", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await API.get("/api/service-categories/getAll");
 
         setCategories(response.data);
         setIsLoading(false);
       } catch (error) {
+        console.log("Categories fetched:", response.data); // Log the fetched categories
         console.error("Error fetching categories:", error);
         setIsLoading(false);
       }
