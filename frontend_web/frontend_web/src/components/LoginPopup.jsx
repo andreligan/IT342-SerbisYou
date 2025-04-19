@@ -14,6 +14,8 @@ const LoginPopup = ({ open, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage("");
+    
     try {
       // Send login request to the backend
       const response = await axios.post('/api/user-auth/login', {
@@ -21,51 +23,39 @@ const LoginPopup = ({ open, onClose }) => {
         password,
       });
     
-      // Log first to see what's actually in the response
-      console.log('Full response data:', response.data);
+      // Extract the data
+      const { token, role, userId } = response.data;  // Extract userId from response
       
-      // Then extract the data with potential fallback
-      const token = response.data.token;
-      const role = response.data.role;
-      const userId = response.data.userId || response.data.id; // Try alternative property names
-      
-      // console.log('Login successful. Token:', token, 'Role:', role, 'User ID:', userId);
-      
-      // Store in localStorage/sessionStorage and add userId too
+      // Store in localStorage/sessionStorage
       if (rememberMe) {
         localStorage.setItem('authToken', token);
         localStorage.setItem('userRole', role);
-        localStorage.setItem('userId', userId); // Store userId too
+        localStorage.setItem('userId', userId);  // Add this line
         localStorage.setItem('isAuthenticated', 'true');
       } else {
         sessionStorage.setItem('authToken', token);
         sessionStorage.setItem('userRole', role);
-        sessionStorage.setItem('userId', userId); // Store userId too
+        sessionStorage.setItem('userId', userId);  // Add this line
         sessionStorage.setItem('isAuthenticated', 'true');
       }
   
-      // Redirect based on role
-      switch (role.toLowerCase()) { // Convert role to lowercase for case-insensitive comparison
-        case 'customer':
-          navigate('/customerHomePage');
-          break;
-        case 'admin':
-          navigate('/adminDashboard');
-          break;
-        case 'service provider': // Match the exact string from the database
-          navigate('/serviceProviderHomePage');
-          break;
-        default:
-          navigate('/defaultPage'); // Fallback route
-          break;
-      }
-  
-      // Close the popup
+      // Close the login popup
       onClose();
+  
+      // Redirect based on role WITH HISTORY REPLACEMENT
+      if (role.toLowerCase() === "customer") {
+        navigate('/customerHomePage', { replace: true });
+      } else if (role.toLowerCase() === "service provider") {
+        navigate('/serviceProviderHomePage', { replace: true });
+      } else {
+        // Handle other roles or unexpected cases
+        console.error("Unknown user role:", role);
+        navigate('/');
+      }
     } catch (error) {
       // Handle login error
-      const errorMsg = error.response?.data?.message || 'Invalid username or password.';
-      setErrorMessage(errorMsg);
+      console.error("Login failed:", error);
+      setErrorMessage(error.response?.data?.message || "Login failed. Please check your credentials.");
     }
   };
 

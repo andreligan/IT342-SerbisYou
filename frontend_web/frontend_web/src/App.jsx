@@ -71,9 +71,11 @@ function App() {
     // Clear all authentication data
     localStorage.removeItem("authToken");
     localStorage.removeItem("userRole");
+    localStorage.removeItem("userId");
     localStorage.removeItem("isAuthenticated");
     sessionStorage.removeItem("authToken");
     sessionStorage.removeItem("userRole");
+    sessionStorage.removeItem("userId");
     sessionStorage.removeItem("isAuthenticated");
 
     setIsAuthenticated(false);
@@ -242,8 +244,20 @@ function App() {
       </header>
       <Routes>
         {/* Public routes */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/signup" element={<SignupStepWizard />} />
+        <Route 
+          path="/" 
+          element={
+            isAuthenticated ? 
+              <Navigate 
+                to={userRole?.toLowerCase() === "customer" 
+                  ? "/customerHomePage" 
+                  : "/serviceProviderHomePage"} 
+                replace 
+              /> 
+              : <LandingPage />
+          } 
+        />
+        <Route path="/signup/*" element={<SignupStepWizard />} />
 
         {/* Protected routes */}
         <Route
