@@ -181,14 +181,47 @@ const NotificationService = {
   },
   
   // Mark all notifications as read
-  markAllAsRead: async (notifications) => {
+  markAllAsRead: async (visibleNotifications) => {
     try {
-      // We need the notifications data since we can't fetch a single notification by ID
-      const unreadNotifications = notifications.filter(n => !n.read);
+      // Fetch ALL notifications, not just the visible ones
+      const allNotifications = await NotificationService.getNotifications();
+      
+      // Filter ALL unread notifications
+      const allUnreadNotifications = allNotifications.filter(n => !n.read);
+      
+      console.log(`Marking all ${allUnreadNotifications.length} unread notifications as read`);
       
       // Process each notification individually to handle message-specific logic
-      for (const notification of unreadNotifications) {
-        await NotificationService.markAsRead(notification.notificationId, notification);
+      for (const notification of allUnreadNotifications) {
+        // For message notifications, we need to update the message status
+        if (notification.type?.toLowerCase() === 'message' && notification.referenceId) {
+          try {
+            // Update message status to READ
+            await ChatService.markMessageAsRead(notification.referenceId);
+            console.log(`Updated message ${notification.referenceId} status to READ`);
+          } catch (msgError) {
+            console.error('Failed to update message status:', msgError);
+            // Continue even if message update fails
+          }
+        }
+        
+        // Mark notification as read and delete it
+        try {
+          // Mark as read first
+          const updatedNotification = { read: true };
+          await axios.put(
+            `/api/notifications/update/${notification.notificationId}`, 
+            updatedNotification, 
+            NotificationService.getAuthHeaders()
+          );
+          
+          // Then delete it
+          await NotificationService.deleteNotification(notification.notificationId);
+          console.log(`Notification ${notification.notificationId} marked as read and deleted`);
+        } catch (notifError) {
+          console.error('Failed to process notification:', notifError);
+          // Continue with next notification even if this one fails
+        }
       }
       
       return true;

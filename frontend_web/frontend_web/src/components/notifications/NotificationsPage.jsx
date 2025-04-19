@@ -102,13 +102,18 @@ const NotificationsPage = () => {
 
   const markAllAsRead = async () => {
     try {
-      // Pass the full notifications array
-      await NotificationService.markAllAsRead(notifications);
+      setLoading(true);
+      
+      // Use the enhanced markAllAsRead method that processes ALL notifications
+      await NotificationService.markAllAsRead();
       
       // Refresh notifications list
       fetchNotifications();
     } catch (error) {
       console.error('Failed to mark notifications as read:', error);
+      setError('Failed to mark all notifications as read');
+    } finally {
+      setLoading(false);
     }
   };
   

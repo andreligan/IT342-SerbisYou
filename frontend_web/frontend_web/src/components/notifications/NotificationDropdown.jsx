@@ -108,15 +108,19 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
 
   const markAllAsRead = async () => {
     try {
-      const unreadNotifications = notifications.filter(n => !n.read);
+      // Show loading state
+      setLoading(true);
       
-      // Pass the full notifications array to markAllAsRead
-      await NotificationService.markAllAsRead(notifications);
+      // Call the enhanced markAllAsRead method that handles all notifications
+      await NotificationService.markAllAsRead();
       
-      // After marking all as read (and possibly deleting), refresh the list
+      // After marking all as read, refresh the list
       fetchNotifications();
     } catch (error) {
       console.error('Failed to mark notifications as read:', error);
+      setError('Failed to mark all notifications as read');
+    } finally {
+      setLoading(false);
     }
   };
   

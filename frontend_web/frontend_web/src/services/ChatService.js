@@ -321,17 +321,42 @@ const ChatService = {
     }
   },
 
-  // Mark a message as read
+  // Mark a message as read while preserving the message text
   markMessageAsRead: async (messageId) => {
     try {
       const authHeaders = ChatService.getAuthHeaders();
+      let messageText = null;
       
-      // Update message status to READ
+      // First try to find the message from the conversation API
+      try {
+        // Get all messages
+        const allMessagesResponse = await axios.get('/api/messages/getAll', authHeaders);
+        const allMessages = allMessagesResponse.data;
+        
+        // Find the specific message
+        const message = allMessages.find(msg => msg.messageId === messageId);
+        
+        if (message) {
+          messageText = message.messageText;
+          console.log(`Found message ${messageId} with text: "${messageText}"`);
+        } else {
+          console.warn(`Message ${messageId} not found in all messages`);
+        }
+      } catch (error) {
+        console.error('Failed to find message:', error);
+      }
+      
+      // Create update data with both status AND messageText if found
       const updateData = {
         status: "READ"
       };
       
-      console.log(`Updating message ${messageId} status to READ`);
+      // Only add messageText if we found it
+      if (messageText) {
+        updateData.messageText = messageText;
+      }
+      
+      console.log(`Updating message ${messageId} status to READ${messageText ? ' with preserved text' : ''}`);
       const response = await axios.put(`/api/messages/updateMessage/${messageId}`, updateData, authHeaders);
       console.log('Message marked as read:', response.data);
       return response.data;
