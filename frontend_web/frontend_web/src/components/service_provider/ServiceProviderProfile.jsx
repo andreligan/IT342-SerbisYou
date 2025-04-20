@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Home, MapPin, Briefcase, Lock, Package } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
 import Footer from '../Footer';
 import tate from '../../assets/tate.webp';
 
@@ -13,6 +14,26 @@ import ChangePasswordContent from './profile/ChangePasswordContent';
 function ServiceProviderProfile() {
   const [selectedImage, setSelectedImage] = useState(tate);
   const [activeSection, setActiveSection] = useState('profile');
+  const { tab } = useParams();
+  const navigate = useNavigate();
+
+  // Set active section based on URL parameter when component mounts or tab changes
+  useEffect(() => {
+    if (tab) {
+      if (['profile', 'address', 'business', 'services', 'password'].includes(tab)) {
+        setActiveSection(tab);
+      } else {
+        // If invalid tab parameter, navigate to the default tab
+        navigate('/serviceProviderProfile/profile', { replace: true });
+      }
+    }
+  }, [tab, navigate]);
+
+  // Handle tab change
+  const handleTabChange = (tabName) => {
+    setActiveSection(tabName);
+    navigate(`/serviceProviderProfile/${tabName}`);
+  };
 
   // Render the appropriate content based on active section
   const renderContent = () => {
@@ -47,35 +68,35 @@ function ServiceProviderProfile() {
                 <ul>
                   <li 
                     className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'profile' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
-                    onClick={() => setActiveSection('profile')}
+                    onClick={() => handleTabChange('profile')}
                   >
                     <span className="w-10"><Home size={18} /></span>
                     <span>Profile</span>
                   </li>
                   <li 
                     className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'address' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
-                    onClick={() => setActiveSection('address')}
+                    onClick={() => handleTabChange('address')}
                   >
                     <span className="w-10"><MapPin size={18} /></span>
                     <span>Address</span>
                   </li>
                   <li 
                     className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'business' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
-                    onClick={() => setActiveSection('business')}
+                    onClick={() => handleTabChange('business')}
                   >
                     <span className="w-10"><Briefcase size={18} /></span>
                     <span>Business Details</span>
                   </li>
                   <li 
                     className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'services' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
-                    onClick={() => setActiveSection('services')}
+                    onClick={() => handleTabChange('services')}
                   >
                     <span className="w-10"><Package size={18} /></span>
                     <span>My Services</span>
                   </li>
                   <li 
                     className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'password' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
-                    onClick={() => setActiveSection('password')}
+                    onClick={() => handleTabChange('password')}
                   >
                     <span className="w-10"><Lock size={18} /></span>
                     <span>Change Password</span>

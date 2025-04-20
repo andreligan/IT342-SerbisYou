@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Home, MapPin, History, Lock } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
 import Footer from '../Footer';
-import defaultProfileImage from '../../assets/tate.webp';// Adjust the path as needed
+import defaultProfileImage from '../../assets/tate.webp';
 
 // Import components for customer profile sections
 import CustomerProfileContent from './profile/CustomerProfileContent';
@@ -12,6 +13,27 @@ import CustomerChangePasswordContent from './profile/CustomerChangePasswordConte
 function CustomerProfilePage() {
   const [selectedImage, setSelectedImage] = useState(defaultProfileImage);
   const [activeSection, setActiveSection] = useState('profile');
+  const { tab } = useParams();
+  const navigate = useNavigate();
+
+  // Set active section based on URL parameter when component mounts or tab changes
+  useEffect(() => {
+    if (!tab) {
+      // If no tab parameter is provided, redirect to the default tab
+      navigate('/customerProfile/profile', { replace: true });
+    } else if (['profile', 'address', 'bookingHistory', 'password'].includes(tab)) {
+      setActiveSection(tab);
+    } else {
+      // If invalid tab parameter, navigate to the default tab
+      navigate('/customerProfile/profile', { replace: true });
+    }
+  }, [tab, navigate]);
+
+  // Handle tab change
+  const handleTabChange = (tabName) => {
+    setActiveSection(tabName);
+    navigate(`/customerProfile/${tabName}`);
+  };
 
   // Render the appropriate content based on active section
   const renderContent = () => {
@@ -44,28 +66,28 @@ function CustomerProfilePage() {
                 <ul>
                   <li 
                     className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'profile' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
-                    onClick={() => setActiveSection('profile')}
+                    onClick={() => handleTabChange('profile')}
                   >
                     <span className="w-10"><Home size={18} /></span>
                     <span>Profile</span>
                   </li>
                   <li 
                     className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'address' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
-                    onClick={() => setActiveSection('address')}
+                    onClick={() => handleTabChange('address')}
                   >
                     <span className="w-10"><MapPin size={18} /></span>
                     <span>Address</span>
                   </li>
                   <li 
                     className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'bookingHistory' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
-                    onClick={() => setActiveSection('bookingHistory')}
+                    onClick={() => handleTabChange('bookingHistory')}
                   >
                     <span className="w-10"><History size={18} /></span>
                     <span>Booking History</span>
                   </li>
                   <li 
                     className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'password' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
-                    onClick={() => setActiveSection('password')}
+                    onClick={() => handleTabChange('password')}
                   >
                     <span className="w-10"><Lock size={18} /></span>
                     <span>Change Password</span>
