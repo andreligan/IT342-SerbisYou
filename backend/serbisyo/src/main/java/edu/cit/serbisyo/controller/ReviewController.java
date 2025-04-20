@@ -7,6 +7,7 @@ import edu.cit.serbisyo.entity.ReviewEntity;
 import edu.cit.serbisyo.service.ReviewService;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping(method = RequestMethod.GET, path = "/api/reviews")
@@ -33,5 +34,15 @@ public class ReviewController {
     @DeleteMapping("/delete/{reviewId}")
     public String deleteReview(@PathVariable Long reviewId) {
         return reviewService.deleteReview(reviewId);
+    }
+
+    @GetMapping("/getByService/{serviceId}")
+    public List<ReviewEntity> getReviewsByService(@PathVariable Long serviceId) {
+        return reviewService.getReviewsByService(serviceId);
+    }
+    
+    @GetMapping("/getServiceRating/{serviceId}")
+    public Map<String, Object> getServiceRating(@PathVariable Long serviceId) {
+        return reviewService.getServiceRating(serviceId);
     }
 }

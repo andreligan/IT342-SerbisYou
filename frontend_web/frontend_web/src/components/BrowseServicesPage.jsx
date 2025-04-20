@@ -17,10 +17,11 @@ const BrowseServicesPage = () => {
     sortBy: 'recommended',
     experience: 0
   });
+  const [serviceRatings, setServiceRatings] = useState({});
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchServices = async () => {
+    const fetchServicesAndRatings = async () => {
       try {
         const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
         if (!token) {
@@ -37,7 +38,20 @@ const BrowseServicesPage = () => {
 
         const services = servicesResponse.data;
 
-        console.log("Services:", services);
+        const ratingsMap = {};
+        for (const service of services) {
+          try {
+            const ratingResponse = await axios.get(`/api/reviews/getServiceRating/${service.serviceId}`, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
+            ratingsMap[service.serviceId] = ratingResponse.data;
+          } catch (error) {
+            console.error(`Error fetching rating for service ${service.serviceId}:`, error);
+            ratingsMap[service.serviceId] = { averageRating: 0, reviewCount: 0 };
+          }
+        }
 
         const servicesWithCategories = services.map((service) => ({
           ...service,
@@ -45,6 +59,7 @@ const BrowseServicesPage = () => {
         }));
 
         setServices(servicesWithCategories);
+        setServiceRatings(ratingsMap);
         setIsLoading(false);
       } catch (error) {
         console.error("Error fetching services:", error);
@@ -52,7 +67,7 @@ const BrowseServicesPage = () => {
       }
     };
 
-    fetchServices();
+    fetchServicesAndRatings();
   }, []);
 
   const applyFilters = useCallback((services, filters) => {
@@ -68,7 +83,7 @@ const BrowseServicesPage = () => {
         return false;
       }
       
-      const rating = service.provider?.averageRating || 0;
+      const rating = serviceRatings[service.serviceId]?.averageRating || 0;
       if (rating < filters.rating) {
         return false;
       }
@@ -93,7 +108,8 @@ const BrowseServicesPage = () => {
         result.sort((a, b) => (parseFloat(b.price) || 0) - (parseFloat(a.price) || 0));
         break;
       case 'rating':
-        result.sort((a, b) => (b.provider?.averageRating || 0) - (a.provider?.averageRating || 0));
+        result.sort((a, b) => (serviceRatings[b.serviceId]?.averageRating || 0) - 
+                             (serviceRatings[a.serviceId]?.averageRating || 0));
         break;
       case 'experience':
         result.sort((a, b) => (b.provider?.yearsOfExperience || 0) - (a.provider?.yearsOfExperience || 0));
@@ -101,14 +117,16 @@ const BrowseServicesPage = () => {
       case 'recommended':
       default:
         result.sort((a, b) => {
-          const scoreA = (a.provider?.averageRating || 0) * 2 + (a.provider?.verified ? 3 : 0);
-          const scoreB = (b.provider?.averageRating || 0) * 2 + (b.provider?.verified ? 3 : 0);
+          const scoreA = (serviceRatings[a.serviceId]?.averageRating || 0) * 2 + 
+                       (a.provider?.verified ? 3 : 0);
+          const scoreB = (serviceRatings[b.serviceId]?.averageRating || 0) * 2 + 
+                       (b.provider?.verified ? 3 : 0);
           return scoreB - scoreA;
         });
     }
     
     return result;
-  }, []);
+  }, [serviceRatings]);
   
   useEffect(() => {
     setFilteredServices(applyFilters(services, activeFilters));
@@ -193,12 +211,21 @@ const BrowseServicesPage = () => {
                   : "Unknown"}
               </span>
             </div>
-            {service.provider?.averageRating > 0 && (
-              <div className="flex items-center justify-center mt-2">
-                {renderStars(service.provider?.averageRating || 0)}
-                <span className="ml-1 text-sm text-gray-600">({service.provider?.averageRating?.toFixed(1)})</span>
-              </div>
-            )}
+            <div className="flex items-center justify-center mt-2">
+              {serviceRatings[service.serviceId]?.averageRating > 0 ? (
+                <>
+                  {renderStars(serviceRatings[service.serviceId]?.averageRating || 0)}
+                  <span className="ml-1 text-sm text-gray-600">
+                    ({serviceRatings[service.serviceId]?.averageRating.toFixed(1)})
+                  </span>
+                  <span className="ml-1 text-xs text-gray-500">
+                    {serviceRatings[service.serviceId]?.reviewCount} reviews
+                  </span>
+                </>
+              ) : (
+                <span className="text-sm text-gray-400 italic">No reviews yet</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -207,7 +234,7 @@ const BrowseServicesPage = () => {
         </div>
       </div>
     ));
-  }, [filteredServices, handleOpenModal, renderStars]);
+  }, [filteredServices, handleOpenModal, renderStars, serviceRatings]);
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -283,7 +310,7 @@ const BrowseServicesPage = () => {
       </div>
 
       {isModalOpen && selectedService && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-opacity-70 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl overflow-hidden">
             <div className="bg-[#495E57] p-4 text-white relative">
               <h2 className="text-2xl font-bold text-center">{selectedService.serviceName}</h2>
@@ -295,7 +322,7 @@ const BrowseServicesPage = () => {
               </button>
             </div>
 
-            <div className="p-6">
+            <div className="borderp-6">
               <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-6">
                 <div className="flex items-center gap-4">
                   <img
@@ -373,6 +400,25 @@ const BrowseServicesPage = () => {
                   <p className="text-gray-600 mb-6 leading-relaxed">
                     {selectedService.serviceDescription}
                   </p>
+                  
+                  <div className="flex items-center gap-2 mb-6">
+                    <span className="text-sm text-gray-700">Service Rating:</span>
+                    {serviceRatings[selectedService.serviceId]?.reviewCount > 0 ? (
+                      <>
+                        <div className="flex items-center">
+                          {renderStars(serviceRatings[selectedService.serviceId]?.averageRating || 0)}
+                          <span className="ml-1 text-sm text-gray-600">
+                            ({serviceRatings[selectedService.serviceId]?.averageRating?.toFixed(1)})
+                          </span>
+                        </div>
+                        <span className="ml-1 text-xs text-gray-500">
+                          based on {serviceRatings[selectedService.serviceId]?.reviewCount} reviews
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-gray-400 italic">No reviews yet</span>
+                    )}
+                  </div>
                   
                   <button
                     onClick={handleBookService}
