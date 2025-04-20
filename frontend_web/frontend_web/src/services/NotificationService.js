@@ -26,22 +26,10 @@ const NotificationService = {
   // Create a new notification
   createNotification: async (notification) => {
     try {
-      console.log('NotificationService: Creating notification:', notification);
       const authHeaders = NotificationService.getAuthHeaders();
-      console.log('NotificationService: Using auth headers:', 
-        authHeaders.headers ? 'Headers present' : 'No headers');
-      
-      console.log('NotificationService: Sending POST request to /api/notifications/create');
       const response = await axios.post('/api/notifications/create', notification, authHeaders);
-      console.log('NotificationService: Notification created successfully:', response.data);
       return response.data;
     } catch (error) {
-      console.error('NotificationService: Failed to create notification:', error);
-      console.error('NotificationService: Error details:', 
-        error.response ? {
-          status: error.response.status,
-          data: error.response.data
-        } : 'No response data');
       throw error;
     }
   },
@@ -65,7 +53,6 @@ const NotificationService = {
       
       return response.data || [];
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
       return []; // Return empty array as fallback
     }
   },
@@ -80,7 +67,6 @@ const NotificationService = {
       
       return processedNotifications.filter(n => !n.read).length;
     } catch (error) {
-      console.error('Failed to get unread count:', error);
       return 0;
     }
   },
@@ -132,29 +118,80 @@ const NotificationService = {
       // we'll use the notification data passed from the components
       const notification = notificationData;
       
-      // If it's a message notification, update the message status too
+      // If it's a message notification, update the message status too and find related messages
       if (notification && notification.type?.toLowerCase() === 'message' && notification.referenceId) {
         try {
-          // Update the message status
-          await ChatService.markMessageAsRead(notification.referenceId);
-          console.log(`Updated message ${notification.referenceId} status to READ`);
+          // Get all messages first
+          const allMessagesResponse = await axios.get('/api/messages/getAll', authHeaders);
+          const allMessages = allMessagesResponse.data || [];
+          
+          // Get all notifications in one call
+          const allNotifications = await NotificationService.getNotifications();
+          
+          // Find the referenced message
+          const targetMessage = allMessages.find(msg => msg.messageId === parseInt(notification.referenceId));
+          
+          if (targetMessage) {
+            // Get all messages from the same sender to the current user
+            const senderId = targetMessage.sender?.userId;
+            const currentUserId = ChatService.getCurrentUserId();
+            
+            const messagesFromSender = allMessages.filter(msg => 
+              msg.sender?.userId === senderId && 
+              msg.receiver?.userId === currentUserId
+            );
+            
+            // Filter unread messages (status = "SENT")
+            const unreadMessages = messagesFromSender.filter(msg => msg.status === "SENT");
+            
+            // Mark all unread messages as READ
+            for (const unreadMsg of unreadMessages) {
+              try {
+                await ChatService.markMessageAsRead(unreadMsg.messageId);
+                
+                // Find and handle the notification for this message
+                const msgNotification = allNotifications.find(n => 
+                  parseInt(n.referenceId) === unreadMsg.messageId && 
+                  n.type?.toLowerCase() === 'message'
+                );
+                
+                if (msgNotification) {
+                  // Mark as read
+                  const updatedNotification = { read: true };
+                  await axios.put(
+                    `/api/notifications/update/${msgNotification.notificationId}`, 
+                    updatedNotification, 
+                    authHeaders
+                  );
+                  
+                  // Delete notification
+                  await NotificationService.deleteNotification(msgNotification.notificationId);
+                }
+              } catch (updateError) {
+                console.error(`Failed to update message ${unreadMsg.messageId}:`, updateError);
+              }
+            }
+            
+            // We've already processed the notification for the clicked message,
+            // so we can return here without doing the default processing
+            return { success: true };
+          }
+          // If target message not found, continue with default notification processing
         } catch (msgError) {
-          console.error('Failed to update message status:', msgError);
-          // Continue even if message update fails
+          console.error('Failed to update message status or find related messages:', msgError);
+          // Continue with default notification processing
         }
       }
       
-      // Mark notification as read
+      // Default notification processing (for non-message types or if message processing failed)
       const updatedNotification = {
         read: true
       };
       
-      console.log(`Marking notification ${notificationId} as read`);
       const response = await axios.put(`/api/notifications/update/${notificationId}`, updatedNotification, authHeaders);
       
       // Delete notification after marking it as read
       try {
-        console.log(`Deleting notification ${notificationId} after marking as read`);
         await NotificationService.deleteNotification(notificationId);
       } catch (deleteError) {
         console.error('Failed to delete notification:', deleteError);
@@ -163,7 +200,6 @@ const NotificationService = {
       
       return response.data;
     } catch (error) {
-      console.error('Failed to mark notification as read:', error);
       throw error;
     }
   },
@@ -175,7 +211,6 @@ const NotificationService = {
       const response = await axios.delete(`/api/notifications/delete/${notificationId}`, authHeaders);
       return response.data;
     } catch (error) {
-      console.error('Failed to delete notification:', error);
       throw error;
     }
   },
@@ -189,8 +224,6 @@ const NotificationService = {
       // Filter ALL unread notifications
       const allUnreadNotifications = allNotifications.filter(n => !n.read);
       
-      console.log(`Marking all ${allUnreadNotifications.length} unread notifications as read`);
-      
       // Process each notification individually to handle message-specific logic
       for (const notification of allUnreadNotifications) {
         // For message notifications, we need to update the message status
@@ -198,9 +231,7 @@ const NotificationService = {
           try {
             // Update message status to READ
             await ChatService.markMessageAsRead(notification.referenceId);
-            console.log(`Updated message ${notification.referenceId} status to READ`);
           } catch (msgError) {
-            console.error('Failed to update message status:', msgError);
             // Continue even if message update fails
           }
         }
@@ -217,16 +248,13 @@ const NotificationService = {
           
           // Then delete it
           await NotificationService.deleteNotification(notification.notificationId);
-          console.log(`Notification ${notification.notificationId} marked as read and deleted`);
         } catch (notifError) {
-          console.error('Failed to process notification:', notifError);
           // Continue with next notification even if this one fails
         }
       }
       
       return true;
     } catch (error) {
-      console.error('Failed to mark all notifications as read:', error);
       throw error;
     }
   }
