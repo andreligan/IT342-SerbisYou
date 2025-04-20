@@ -211,7 +211,7 @@ const BrowseServicesPage = () => {
                   : "Unknown"}
               </span>
             </div>
-            <div className="flex items-center justify-center mt-2">
+            <div className="flex items-center justify-left mt-2">
               {serviceRatings[service.serviceId]?.averageRating > 0 ? (
                 <>
                   {renderStars(serviceRatings[service.serviceId]?.averageRating || 0)}
@@ -219,7 +219,7 @@ const BrowseServicesPage = () => {
                     ({serviceRatings[service.serviceId]?.averageRating.toFixed(1)})
                   </span>
                   <span className="ml-1 text-xs text-gray-500">
-                    {serviceRatings[service.serviceId]?.reviewCount} reviews
+                    {serviceRatings[service.serviceId]?.reviewCount} review/s
                   </span>
                 </>
               ) : (
@@ -229,8 +229,8 @@ const BrowseServicesPage = () => {
           </div>
         </div>
 
-        <div className="absolute bottom-4 right-4 bg-[#F4CE14] text-[#495E57] font-bold px-3 py-1.5 rounded-full shadow-sm">
-          ₱{service.price}
+        <div className="absolute bottom-0 right-0 bg-[#F4CE14] text-[#495E57] font-bold px-3 py-1.5 rounded-lg shadow-sm">
+          ₱ {service.price}.00
         </div>
       </div>
     ));
