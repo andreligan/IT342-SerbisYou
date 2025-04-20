@@ -179,7 +179,9 @@ class RegisterActivity : AppCompatActivity() {
                 println("Registration request: $requestBodyJson")
 
                 val request = Request.Builder()
+
                     .url("http://192.168.254.103:8080/api/user-auth/register")
+
                     .post(requestBody)
                     .build()
 

@@ -1,91 +1,42 @@
 import React from "react";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Typography,
-  Box,
-} from "@mui/material";
 
 const LogoutConfirmationPopup = ({ open, onClose, onConfirm }) => {
+  if (!open) return null;
+
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="xs"
-      fullWidth
-      sx={{
-        "& .MuiPaper-root": {
-          borderRadius: "12px",
-          padding: "16px",
-        },
-      }}
-    >
-      {/* Title */}
-      <DialogTitle>
-        <Typography
-          variant="h5"
-          align="center"
-          sx={{ fontWeight: "bold", color: "#495E57" }}
-        >
-          Logout
-        </Typography>
-      </DialogTitle>
+    <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 p-10">
+        {/* Title */}
+        <div className="mb-2">
+          <h2 className="text-3xl font-bold text-center text-[#495E57]">
+            Logout
+          </h2>
+        </div>
 
-      {/* Content */}
-      <DialogContent>
-        <Typography
-          variant="body1"
-          align="center"
-          sx={{ color: "#677483", marginBottom: "16px" }}
-        >
-          Are you sure you want to log out?
-        </Typography>
-      </DialogContent>
+        {/* Content */}
+        <div className="py-3">
+          <p className="text-gray-600 text-center mb-4">
+            Are you sure you want to log out?
+          </p>
+        </div>
 
-      {/* Actions */}
-      <DialogActions>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            gap: "16px",
-            width: "100%",
-          }}
+        {/* Actions */}
+        <div className="flex justify-center gap-8 w-full">
+        <button
+          onClick={onClose}
+          className="w-25 px-4 py-2 bg-white border border-[#495E57] text-[#495E57] rounded-md hover:bg-gray-200 transition-colors duration-200"
         >
-          <Button
-            variant="contained"
-            onClick={onClose}
-            sx={{
-              backgroundColor: "#f44336",
-              color: "#fff",
-              textTransform: "none",
-              "&:hover": {
-                backgroundColor: "#d32f2f",
-              },
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
+          Cancel
+        </button>
+          <button
             onClick={onConfirm}
-            sx={{
-              backgroundColor: "#4caf50",
-              color: "#fff",
-              textTransform: "none",
-              "&:hover": {
-                backgroundColor: "#388e3c",
-              },
-            }}
+            className="w-25 px-4 py-2 bg-[#F4CE14] hover:bg-[#e0bd13] text-gray-700 rounded-md transition-colors duration-200"
           >
             Confirm
-          </Button>
-        </Box>
-      </DialogActions>
-    </Dialog>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 

@@ -4,12 +4,25 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import edu.cit.serbisyo.entity.NotificationEntity;
+import edu.cit.serbisyo.repository.BookingRepository;
 import edu.cit.serbisyo.repository.NotificationRepository;
+import edu.cit.serbisyo.repository.ReviewRepository;
+import edu.cit.serbisyo.repository.TransactionRepository;
+import edu.cit.serbisyo.repository.MessageRepository;
 
 @Service
 public class NotificationService {
     @Autowired
     private NotificationRepository notificationRepository;
+    @Autowired
+    private ReviewRepository reviewRepository;
+
+    @Autowired
+    private BookingRepository bookingRepository;
+    @Autowired
+    private TransactionRepository transactionRepository;
+    @Autowired
+    private MessageRepository messageRepository;
 
     public NotificationEntity createNotification(NotificationEntity notification) {
         return notificationRepository.save(notification);
@@ -34,5 +47,23 @@ public class NotificationService {
             return "Notification successfully deleted.";
         }
         return "Notification not found.";
+    }
+
+    public Object getRelatedEntity(NotificationEntity notification) {
+        String referenceType = notification.getReferenceType();
+        Long referenceId = notification.getReferenceId();
+
+        switch (referenceType) {
+            case "Review":
+                return reviewRepository.findById(referenceId);
+            case "Booking":
+                return bookingRepository.findById(referenceId);
+            case "Transaction":
+                return transactionRepository.findById(referenceId);
+            case "Message": // New case for MessageEntity
+                return messageRepository.findById(referenceId);
+            default:
+                throw new IllegalArgumentException("Unknown reference type: " + referenceType);
+        }
     }
 }

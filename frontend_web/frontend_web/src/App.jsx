@@ -1,6 +1,8 @@
 import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 import LandingPage from "./components/LandingPage";
 import SignupStepWizard from "./components/SignupStepWizard";
+import SignupOptionsPopup from "./components/SignupOptionsPopup"; // Update import
+import OAuthRoleSelection from "./components/OAuthRoleSelection";
 import LoginPopup from "./components/LoginPopup";
 import CustomerHomePage from "./components/CustomerHomePage";
 import BrowseServicesPage from "./components/BrowseServicesPage";
@@ -18,6 +20,9 @@ import API from "./utils/API";
 import axios from "axios";
 import ChatIcon from './components/chat/ChatIcon';
 import ChatWindow from './components/chat/ChatWindow';
+import OAuth2RedirectHandler from "./components/OAuth2RedirectHandler";
+import NotificationIcon from "./components/notifications/NotificationIcon";
+import NotificationsPage from "./components/notifications/NotificationsPage";
 
 // Protected Route component for role-based access control
 const ProtectedRoute = ({ element, allowedRoles }) => {
@@ -48,15 +53,15 @@ const ProtectedRoute = ({ element, allowedRoles }) => {
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState(null); // Add state for user role
+  const [userRole, setUserRole] = useState(null);
   const [isLoginPopupVisible, setIsLoginPopupVisible] = useState(false);
   const [isLogoutPopupVisible, setIsLogoutPopupVisible] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false); // For user profile dropdown
-  const [isChatOpen, setIsChatOpen] = useState(false); // State for chat window
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isSignupPopupVisible, setIsSignupPopupVisible] = useState(false); // Add state for signup popup visibility
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Update the dependency array to include an empty dependency
   useEffect(() => {
     const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
     const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
@@ -68,18 +73,19 @@ function App() {
 
   const confirmLogout = () => {
     console.log("User has logged out.");
-    // Clear all authentication data
     localStorage.removeItem("authToken");
     localStorage.removeItem("userRole");
+    localStorage.removeItem("userId");
     localStorage.removeItem("isAuthenticated");
     sessionStorage.removeItem("authToken");
     sessionStorage.removeItem("userRole");
+    sessionStorage.removeItem("userId");
     sessionStorage.removeItem("isAuthenticated");
 
     setIsAuthenticated(false);
     setUserRole(null);
-    setDropdownOpen(false); // Close the profile menu
-    setIsLogoutPopupVisible(false); // Close the logout confirmation popup
+    setDropdownOpen(false);
+    setIsLogoutPopupVisible(false);
     navigate("/");
   };
 
@@ -93,10 +99,9 @@ function App() {
 
   const renderNavigationLinks = () => {
     if (!isAuthenticated) return null;
-  
+
     return (
       <div className="flex items-center gap-6">
-        {/* Home Link */}
         <button
           onClick={() => navigate(userRole === "customer" ? "/customerHomePage" : "/serviceProviderHomePage")}
           className="p-2 rounded-full hover:bg-gray-200"
@@ -113,7 +118,6 @@ function App() {
           </svg>
         </button>
 
-        {/* Chat/Messages Link (Exclude for Admin) */}
         {userRole !== "admin" && (
           <button
             onClick={() => navigate("/messages")}
@@ -136,31 +140,18 @@ function App() {
           </button>
         )}
 
-        {/* Notifications Link */}
-        <button
-          onClick={() => navigate("/notifications")}
-          className="p-2 rounded-full hover:bg-gray-200"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0a3 3 0 11-6 0m6 0H9"
-            />
-          </svg>
-        </button>
-  
-        {/* User Profile Dropdown */}
+        {/* Replace the notification button with our new NotificationIcon component */}
+        <NotificationIcon />
+
         <div className="relative">
           <button
-            onClick={toggleDropdown}
+            onMouseEnter={() => setDropdownOpen(true)}
+            onMouseLeave={() => setTimeout(() => {
+              // Small timeout to allow cursor to move to dropdown
+              if (!document.querySelector('.dropdown-menu:hover')) {
+                setDropdownOpen(false);
+              }
+            }, 100)}
             className="p-2 rounded-full hover:bg-gray-200"
           >
             <svg
@@ -179,7 +170,11 @@ function App() {
             </svg>
           </button>
           {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg z-50">
+            <div 
+              className="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg z-50 dropdown-menu"
+              onMouseEnter={() => setDropdownOpen(true)}
+              onMouseLeave={() => setDropdownOpen(false)}
+            >
               <div className="p-4 border-b border-gray-200">
                 <p className="text-sm font-semibold text-gray-800">User Menu</p>
               </div>
@@ -200,7 +195,7 @@ function App() {
                 Manage Profile
               </button>
               <button
-                onClick={() => setIsLogoutPopupVisible(true)} // Show the logout confirmation popup
+                onClick={() => setIsLogoutPopupVisible(true)}
                 className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100"
               >
                 Logout
@@ -223,7 +218,7 @@ function App() {
           {!isAuthenticated ? (
             <div className="flex gap-4">
               <button
-                onClick={() => navigate("/signup")}
+                onClick={() => setIsSignupPopupVisible(true)}
                 className="px-4 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500"
               >
                 Sign Up
@@ -241,11 +236,22 @@ function App() {
         </div>
       </header>
       <Routes>
-        {/* Public routes */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/signup" element={<SignupStepWizard />} />
-
-        {/* Protected routes */}
+        <Route 
+          path="/" 
+          element={
+            isAuthenticated ? 
+              <Navigate 
+                to={userRole?.toLowerCase() === "customer" 
+                  ? "/customerHomePage" 
+                  : "/serviceProviderHomePage"} 
+                replace 
+              /> 
+              : <LandingPage />
+          } 
+        />
+        <Route path="/signup/*" element={<SignupStepWizard />} />
+        <Route path="/oauth-role-selection" element={<OAuthRoleSelection />} />
+        <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
         <Route
           path="/customerHomePage"
           element={<ProtectedRoute element={<CustomerHomePage />} allowedRoles={["customer"]} />}
@@ -282,28 +288,34 @@ function App() {
           path="/service/:serviceId"
           element={<ProtectedRoute element={<ServiceDetails />} allowedRoles={["service provider"]} />}
         />
+        <Route
+          path="/notifications"
+          element={<ProtectedRoute element={<NotificationsPage />} allowedRoles={["customer", "service provider"]} />}
+        />
       </Routes>
 
-      {/* Chat components */}
+      <SignupOptionsPopup
+        open={isSignupPopupVisible}
+        onClose={() => setIsSignupPopupVisible(false)}
+      />
+
+      <LoginPopup
+        open={isLoginPopupVisible}
+        onClose={() => setIsLoginPopupVisible(false)}
+      />
+
+      <LogoutConfirmationPopup
+        open={isLogoutPopupVisible}
+        onClose={() => setIsLogoutPopupVisible(false)}
+        onConfirm={confirmLogout}
+      />
+
       {isAuthenticated && (
         <>
           <ChatIcon isOpen={isChatOpen} onClick={toggleChat} />
           {isChatOpen && <ChatWindow onClose={toggleChat} />}
         </>
       )}
-
-      {/* Login Popup */}
-      <LoginPopup
-        open={isLoginPopupVisible}
-        onClose={() => setIsLoginPopupVisible(false)}
-      />
-
-      {/* Logout Confirmation Popup */}
-      <LogoutConfirmationPopup
-        open={isLogoutPopupVisible}
-        onClose={() => setIsLogoutPopupVisible(false)}
-        onConfirm={confirmLogout}
-      />
     </>
   );
 }

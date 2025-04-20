@@ -1,22 +1,36 @@
 package com.example.serbisyo_it342_g3
 
+import android.Manifest
+import android.app.Activity
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.view.View
 import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.example.serbisyo_it342_g3.api.ServiceApiClient
 import com.example.serbisyo_it342_g3.data.ServiceCategory
 import com.example.serbisyo_it342_g3.data.Service
 import com.example.serbisyo_it342_g3.data.ServiceProvider
 import com.example.serbisyo_it342_g3.data.Address
 import android.content.SharedPreferences
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.Base64
 import android.util.Log
+
 import android.content.Intent
 import android.provider.MediaStore
 import android.Manifest
 import android.os.Build
 import androidx.core.app.ActivityCompat
 import org.json.JSONObject
+
 
 class EditServiceActivity : AppCompatActivity() {
     private lateinit var etServiceName: EditText
@@ -28,6 +42,8 @@ class EditServiceActivity : AppCompatActivity() {
     private lateinit var btnCancel: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var sharedPreferences: SharedPreferences
+    private lateinit var ivServiceImage: ImageView
+    private lateinit var btnSelectImage: Button
 
     private lateinit var serviceApiClient: ServiceApiClient
     private var categories = listOf<ServiceCategory>()
@@ -41,6 +57,34 @@ class EditServiceActivity : AppCompatActivity() {
     private var providerId: Long = 0
     private var categoryId: Long = 0
     private var token: String = ""
+    private var currentImageUrl: String = ""
+    
+    private var selectedImageUri: Uri? = null
+    private var imageBase64: String = ""
+
+    // Register for activity result for image picking
+    private val pickImageLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.data?.let { uri ->
+                selectedImageUri = uri
+                ivServiceImage.setImageURI(uri)
+                convertImageToBase64(uri)
+            }
+        }
+    }
+
+    // Permission request launcher
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            openImagePicker()
+        } else {
+            Toast.makeText(this, "Permission denied to read external storage", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,6 +103,7 @@ class EditServiceActivity : AppCompatActivity() {
         serviceId = intent.getLongExtra("SERVICE_ID", 0)
         providerId = intent.getLongExtra("PROVIDER_ID", 0)
         categoryId = intent.getLongExtra("CATEGORY_ID", 0)
+        currentImageUrl = intent.getStringExtra("IMAGE_URL") ?: ""
 
         if (serviceId == 0L || providerId == 0L) {
             Toast.makeText(this, "Error: Missing required data", Toast.LENGTH_SHORT).show()
@@ -75,6 +120,8 @@ class EditServiceActivity : AppCompatActivity() {
         btnUpdateService = findViewById(R.id.btnUpdateService)
         btnCancel = findViewById(R.id.btnCancel)
         progressBar = findViewById(R.id.progressBar)
+        ivServiceImage = findViewById(R.id.ivServiceImage)
+        btnSelectImage = findViewById(R.id.btnSelectImage)
 
         // Set up toolbar
         setSupportActionBar(findViewById(R.id.toolbar))
@@ -89,6 +136,28 @@ class EditServiceActivity : AppCompatActivity() {
         etServiceDescription.setText(intent.getStringExtra("SERVICE_DESCRIPTION"))
         etPriceRange.setText(intent.getStringExtra("PRICE_RANGE"))
         etDurationEstimate.setText(intent.getStringExtra("DURATION_ESTIMATE"))
+        
+        // If there's an existing image, try to load it
+        if (currentImageUrl.isNotEmpty()) {
+            try {
+                // If the image is a Base64 string, decode it
+                if (currentImageUrl.startsWith("data:image") || 
+                    currentImageUrl.startsWith("/9j/") || 
+                    currentImageUrl.length > 100) {
+                    
+                    val imageBytes = Base64.decode(currentImageUrl, Base64.DEFAULT)
+                    val decodedImage = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                    ivServiceImage.setImageBitmap(decodedImage)
+                    
+                    // Keep the existing image if no new one is selected
+                    imageBase64 = currentImageUrl
+                }
+                // If it's a URL, you would need to load it with an image library like Glide or Picasso
+                // For now, just keep the placeholder
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading existing image", e)
+            }
+        }
 
         // Update service button click
         btnUpdateService.setOnClickListener {
@@ -102,10 +171,12 @@ class EditServiceActivity : AppCompatActivity() {
             finish()
         }
         
+
         // Add image picker button functionality (make sure this button exists in your layout)
         findViewById<Button>(R.id.btnAddImage)?.setOnClickListener {
             openImagePicker()
         }
+
     }
 
     private fun loadCategories() {
@@ -184,7 +255,8 @@ class EditServiceActivity : AppCompatActivity() {
             serviceName = serviceName,
             serviceDescription = serviceDescription,
             priceRange = priceRange,
-            durationEstimate = durationEstimate
+            durationEstimate = durationEstimate,
+            imageUrl = imageBase64.ifEmpty { currentImageUrl } // Use new image if selected, otherwise keep existing
         )
 
         progressBar.visibility = View.VISIBLE
@@ -192,13 +264,26 @@ class EditServiceActivity : AppCompatActivity() {
 
         // Log token for debugging
         Log.d(TAG, "Updating service with token: ${token.take(20)}...")
+        // Log image info
+        if (imageBase64.isNotEmpty()) {
+            Log.d(TAG, "Image size: ${imageBase64.length} characters")
+        } else {
+            Log.d(TAG, "Using existing image URL")
+        }
 
-        serviceApiClient.updateService(serviceId, providerId, selectedCategoryId, updatedService, token) { result, error ->
+        serviceApiClient.updateServiceWithImage(
+            serviceId, 
+            providerId, 
+            selectedCategoryId, 
+            updatedService, 
+            token
+        ) { result, error ->
             runOnUiThread {
                 progressBar.visibility = View.GONE
                 btnUpdateService.isEnabled = true
                 
                 if (error != null) {
+
                     when {
                         error.message?.contains("403") == true -> {
                             var errorMessage = "Authorization error: You don't have permission to update this service"
@@ -249,6 +334,7 @@ class EditServiceActivity : AppCompatActivity() {
                             }
                             Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
                             Log.e(TAG, "Update service error: ${error.message}")
+
                         }
                     }
                     return@runOnUiThread
@@ -259,6 +345,7 @@ class EditServiceActivity : AppCompatActivity() {
                     setResult(RESULT_OK)
                     finish()
                 } else {
+
                     Toast.makeText(this, "Failed to update service. Please try again.", Toast.LENGTH_LONG).show()
                     Log.e(TAG, "Update service returned null result without error")
                 }
@@ -402,8 +489,30 @@ class EditServiceActivity : AppCompatActivity() {
                     Toast.makeText(this, "Failed to update service with image. Please try again.", Toast.LENGTH_LONG).show()
                     Log.e(TAG, "Update service with image returned null result without error")
                 }
+
             }
         }
+    }
+
+    private fun showAuthenticationErrorDialog() {
+        val alertDialog = AlertDialog.Builder(this)
+            .setTitle("Authentication Error")
+            .setMessage("Your session has expired or is invalid. Please log in again.")
+            .setPositiveButton("Log in") { _, _ ->
+                // Clear token from SharedPreferences
+                val sharedPreferences = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+                sharedPreferences.edit().remove("token").apply()
+                
+                // Navigate to login screen
+                val intent = Intent(this, LoginActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                startActivity(intent)
+                finish()
+            }
+            .setNegativeButton("Cancel", null)
+            .create()
+        
+        alertDialog.show()
     }
 
     override fun onSupportNavigateUp(): Boolean {

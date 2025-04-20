@@ -71,6 +71,7 @@ class LoginActivity : AppCompatActivity() {
                 
                 //val requestUrl = "http://10.0.2.2:8080/api/user-auth/login"
                 val requestUrl = "http://192.168.254.103:8080/api/user-auth/login"
+
                 Log.d(TAG, "Sending login request to: $requestUrl")
                 Log.d(TAG, "Request body: $jsonObject")
                 

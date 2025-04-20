@@ -15,10 +15,13 @@ public class NotificationEntity {
     @JoinColumn(name = "userId", nullable = false)
     private UserAuthEntity user;
 
-    private String type;
+    private String type; // Notification type (e.g., "Review", "Booking", etc.)
     private String message;
     private boolean isRead;
     private LocalDateTime createdAt;
+
+    private Long referenceId; // ID of the related entity
+    private String referenceType; // Type of the related entity (e.g., "Review", "Booking")
 
     // Getters and Setters
 
@@ -68,5 +71,21 @@ public class NotificationEntity {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Long getReferenceId() {
+        return referenceId;
+    }
+
+    public void setReferenceId(Long referenceId) {
+        this.referenceId = referenceId;
+    }
+
+    public String getReferenceType() {
+        return referenceType;
+    }
+
+    public void setReferenceType(String referenceType) {
+        this.referenceType = referenceType;
     }
 }

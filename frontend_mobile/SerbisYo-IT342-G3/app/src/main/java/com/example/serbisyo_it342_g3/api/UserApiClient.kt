@@ -17,6 +17,7 @@ import java.io.IOException
 class UserApiClient(private val context: Context) {
     private val client = OkHttpClient()
     private val gson = Gson()
+
     
     // CONFIGURATION FOR BACKEND CONNECTION
     // For Android Emulator - Virtual Device (default)
@@ -30,6 +31,7 @@ class UserApiClient(private val context: Context) {
     // private val BASE_URL = EMULATOR_URL     // For Android Emulator
     private val BASE_URL = PHYSICAL_DEVICE_URL // For Physical Device
     
+
     private val TAG = "UserApiClient"
 
     // Get customer profile

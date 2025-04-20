@@ -135,6 +135,42 @@
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp" />
 
+            <!-- New Image Upload Section -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Service Image"
+                android:textColor="@color/primary_green"
+                android:textSize="16sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="8dp">
+
+                <ImageView
+                    android:id="@+id/ivServiceImage"
+                    android:layout_width="match_parent"
+                    android:layout_height="200dp"
+                    android:layout_marginTop="8dp"
+                    android:background="#EEEEEE"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_image_placeholder"
+                    android:contentDescription="Service Image Preview" />
+
+                <Button
+                    android:id="@+id/btnSelectImage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="@color/primary_green"
+                    android:text="Select Image"
+                    android:textColor="@color/primary_yellow" />
+            </LinearLayout>
+            <!-- End of Image Upload Section -->
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

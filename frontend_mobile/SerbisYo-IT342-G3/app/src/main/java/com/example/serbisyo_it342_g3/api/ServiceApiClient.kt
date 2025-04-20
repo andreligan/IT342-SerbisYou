@@ -18,6 +18,7 @@ import java.io.IOException
 class ServiceApiClient(private val context: Context) {
     private val client = OkHttpClient()
     private val gson = Gson()
+
     
     // CONFIGURATION FOR BACKEND CONNECTION
     // For Android Emulator - Virtual Device (default)
@@ -31,6 +32,7 @@ class ServiceApiClient(private val context: Context) {
     // private val BASE_URL = EMULATOR_URL     // For Android Emulator
     private val BASE_URL = PHYSICAL_DEVICE_URL // For Physical Device
     
+
     private val TAG = "ServiceApiClient"
 
     // Get all service categories
@@ -347,14 +349,17 @@ class ServiceApiClient(private val context: Context) {
         })
     }
 
+
     // Update a service with an image
     fun updateServiceWithImage(serviceId: Long, providerId: Long, categoryId: Long, service: Service, 
                               base64Image: String?, token: String, callback: (Service?, Exception?) -> Unit) {
+
         if (token.isBlank()) {
             Log.e(TAG, "Token is empty or blank")
             callback(null, Exception("Authentication token is required"))
             return
         }
+
 
         Log.d(TAG, "Updating service with image. Service ID: $serviceId")
         Log.d(TAG, "Image provided: ${base64Image != null}")
@@ -363,6 +368,7 @@ class ServiceApiClient(private val context: Context) {
         }
         
         // Note: Based on the database schema, provider_id needs to be 1 
+
         val actualProviderId = 1L
         
         val jsonObject = JSONObject().apply {
@@ -370,13 +376,16 @@ class ServiceApiClient(private val context: Context) {
             put("serviceDescription", service.serviceDescription)
             put("priceRange", service.priceRange)
             put("durationEstimate", service.durationEstimate)
+
             // Add the image if provided
             if (base64Image != null && base64Image.isNotBlank()) {
                 put("imageUrl", base64Image)
+
             }
         }
         
         val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
+
 
         // Log the request size for debugging large payloads
         val requestSize = requestBody.contentLength()
@@ -385,9 +394,11 @@ class ServiceApiClient(private val context: Context) {
         val request = Request.Builder()
             .url("$BASE_URL/api/services/updateServiceWithImage/$serviceId/$actualProviderId/$categoryId")
             .put(requestBody)
+
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
             .build()
+
 
         Log.d(TAG, "Update service with image request URL: ${request.url}")
         Log.d(TAG, "Request method: ${request.method}")
@@ -395,12 +406,14 @@ class ServiceApiClient(private val context: Context) {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 Log.e(TAG, "Failed to update service with image", e)
+
                 callback(null, e)
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val responseBody = response.body?.string()
                 Log.d(TAG, "Response code: ${response.code}")
+
                 
                 when (response.code) {
                     200, 201 -> {
@@ -447,17 +460,20 @@ class ServiceApiClient(private val context: Context) {
     // Create a new service with an image
     fun createServiceWithImage(providerId: Long, categoryId: Long, service: Service, 
                               base64Image: String?, token: String, callback: (Service?, Exception?) -> Unit) {
+
         if (token.isBlank()) {
             Log.e(TAG, "Token is empty or blank")
             callback(null, Exception("Authentication token is required"))
             return
         }
 
+
         Log.d(TAG, "Creating service with image. Provider ID: $providerId, Category ID: $categoryId")
         Log.d(TAG, "Image provided: ${base64Image != null}")
         if (base64Image != null) {
             Log.d(TAG, "Image base64 length: ${base64Image.length}")
         }
+
         
         // Note: Based on the database schema, provider_id needs to be 1 
         val actualProviderId = 1L
@@ -467,13 +483,16 @@ class ServiceApiClient(private val context: Context) {
             put("serviceDescription", service.serviceDescription)
             put("priceRange", service.priceRange)
             put("durationEstimate", service.durationEstimate)
+
             // Add the image if provided
             if (base64Image != null && base64Image.isNotBlank()) {
                 put("imageUrl", base64Image)
+
             }
         }
         
         val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
+
 
         // Log the request size for debugging large payloads
         val requestSize = requestBody.contentLength()
@@ -482,9 +501,11 @@ class ServiceApiClient(private val context: Context) {
         val request = Request.Builder()
             .url("$BASE_URL/api/services/postServiceWithImage/$actualProviderId/$categoryId")
             .post(requestBody)
+
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
             .build()
+
 
         Log.d(TAG, "Create service with image request URL: ${request.url}")
         Log.d(TAG, "Request method: ${request.method}")
@@ -492,12 +513,14 @@ class ServiceApiClient(private val context: Context) {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 Log.e(TAG, "Failed to create service with image", e)
+
                 callback(null, e)
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val responseBody = response.body?.string()
                 Log.d(TAG, "Response code: ${response.code}")
+
                 
                 when (response.code) {
                     200, 201 -> {
@@ -535,6 +558,7 @@ class ServiceApiClient(private val context: Context) {
                         }
                         
                         callback(null, Exception(errorMessage))
+
                     }
                 }
             }

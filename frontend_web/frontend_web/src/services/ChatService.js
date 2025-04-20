@@ -1,4 +1,5 @@
 import axios from 'axios';
+import NotificationService from './NotificationService';
 
 // Remove absolute URL to use relative URLs with Vite proxy
 const API_URL = ''; 
@@ -137,14 +138,103 @@ const ChatService = {
         status: "SENT"
       };
       
+      console.log('Sending message:', messageData);
+      // Send message
       const response = await axios.post('/api/messages/postMessage', messageData, authHeaders);
-      return response.data;
+      const sentMessage = response.data;
+      console.log('Message sent successfully:', sentMessage);
+      
+      // Create notification for the receiver
+      try {
+        console.log('Attempting to create notification for user:', receiverId);
+        // Get the sender's name for the notification message
+        const sender = await ChatService.getUserById(currentUserId);
+        const senderName = sender?.firstName && sender?.lastName 
+          ? `${sender.firstName} ${sender.lastName}`
+          : sender?.userName || "Someone";
+          
+        const notification = {
+          user: { userId: receiverId },
+          type: "Message",
+          message: `${senderName} sent you a message: "${messageText.substring(0, 30)}${messageText.length > 30 ? '...' : ''}"`,
+          isRead: false,
+          createdAt: new Date().toISOString(),
+          referenceId: sentMessage.messageId,
+          referenceType: "Message"
+        };
+        
+        console.log('Creating notification with data:', notification);
+        const createdNotification = await NotificationService.createNotification(notification);
+        console.log('Notification created successfully:', createdNotification);
+      } catch (notifError) {
+        console.error('Failed to create notification:', notifError);
+        // Continue even if notification creation fails
+      }
+      
+      return sentMessage;
     } catch (error) {
       console.error('Failed to send message:', error);
       throw error;
     }
   },
   
+  // Get user by ID (find user with matching userId from all customers and providers)
+  getUserById: async (userId) => {
+    try {
+      const authHeaders = ChatService.getAuthHeaders();
+      
+      // Get all customers and providers
+      const [customersResponse, providersResponse] = await Promise.allSettled([
+        axios.get(`/api/customers/getAll`, authHeaders),
+        axios.get(`/api/service-providers/getAll`, authHeaders)
+      ]);
+      
+      // Look through customers
+      if (customersResponse.status === 'fulfilled') {
+        const customers = customersResponse.value?.data || [];
+        const matchingCustomer = customers.find(customer => customer.userAuth?.userId === userId);
+        
+        if (matchingCustomer) {
+          return {
+            userId: matchingCustomer.userAuth?.userId,
+            userName: matchingCustomer.userAuth?.userName,
+            firstName: matchingCustomer.firstName || '',
+            lastName: matchingCustomer.lastName || '',
+            phoneNumber: matchingCustomer.phoneNumber,
+            role: 'Customer',
+            profileImage: matchingCustomer.profileImage
+          };
+        }
+      }
+      
+      // Look through service providers
+      if (providersResponse.status === 'fulfilled') {
+        const providers = providersResponse.value?.data || [];
+        const matchingProvider = providers.find(provider => provider.userAuth?.userId === userId);
+        
+        if (matchingProvider) {
+          return {
+            userId: matchingProvider.userAuth?.userId,
+            userName: matchingProvider.userAuth?.userName,
+            firstName: matchingProvider.firstName || '',
+            lastName: matchingProvider.lastName || '',
+            phoneNumber: matchingProvider.phoneNumber,
+            businessName: matchingProvider.businessName,
+            role: 'Service Provider',
+            profileImage: matchingProvider.profileImage
+          };
+        }
+      }
+      
+      // If we reach here, no user with matching userId was found
+      throw new Error(`User ${userId} not found`);
+    } catch (error) {
+      console.error(`Failed to fetch user ${userId}:`, error);
+      // Return a minimal user object if the API call fails
+      return { userId: userId, userName: "user_" + userId };
+    }
+  },
+
   // Get conversation history between two users
   getConversation: async (otherUserId) => {
     try {
@@ -228,6 +318,51 @@ const ChatService = {
     } catch (error) {
       console.error('Failed to fetch conversation partners:', error);
       return [];
+    }
+  },
+
+  // Mark a message as read while preserving the message text
+  markMessageAsRead: async (messageId) => {
+    try {
+      const authHeaders = ChatService.getAuthHeaders();
+      let messageText = null;
+      
+      // First try to find the message from the conversation API
+      try {
+        // Get all messages
+        const allMessagesResponse = await axios.get('/api/messages/getAll', authHeaders);
+        const allMessages = allMessagesResponse.data;
+        
+        // Find the specific message
+        const message = allMessages.find(msg => msg.messageId === messageId);
+        
+        if (message) {
+          messageText = message.messageText;
+          console.log(`Found message ${messageId} with text: "${messageText}"`);
+        } else {
+          console.warn(`Message ${messageId} not found in all messages`);
+        }
+      } catch (error) {
+        console.error('Failed to find message:', error);
+      }
+      
+      // Create update data with both status AND messageText if found
+      const updateData = {
+        status: "READ"
+      };
+      
+      // Only add messageText if we found it
+      if (messageText) {
+        updateData.messageText = messageText;
+      }
+      
+      console.log(`Updating message ${messageId} status to READ${messageText ? ' with preserved text' : ''}`);
+      const response = await axios.put(`/api/messages/updateMessage/${messageId}`, updateData, authHeaders);
+      console.log('Message marked as read:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to mark message ${messageId} as read:`, error);
+      throw error;
     }
   }
 };

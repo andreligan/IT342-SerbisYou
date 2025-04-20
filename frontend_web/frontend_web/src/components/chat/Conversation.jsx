@@ -3,7 +3,7 @@ import ChatHeader from './ChatHeader';
 import MessageBubble from './MessageBubble';
 import ChatService from '../../services/ChatService';
 
-function Conversation({ user, messages: initialMessages, onBack, onClose }) {
+function Conversation({ user, messages: initialMessages, onBack, onClose, onMessageSent }) {
   const [newMessage, setNewMessage] = useState('');
   const [messages, setMessages] = useState(initialMessages || []);
   const [sending, setSending] = useState(false);
@@ -51,7 +51,7 @@ function Conversation({ user, messages: initialMessages, onBack, onClose }) {
     setError(null);
     
     try {
-      // Send message to server
+      // Send message to server (this now also creates a notification)
       const sentMessage = await ChatService.sendMessage(user.userId, newMessage);
       
       // Replace temporary message with the real one from server
@@ -60,6 +60,9 @@ function Conversation({ user, messages: initialMessages, onBack, onClose }) {
           msg.id === tempMessage.id ? sentMessage : msg
         )
       );
+      
+      // Notify parent component that a message was sent
+      if (onMessageSent) onMessageSent();
     } catch (err) {
       console.error('Failed to send message:', err);
       setError('Failed to send message. Please try again.');
