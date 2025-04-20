@@ -197,11 +197,14 @@ const BrowseServicesPage = () => {
       <h1 className="text-3xl font-bold text-gray-800 text-center mb-8">Browse Services</h1>
       
       <div className="flex flex-col md:flex-row gap-6">
-        <ServiceFilters 
-          services={services}
-          onFilterChange={handleFilterChange}
-          className="w-full md:w-64 flex-shrink-0"
-        />
+        {/* Make the filter sidebar sticky when scrolling */}
+        <div className="w-full md:w-64 flex-shrink-0 md:sticky md:top-4 md:self-start" style={{ maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto' }}>
+          <ServiceFilters 
+            services={services}
+            onFilterChange={handleFilterChange}
+            className="w-full"
+          />
+        </div>
         
         <div className="flex-1">
           {isLoading ? (
