@@ -115,6 +115,18 @@
                     android:inputType="text" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Add image upload button -->
+            <Button
+                android:id="@+id/btnAddImage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Upload Service Image"
+                android:drawableStart="@android:drawable/ic_menu_camera"
+                android:drawablePadding="8dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:textColor="@color/primary_green" />
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

@@ -6,5 +6,8 @@ data class Customer(
     val lastName: String = "",
     val phoneNumber: String = "",
     val address: Address? = null,
-    val userAuth: User? = null
+    val userAuth: User? = null,
+    val username: String = "",
+    val email: String = "",
+    val profileImage: String? = null
 )

@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:id="@+id/action_profile"
-        android:title="Edit Profile"
+        android:title="Manage Profile"
         android:icon="@android:drawable/ic_menu_myplaces"
         app:showAsAction="never" />
     <item

@@ -18,7 +18,19 @@ import java.io.IOException
 class ServiceApiClient(private val context: Context) {
     private val client = OkHttpClient()
     private val gson = Gson()
-    private val BASE_URL = "http://10.0.2.2:8080" // Use your actual backend URL
+    
+    // CONFIGURATION FOR BACKEND CONNECTION
+    // For Android Emulator - Virtual Device (default)
+    private val EMULATOR_URL = "http://10.0.2.2:8080" 
+    
+    // For Physical Device - Use your computer's actual IP address from ipconfig
+    private val PHYSICAL_DEVICE_URL = "http://192.168.254.103:8080"
+    
+    // SWITCH BETWEEN CONNECTION TYPES:
+    // Uncomment the one you need and comment out the other
+    // private val BASE_URL = EMULATOR_URL     // For Android Emulator
+    private val BASE_URL = PHYSICAL_DEVICE_URL // For Physical Device
+    
     private val TAG = "ServiceApiClient"
 
     // Get all service categories
@@ -330,6 +342,200 @@ class ServiceApiClient(private val context: Context) {
                 } else {
                     Log.e(TAG, "Error deleting all services: ${response.code}")
                     callback(false, Exception("Failed to delete all services: ${response.code}"))
+                }
+            }
+        })
+    }
+
+    // Update a service with an image
+    fun updateServiceWithImage(serviceId: Long, providerId: Long, categoryId: Long, service: Service, 
+                              base64Image: String?, token: String, callback: (Service?, Exception?) -> Unit) {
+        if (token.isBlank()) {
+            Log.e(TAG, "Token is empty or blank")
+            callback(null, Exception("Authentication token is required"))
+            return
+        }
+
+        Log.d(TAG, "Updating service with image. Service ID: $serviceId")
+        Log.d(TAG, "Image provided: ${base64Image != null}")
+        if (base64Image != null) {
+            Log.d(TAG, "Image base64 length: ${base64Image.length}")
+        }
+        
+        // Note: Based on the database schema, provider_id needs to be 1 
+        val actualProviderId = 1L
+        
+        val jsonObject = JSONObject().apply {
+            put("serviceName", service.serviceName)
+            put("serviceDescription", service.serviceDescription)
+            put("priceRange", service.priceRange)
+            put("durationEstimate", service.durationEstimate)
+            // Add the image if provided
+            if (base64Image != null && base64Image.isNotBlank()) {
+                put("imageUrl", base64Image)
+            }
+        }
+        
+        val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
+
+        // Log the request size for debugging large payloads
+        val requestSize = requestBody.contentLength()
+        Log.d(TAG, "Request size: ${requestSize / 1024} KB")
+        
+        val request = Request.Builder()
+            .url("$BASE_URL/api/services/updateServiceWithImage/$serviceId/$actualProviderId/$categoryId")
+            .put(requestBody)
+            .header("Authorization", "Bearer $token")
+            .header("Content-Type", "application/json")
+            .build()
+
+        Log.d(TAG, "Update service with image request URL: ${request.url}")
+        Log.d(TAG, "Request method: ${request.method}")
+        
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to update service with image", e)
+                callback(null, e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                Log.d(TAG, "Response code: ${response.code}")
+                
+                when (response.code) {
+                    200, 201 -> {
+                        Log.d(TAG, "Update service with image response: $responseBody")
+                        try {
+                            val updatedService = gson.fromJson(responseBody, Service::class.java)
+                            callback(updatedService, null)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error parsing updated service with image", e)
+                            callback(null, e)
+                        }
+                    }
+                    401 -> {
+                        Log.e(TAG, "Unauthorized error (401): $responseBody")
+                        callback(null, Exception("Authentication error (401): Please log in again"))
+                    }
+                    403 -> {
+                        Log.e(TAG, "Forbidden error (403): $responseBody")
+                        callback(null, Exception("403: You don't have permission to update this service"))
+                    }
+                    413 -> {
+                        Log.e(TAG, "Payload Too Large error (413): $responseBody")
+                        callback(null, Exception("413: The image is too large to upload"))
+                    }
+                    else -> {
+                        Log.e(TAG, "Error updating service with image: ${response.code}")
+                        Log.e(TAG, "Error response body: $responseBody")
+                        
+                        // Try to extract error message from response if available
+                        val errorMessage = try {
+                            val errorJson = JSONObject(responseBody ?: "{}")
+                            errorJson.optString("message", "Unknown error")
+                        } catch (e: Exception) {
+                            "Failed to update service: ${response.code}"
+                        }
+                        
+                        callback(null, Exception(errorMessage))
+                    }
+                }
+            }
+        })
+    }
+
+    // Create a new service with an image
+    fun createServiceWithImage(providerId: Long, categoryId: Long, service: Service, 
+                              base64Image: String?, token: String, callback: (Service?, Exception?) -> Unit) {
+        if (token.isBlank()) {
+            Log.e(TAG, "Token is empty or blank")
+            callback(null, Exception("Authentication token is required"))
+            return
+        }
+
+        Log.d(TAG, "Creating service with image. Provider ID: $providerId, Category ID: $categoryId")
+        Log.d(TAG, "Image provided: ${base64Image != null}")
+        if (base64Image != null) {
+            Log.d(TAG, "Image base64 length: ${base64Image.length}")
+        }
+        
+        // Note: Based on the database schema, provider_id needs to be 1 
+        val actualProviderId = 1L
+        
+        val jsonObject = JSONObject().apply {
+            put("serviceName", service.serviceName)
+            put("serviceDescription", service.serviceDescription)
+            put("priceRange", service.priceRange)
+            put("durationEstimate", service.durationEstimate)
+            // Add the image if provided
+            if (base64Image != null && base64Image.isNotBlank()) {
+                put("imageUrl", base64Image)
+            }
+        }
+        
+        val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
+
+        // Log the request size for debugging large payloads
+        val requestSize = requestBody.contentLength()
+        Log.d(TAG, "Request size: ${requestSize / 1024} KB")
+        
+        val request = Request.Builder()
+            .url("$BASE_URL/api/services/postServiceWithImage/$actualProviderId/$categoryId")
+            .post(requestBody)
+            .header("Authorization", "Bearer $token")
+            .header("Content-Type", "application/json")
+            .build()
+
+        Log.d(TAG, "Create service with image request URL: ${request.url}")
+        Log.d(TAG, "Request method: ${request.method}")
+        
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to create service with image", e)
+                callback(null, e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                Log.d(TAG, "Response code: ${response.code}")
+                
+                when (response.code) {
+                    200, 201 -> {
+                        Log.d(TAG, "Create service with image response: $responseBody")
+                        try {
+                            val createdService = gson.fromJson(responseBody, Service::class.java)
+                            callback(createdService, null)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error parsing created service with image", e)
+                            callback(null, e)
+                        }
+                    }
+                    401 -> {
+                        Log.e(TAG, "Unauthorized error (401): $responseBody")
+                        callback(null, Exception("Authentication error (401): Please log in again"))
+                    }
+                    403 -> {
+                        Log.e(TAG, "Forbidden error (403): $responseBody")
+                        callback(null, Exception("403: You don't have permission to create this service"))
+                    }
+                    413 -> {
+                        Log.e(TAG, "Payload Too Large error (413): $responseBody")
+                        callback(null, Exception("413: The image is too large to upload"))
+                    }
+                    else -> {
+                        Log.e(TAG, "Error creating service with image: ${response.code}")
+                        Log.e(TAG, "Error response body: $responseBody")
+                        
+                        // Try to extract error message from response if available
+                        val errorMessage = try {
+                            val errorJson = JSONObject(responseBody ?: "{}")
+                            errorJson.optString("message", "Unknown error")
+                        } catch (e: Exception) {
+                            "Failed to create service: ${response.code}"
+                        }
+                        
+                        callback(null, Exception(errorMessage))
+                    }
                 }
             }
         })

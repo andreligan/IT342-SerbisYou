@@ -37,12 +37,13 @@ class RegisterActivity : AppCompatActivity() {
         val firstName = intent.getStringExtra("FIRST_NAME") ?: ""
         val lastName = intent.getStringExtra("LAST_NAME") ?: ""
         val phoneNumber = intent.getStringExtra("PHONE_NUMBER") ?: ""
-        val street = intent.getStringExtra("STREET") ?: ""
-        val city = intent.getStringExtra("CITY") ?: ""
-        val province = intent.getStringExtra("PROVINCE") ?: ""
-        val postalCode = intent.getStringExtra("POSTAL_CODE") ?: ""
-        val barangay = intent.getStringExtra("BARANGAY") ?: ""
-
+        
+        // Optional address fields
+        val street = intent.getStringExtra("STREET")
+        val city = intent.getStringExtra("CITY")
+        val province = intent.getStringExtra("PROVINCE")
+        val postalCode = intent.getStringExtra("POSTAL_CODE")
+        
         // For service provider
         val businessName = intent.getStringExtra("BUSINESS_NAME") ?: ""
 
@@ -61,12 +62,11 @@ class RegisterActivity : AppCompatActivity() {
                     firstName,
                     lastName,
                     phoneNumber,
+                    businessName,
                     street,
                     city,
                     province,
-                    postalCode,
-                    barangay,
-                    businessName
+                    postalCode
                 )
             }
         }
@@ -99,74 +99,94 @@ class RegisterActivity : AppCompatActivity() {
         firstName: String,
         lastName: String,
         phoneNumber: String,
-        street: String,
-        city: String,
-        province: String,
-        postalCode: String,
-        barangay: String,
-        businessName: String
+        businessName: String,
+        street: String?,
+        city: String?,
+        province: String?,
+        postalCode: String?
     ) {
         thread {
             try {
                 val client = OkHttpClient()
 
-                // Create JSON objects for registration
+                // Step 1: Create user auth
                 val userAuthJson = JSONObject().apply {
                     put("userName", username)
                     put("password", password)
                     put("email", email)
-                    // Standardize role format to match backend expectations
                     put("role", if (role.equals("SERVICE_PROVIDER", ignoreCase = true)) 
                                "Service Provider" else "Customer")
                 }
-
+                
+                // Create the address first - critical because the database requires it
+                // Create address JSON with all available fields
                 val addressJson = JSONObject().apply {
-                    put("streetName", street)
-                    put("city", city)
-                    put("barangay", barangay)
-                    put("province", province)
-                    put("zipCode", postalCode)
+                    if (!street.isNullOrEmpty()) put("streetName", street)
+                    if (!city.isNullOrEmpty()) put("city", city)
+                    if (!province.isNullOrEmpty()) put("province", province)
+                    if (!postalCode.isNullOrEmpty()) put("zipCode", postalCode)
+                    put("main", true)
+                }
+                
+                // Create the customer or service provider JSON WITHOUT address_id
+                // The entity doesn't have this field, so we remove it to avoid the Unrecognized field error
+                val customerJson = if (role.equals("CUSTOMER", ignoreCase = true)) {
+                    JSONObject().apply {
+                        put("firstName", firstName)
+                        put("lastName", lastName)
+                        put("phoneNumber", phoneNumber)
+                        // Removed address_id as it causes "Unrecognized field" error in CustomerEntity
+                    }
+                } else {
+                    JSONObject()
                 }
 
-                val profileJson = JSONObject().apply {
-                    put("firstName", firstName)
-                    put("lastName", lastName)
-                    put("phoneNumber", phoneNumber)
-                }
-
-                // Add business-specific fields for service providers
-                if (role.equals("SERVICE_PROVIDER", ignoreCase = true)) {
-                    profileJson.put("businessName", businessName)
-                    profileJson.put("yearsOfExperience", 0)
-                    profileJson.put("availabilitySchedule", "Monday-Friday, 9AM-5PM")
+                val serviceProviderJson = if (role.equals("SERVICE_PROVIDER", ignoreCase = true)) {
+                    JSONObject().apply {
+                        put("firstName", firstName)
+                        put("lastName", lastName)
+                        put("phoneNumber", phoneNumber)
+                        put("businessName", businessName)
+                        put("yearsOfExperience", 0)
+                        put("availabilitySchedule", "Monday-Friday, 9AM-5PM")
+                        put("status", "Active")
+                        put("paymentMethod", "Cash")
+                        // Removed address_id as it causes "Unrecognized field" error in ServiceProviderEntity
+                    }
+                } else {
+                    JSONObject()
                 }
 
                 // Create the main request body
                 val requestBodyJson = JSONObject().apply {
                     put("userAuth", userAuthJson)
                     
-                    // Important: Address needs to be handled separately to fix transient entity issues
+                    // Always include address - this is critical for the backend
+                    // The address must be created first and linked to the customer/provider
+                    put("address", addressJson)
+                    
                     if (role.equals("CUSTOMER", ignoreCase = true)) {
-                        put("customer", profileJson)
-                        // Directly attach address to the customer
-                        profileJson.put("address", addressJson)
-                    } else if (role.equals("SERVICE_PROVIDER", ignoreCase = true)) {
-                        put("serviceProvider", profileJson)
-                        // Directly attach address to the service provider
-                        profileJson.put("address", addressJson)
+                        put("customer", customerJson)
+                    } else {
+                        put("serviceProvider", serviceProviderJson)
                     }
                 }
 
                 val requestBody = requestBodyJson.toString()
                     .toRequestBody("application/json".toMediaTypeOrNull())
 
+                // Log the request for debugging
+                println("Registration request: $requestBodyJson")
+
                 val request = Request.Builder()
-                    .url("http://10.0.2.2:8080/api/user-auth/register") // Using 10.0.2.2 for emulator
+                    .url("http://192.168.254.103:8080/api/user-auth/register")
                     .post(requestBody)
                     .build()
 
                 client.newCall(request).execute().use { response ->
                     val responseBody = response.body?.string()
+                    println("Registration response: $responseBody")
+                    
                     if (response.isSuccessful) {
                         runOnUiThread {
                             Toast.makeText(this, "Registration successful", Toast.LENGTH_SHORT).show()
@@ -175,8 +195,31 @@ class RegisterActivity : AppCompatActivity() {
                             finish()
                         }
                     } else {
+                        // Safe handling of error response
+                        val errorMessage = try {
+                            when (response.code) {
+                                400 -> {
+                                    // Safely extract error message if it exists
+                                    val errorBody = responseBody ?: ""
+                                    if (errorBody.contains("Unrecognized field")) {
+                                        "Registration failed: Backend entity-field mismatch (address_id). Contact backend developer."
+                                    } else if (errorBody.contains("doesn't have a default value")) {
+                                        "Registration failed: Database requires address. Contact backend developer to fix schema."
+                                    } else {
+                                        "Registration failed: ${if (errorBody.isNotEmpty()) errorBody else "Invalid data or user already exists"}"
+                                    }
+                                }
+                                500 -> "Server error: Address_id required in database but entity doesn't support it. Contact backend developer."
+                                else -> "Registration failed: ${responseBody ?: response.message}"
+                            }
+                        } catch (e: Exception) {
+                            // If we encounter any exception while parsing the error response
+                            e.printStackTrace()
+                            "Registration failed: ${e.message ?: "Unknown error"}"
+                        }
+                        
                         runOnUiThread {
-                            Toast.makeText(this, "Registration failed: ${response.code} - ${responseBody ?: response.message}", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
                         }
                     }
                 }
