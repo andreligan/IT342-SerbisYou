@@ -261,6 +261,10 @@ function App() {
           element={<ProtectedRoute element={<CustomerProfilePage />} allowedRoles={["customer"]} />}
         />
         <Route
+          path="/customerProfile/:tab"
+          element={<ProtectedRoute element={<CustomerProfilePage />} allowedRoles={["customer"]} />}
+        />
+        <Route
           path="/browseServices"
           element={<ProtectedRoute element={<BrowseServicesPage />} allowedRoles={["customer"]} />}
         />
@@ -282,6 +286,10 @@ function App() {
         />
         <Route
           path="/serviceProviderProfile"
+          element={<ProtectedRoute element={<ServiceProviderProfile />} allowedRoles={["service provider"]} />}
+        />
+        <Route
+          path="/serviceProviderProfile/:tab"
           element={<ProtectedRoute element={<ServiceProviderProfile />} allowedRoles={["service provider"]} />}
         />
         <Route
