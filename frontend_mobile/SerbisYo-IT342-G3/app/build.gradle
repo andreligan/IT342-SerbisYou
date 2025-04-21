@@ -45,6 +45,19 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.11.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.11.0'
 
+    // Fuel HTTP Networking library
+    implementation 'com.github.kittinunf.fuel:fuel:2.3.1'
+    implementation 'com.github.kittinunf.fuel:fuel-android:2.3.1'
+    implementation 'com.github.kittinunf.fuel:fuel-json:2.3.1'
+    implementation 'com.github.kittinunf.result:result:5.2.1'
+    
+    // CircleImageView for circular profile images
+    implementation 'de.hdodenhof:circleimageview:3.1.0'
+    
+    // Glide for image loading
+    implementation 'com.github.bumptech.glide:glide:4.16.0'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
+
     // ViewModel and LiveData
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2'
     implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.6.2'

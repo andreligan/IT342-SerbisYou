@@ -51,7 +51,8 @@ class LoginActivity : AppCompatActivity() {
         }
 
         tvSignUp.setOnClickListener {
-            startActivity(Intent(this, RoleSelection::class.java))
+            // Redirect to the new multi-step registration flow
+            startActivity(Intent(this, MultiStepRegistrationActivity::class.java))
         }
     }
 
@@ -67,14 +68,10 @@ class LoginActivity : AppCompatActivity() {
                 
                 val requestBody = jsonObject.toString()
                     .toRequestBody("application/json".toMediaTypeOrNull())
-
-                //if using android emulator
+                
                 //val requestUrl = "http://10.0.2.2:8080/api/user-auth/login"
-
-                //if using the physical device
                 val requestUrl = "http://192.168.254.103:8080/api/user-auth/login"
 
-                //val requestUrl = "http://192.168.17.136:8080/api/user-auth/login" // guada
                 Log.d(TAG, "Sending login request to: $requestUrl")
                 Log.d(TAG, "Request body: $jsonObject")
                 
@@ -98,13 +95,12 @@ class LoginActivity : AppCompatActivity() {
                             val token = jsonResponse["token"] as? String
                             val role = jsonResponse["role"] as? String
                             val userId = jsonResponse["userId"] as? String
-                            val userName = jsonResponse["userName"] as? String
                             
-                            Log.d(TAG, "Extracted data - Token: $token, Role: $role, UserId: $userId, UserName: $userName")
+                            Log.d(TAG, "Extracted data - Token: ${token?.take(20)}..., Role: $role, UserId: $userId")
                             
-                            if (role == null) {
+                            if (token == null || role == null) {
                                 runOnUiThread {
-                                    Toast.makeText(this, "Error: Role not found in response", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(this, "Error: Invalid response from server", Toast.LENGTH_LONG).show()
                                 }
                                 return@use
                             }
@@ -114,14 +110,14 @@ class LoginActivity : AppCompatActivity() {
                             with(sharedPref.edit()) {
                                 putString("token", token)
                                 putString("userId", userId)
-                                putString("username", userName ?: username)
+                                putString("username", username)
                                 putString("role", role)
                                 apply()
                             }
                             
                             runOnUiThread {
-                                // Navigate based on role - case insensitive check
-                                if (role.contains("customer", ignoreCase = true)) {
+                                // Navigate based on role
+                                if (role.contains("Customer", ignoreCase = true)) {
                                     Log.d(TAG, "Navigating to CustomerDashboardActivity")
                                     Toast.makeText(this, "Login successful as Customer", Toast.LENGTH_SHORT).show()
                                     
@@ -130,7 +126,7 @@ class LoginActivity : AppCompatActivity() {
                                     startActivity(intent)
                                     finish()
                                 } 
-                                else if (role.contains("service", ignoreCase = true)) {
+                                else if (role.contains("Service Provider", ignoreCase = true)) {
                                     Log.d(TAG, "Navigating to ServiceProviderDashboardActivity")
                                     Toast.makeText(this, "Login successful as Service Provider", Toast.LENGTH_SHORT).show()
                                     
@@ -155,7 +151,26 @@ class LoginActivity : AppCompatActivity() {
                         Log.e(TAG, "Login failed: ${response.code} - $errorBody")
                         
                         runOnUiThread {
-                            Toast.makeText(this, "Login failed: Invalid credentials", Toast.LENGTH_LONG).show()
+                            when (response.code) {
+                                400 -> Toast.makeText(this, "Invalid username or password", Toast.LENGTH_LONG).show()
+                                403 -> {
+                                    // Try to parse the error message from the response
+                                    try {
+                                        val errorJson = if (errorBody.isNotEmpty()) {
+                                            JSONObject(errorBody)
+                                        } else {
+                                            null
+                                        }
+                                        val message = errorJson?.optString("message") ?: "Access denied. Please check your credentials."
+                                        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Error parsing error response", e)
+                                        Toast.makeText(this, "Access denied. Please check your credentials.", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                                401 -> Toast.makeText(this, "Unauthorized access", Toast.LENGTH_LONG).show()
+                                else -> Toast.makeText(this, "Login failed (${response.code}): Please try again", Toast.LENGTH_LONG).show()
+                            }
                         }
                     }
                 }

@@ -23,10 +23,14 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
 import android.util.Log
-import java.io.ByteArrayOutputStream
-import java.io.InputStream
-import android.app.AlertDialog
-import android.content.Context
+
+import android.content.Intent
+import android.provider.MediaStore
+import android.Manifest
+import android.os.Build
+import androidx.core.app.ActivityCompat
+import org.json.JSONObject
+
 
 class EditServiceActivity : AppCompatActivity() {
     private lateinit var etServiceName: EditText
@@ -44,6 +48,10 @@ class EditServiceActivity : AppCompatActivity() {
     private lateinit var serviceApiClient: ServiceApiClient
     private var categories = listOf<ServiceCategory>()
     private val TAG = "EditServiceActivity"
+
+    // Constants for permissions and image picking
+    private val PICK_IMAGE_REQUEST = 1
+    private val STORAGE_PERMISSION_CODE = 2
 
     private var serviceId: Long = 0
     private var providerId: Long = 0
@@ -163,130 +171,12 @@ class EditServiceActivity : AppCompatActivity() {
             finish()
         }
         
-        // Select image button click
-        btnSelectImage.setOnClickListener {
-            checkStoragePermission()
-        }
-    }
 
-    private fun checkStoragePermission() {
-        // For Android 13+ (API 33+), we need READ_MEDIA_IMAGES
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.READ_MEDIA_IMAGES
-                ) != PackageManager.PERMISSION_GRANTED) {
-                
-                if (ActivityCompat.shouldShowRequestPermissionRationale(
-                        this,
-                        Manifest.permission.READ_MEDIA_IMAGES
-                    )) {
-                    Toast.makeText(this, 
-                        "We need permission to access your gallery for selecting a service image", 
-                        Toast.LENGTH_LONG).show()
-                }
-                
-                requestPermissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
-                return
-            }
-            // Permission already granted
-            openImagePicker()
-        } 
-        // For Android 10-12, use READ_EXTERNAL_STORAGE
-        else {
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-                ) != PackageManager.PERMISSION_GRANTED) {
-                
-                if (ActivityCompat.shouldShowRequestPermissionRationale(
-                        this,
-                        Manifest.permission.READ_EXTERNAL_STORAGE
-                    )) {
-                    Toast.makeText(this, 
-                        "We need permission to access your gallery for selecting a service image", 
-                        Toast.LENGTH_LONG).show()
-                }
-                
-                // Request the permission
-                requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
-                return
-            }
-            // Permission already granted
+        // Add image picker button functionality (make sure this button exists in your layout)
+        findViewById<Button>(R.id.btnAddImage)?.setOnClickListener {
             openImagePicker()
         }
-    }
 
-    private fun openImagePicker() {
-        try {
-            val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-            // Add these flags to help with Xiaomi MIUI restrictions
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-            pickImageLauncher.launch(intent)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error opening image picker", e)
-            Toast.makeText(this, "Error opening gallery: ${e.message}", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun convertImageToBase64(uri: Uri) {
-        try {
-            val inputStream: InputStream? = contentResolver.openInputStream(uri)
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-            inputStream?.close()
-
-            // Resize the bitmap to reduce file size
-            val maxDimension = 800 // Set a reasonable max dimension
-            val originalWidth = bitmap.width
-            val originalHeight = bitmap.height
-            var newWidth = originalWidth
-            var newHeight = originalHeight
-            
-            if (originalWidth > maxDimension || originalHeight > maxDimension) {
-                if (originalWidth > originalHeight) {
-                    newWidth = maxDimension
-                    newHeight = (originalHeight * maxDimension) / originalWidth
-                } else {
-                    newHeight = maxDimension
-                    newWidth = (originalWidth * maxDimension) / originalHeight
-                }
-                
-                Log.d(TAG, "Resizing image from ${originalWidth}x${originalHeight} to ${newWidth}x${newHeight}")
-            }
-            
-            val resizedBitmap = if (newWidth != originalWidth || newHeight != originalHeight) {
-                Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
-            } else {
-                bitmap
-            }
-
-            val byteArrayOutputStream = ByteArrayOutputStream()
-            // Compress the image much more aggressively (reduce quality)
-            resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream)
-            val byteArray = byteArrayOutputStream.toByteArray()
-            
-            Log.d(TAG, "Image byte array size before encoding: ${byteArray.size} bytes")
-            
-            imageBase64 = Base64.encodeToString(byteArray, Base64.DEFAULT)
-            
-            Log.d(TAG, "Base64 string length: ${imageBase64.length} characters")
-            
-            // Log the first and last 20 characters of the Base64 string to verify it looks correct
-            if (imageBase64.length > 40) {
-                Log.d(TAG, "Base64 string starts with: ${imageBase64.substring(0, 20)}...")
-                Log.d(TAG, "Base64 string ends with: ...${imageBase64.substring(imageBase64.length - 20)}")
-            }
-            
-            if (resizedBitmap != bitmap) {
-                resizedBitmap.recycle()
-            }
-            bitmap.recycle()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error converting image to Base64", e)
-            Toast.makeText(this, "Error processing image: ${e.message}", Toast.LENGTH_SHORT).show()
-            imageBase64 = "" // Clear the image data on error
-        }
     }
 
     private fun loadCategories() {
@@ -393,19 +283,58 @@ class EditServiceActivity : AppCompatActivity() {
                 btnUpdateService.isEnabled = true
                 
                 if (error != null) {
-                    Log.e(TAG, "Error updating service", error)
-                    
-                    // Handle different error cases
+
                     when {
-                        error.message?.contains("Authentication failed") == true || 
-                        error.message?.contains("token") == true -> {
-                            showAuthenticationErrorDialog()
+                        error.message?.contains("403") == true -> {
+                            var errorMessage = "Authorization error: You don't have permission to update this service"
+                            try {
+                                // Try to parse the error message from the JSON response
+                                val errorBody = error.message?.substringAfter("{")?.let { "{$it" }
+                                val jsonObject = JSONObject(errorBody ?: "{}")
+                                if (jsonObject.has("message")) {
+                                    errorMessage = jsonObject.getString("message")
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error parsing error response: ${e.message}")
+                            }
+                            Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
+                            Log.e(TAG, "403 Forbidden error: ${error.message}")
                         }
-                        error.message?.contains("too large") == true -> {
-                            Toast.makeText(this, "Image is too large. Please select a smaller image.", Toast.LENGTH_LONG).show()
+                        error.message?.contains("401") == true -> {
+                            var errorMessage = "Authentication error: Please log in again"
+                            try {
+                                val errorBody = error.message?.substringAfter("{")?.let { "{$it" }
+                                val jsonObject = JSONObject(errorBody ?: "{}")
+                                if (jsonObject.has("message")) {
+                                    errorMessage = jsonObject.getString("message")
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error parsing error response: ${e.message}")
+                            }
+                            Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
+                            Log.e(TAG, "401 Unauthorized error: ${error.message}")
+                            // Consider redirecting to login screen here
+                        }
+                        error.message?.contains("413") == true -> {
+                            Toast.makeText(this, "Error: The image is too large to upload", Toast.LENGTH_LONG).show()
+                            Log.e(TAG, "413 Payload Too Large: ${error.message}")
                         }
                         else -> {
-                            Toast.makeText(this, "Error: ${error.message}", Toast.LENGTH_LONG).show()
+                            var errorMessage = "Error updating service: ${error.message}"
+                            try {
+                                val errorBody = error.message?.substringAfter("{")?.let { "{$it" }
+                                if (errorBody != null && errorBody.startsWith("{")) {
+                                    val jsonObject = JSONObject(errorBody)
+                                    if (jsonObject.has("message")) {
+                                        errorMessage = jsonObject.getString("message")
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error parsing error response: ${e.message}")
+                            }
+                            Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
+                            Log.e(TAG, "Update service error: ${error.message}")
+
                         }
                     }
                     return@runOnUiThread
@@ -413,10 +342,154 @@ class EditServiceActivity : AppCompatActivity() {
                 
                 if (result != null) {
                     Toast.makeText(this, "Service updated successfully", Toast.LENGTH_SHORT).show()
+                    setResult(RESULT_OK)
                     finish()
                 } else {
-                    Toast.makeText(this, "Failed to update service", Toast.LENGTH_SHORT).show()
+
+                    Toast.makeText(this, "Failed to update service. Please try again.", Toast.LENGTH_LONG).show()
+                    Log.e(TAG, "Update service returned null result without error")
                 }
+            }
+        }
+    }
+
+    private fun openImagePicker() {
+        if (checkStoragePermission()) {
+            val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+            intent.type = "image/*"
+            Log.d(TAG, "Opening image picker")
+            startActivityForResult(intent, PICK_IMAGE_REQUEST)
+        } else {
+            Log.e(TAG, "Storage permission not granted")
+            ActivityCompat.requestPermissions(
+                this,
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
+                } else {
+                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+                },
+                STORAGE_PERMISSION_CODE
+            )
+        }
+    }
+
+    private fun checkStoragePermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // For Android 13 and above
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_MEDIA_IMAGES
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else {
+            // For Android 12 and below
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun updateServiceWithImage(base64Image: String? = null) {
+        val serviceName = etServiceName.text.toString()
+        val serviceDescription = etServiceDescription.text.toString()
+        val priceRange = etPriceRange.text.toString()
+        val durationEstimate = etDurationEstimate.text.toString()
+        val categoryPosition = spinnerCategory.selectedItemPosition
+
+        if (categoryPosition < 0 || categoryPosition >= categories.size) {
+            Toast.makeText(this, "Please select a valid category", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val selectedCategoryId = categories[categoryPosition].categoryId
+
+        val updatedService = Service(
+            serviceId = serviceId,
+            serviceName = serviceName,
+            serviceDescription = serviceDescription,
+            priceRange = priceRange,
+            durationEstimate = durationEstimate
+        )
+
+        progressBar.visibility = View.VISIBLE
+        btnUpdateService.isEnabled = false
+
+        // Log for debugging
+        Log.d(TAG, "Updating service with image. Token length: ${token.length}, Image provided: ${base64Image != null}")
+        if (base64Image != null) {
+            Log.d(TAG, "Image base64 length: ${base64Image.length}")
+        }
+
+        serviceApiClient.updateServiceWithImage(serviceId, providerId, selectedCategoryId, updatedService, base64Image, token) { result, error ->
+            runOnUiThread {
+                progressBar.visibility = View.GONE
+                btnUpdateService.isEnabled = true
+                
+                if (error != null) {
+                    when {
+                        error.message?.contains("403") == true -> {
+                            var errorMessage = "Authorization error: You don't have permission to update this service"
+                            try {
+                                // Try to parse the error message from the JSON response
+                                val errorBody = error.message?.substringAfter("{")?.let { "{$it" }
+                                val jsonObject = JSONObject(errorBody ?: "{}")
+                                if (jsonObject.has("message")) {
+                                    errorMessage = jsonObject.getString("message")
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error parsing error response: ${e.message}")
+                            }
+                            Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
+                            Log.e(TAG, "403 Forbidden error: ${error.message}")
+                        }
+                        error.message?.contains("401") == true -> {
+                            var errorMessage = "Authentication error: Please log in again"
+                            try {
+                                val errorBody = error.message?.substringAfter("{")?.let { "{$it" }
+                                val jsonObject = JSONObject(errorBody ?: "{}")
+                                if (jsonObject.has("message")) {
+                                    errorMessage = jsonObject.getString("message")
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error parsing error response: ${e.message}")
+                            }
+                            Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
+                            Log.e(TAG, "401 Unauthorized error: ${error.message}")
+                            // Consider redirecting to login screen here
+                        }
+                        error.message?.contains("413") == true -> {
+                            Toast.makeText(this, "Error: The image is too large to upload", Toast.LENGTH_LONG).show()
+                            Log.e(TAG, "413 Payload Too Large: ${error.message}")
+                        }
+                        else -> {
+                            var errorMessage = "Error updating service: ${error.message}"
+                            try {
+                                val errorBody = error.message?.substringAfter("{")?.let { "{$it" }
+                                if (errorBody != null && errorBody.startsWith("{")) {
+                                    val jsonObject = JSONObject(errorBody)
+                                    if (jsonObject.has("message")) {
+                                        errorMessage = jsonObject.getString("message")
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error parsing error response: ${e.message}")
+                            }
+                            Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
+                            Log.e(TAG, "Update service with image error: ${error.message}")
+                        }
+                    }
+                    return@runOnUiThread
+                }
+                
+                if (result != null) {
+                    Toast.makeText(this, "Service updated successfully with image", Toast.LENGTH_SHORT).show()
+                    setResult(RESULT_OK)
+                    finish()
+                } else {
+                    Toast.makeText(this, "Failed to update service with image. Please try again.", Toast.LENGTH_LONG).show()
+                    Log.e(TAG, "Update service with image returned null result without error")
+                }
+
             }
         }
     }
@@ -445,5 +518,63 @@ class EditServiceActivity : AppCompatActivity() {
     override fun onSupportNavigateUp(): Boolean {
         onBackPressed()
         return true
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.data != null) {
+            val imageUri = data.data
+            try {
+                Log.d(TAG, "Image selected: $imageUri")
+                val base64Image = convertImageToBase64(imageUri)
+                if (base64Image != null) {
+                    updateServiceWithImage(base64Image)
+                } else {
+                    Toast.makeText(this, "Failed to process image", Toast.LENGTH_SHORT).show()
+                    updateService() // Fall back to updating without image
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error processing image: ${e.message}", e)
+                Toast.makeText(this, "Error processing image: ${e.message}", Toast.LENGTH_SHORT).show()
+                updateService() // Fall back to updating without image
+            }
+        }
+    }
+
+    private fun convertImageToBase64(imageUri: android.net.Uri?): String? {
+        if (imageUri == null) return null
+        
+        try {
+            val inputStream = contentResolver.openInputStream(imageUri)
+            val bytes = inputStream?.readBytes()
+            inputStream?.close()
+            
+            if (bytes != null) {
+                val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.DEFAULT)
+                Log.d(TAG, "Converted image to base64 string (length: ${base64.length})")
+                return base64
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error converting image to base64: ${e.message}", e)
+        }
+        
+        return null
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        
+        if (requestCode == STORAGE_PERMISSION_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                openImagePicker()
+            } else {
+                Toast.makeText(this, "Permission denied. Cannot select image.", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 }
