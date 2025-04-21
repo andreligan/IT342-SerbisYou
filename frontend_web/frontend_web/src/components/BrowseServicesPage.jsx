@@ -19,6 +19,7 @@ const BrowseServicesPage = () => {
     experience: 0
   });
   const [serviceRatings, setServiceRatings] = useState({});
+  const [clickPosition, setClickPosition] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -137,9 +138,20 @@ const BrowseServicesPage = () => {
     setActiveFilters(newFilters);
   }, []);
 
-  const handleOpenModal = useCallback((service) => {
+  const handleOpenModal = useCallback((service, event) => {
     console.log("Selected Service:", service);
     setSelectedService(service);
+    
+    if (event && event.currentTarget) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setClickPosition({
+        x: rect.left + (rect.width / 2) - (window.innerWidth / 2), 
+        y: rect.top + (rect.height / 2) - (window.innerHeight / 2)
+      });
+    } else {
+      setClickPosition(null);
+    }
+    
     setIsModalOpen(true);
   }, []);
 
@@ -172,7 +184,7 @@ const BrowseServicesPage = () => {
     return filteredServices.map((service) => (
       <div
         key={service.serviceId}
-        onClick={() => handleOpenModal(service)}
+        onClick={(e) => handleOpenModal(service, e)}
         className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer flex flex-col h-full relative overflow-hidden border border-gray-100"
       >
         <div className="relative">
@@ -317,6 +329,7 @@ const BrowseServicesPage = () => {
         serviceRatings={serviceRatings}
         onBookService={handleBookService}
         renderStars={renderStars}
+        clickPosition={clickPosition}
       />
     </div>
   );
