@@ -86,7 +86,7 @@ export const useAddressManager = (userType) => {
       
       const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
       
-      // Fix: Extract the correct ID field based on user type
+      // Extract the correct ID field based on user type
       let entityId;
       if (!userInfo) {
         throw new Error(`User information not loaded. Please refresh the page.`);
@@ -108,15 +108,16 @@ export const useAddressManager = (userType) => {
         }
       }
       
-      // If in edit mode, update the address
+      // Only perform address operations, no customer profile updates
       if (editMode && currentAddressId) {
+        // Update address only
         const currentAddress = addresses.find(addr => addr.addressId === currentAddressId);
         
         const updatedAddress = await updateAddress(
           token,
           currentAddressId,
           addressForm,
-          entityId, // Now we're sure this is defined
+          entityId,
           currentAddress?.main || false,
           userType
         );
@@ -129,11 +130,11 @@ export const useAddressManager = (userType) => {
         );
         
       } else {
-        // Create a new address
+        // Create a new address only
         const newAddress = await createAddress(
           token,
           addressForm,
-          entityId, // Now we're sure this is defined
+          entityId,
           addresses.length === 0,
           userType
         );
@@ -182,6 +183,7 @@ export const useAddressManager = (userType) => {
         return;
       }
       
+      // Only delete the address, no customer profile updates
       await deleteAddress(token, addressId);
       
       setSuccess('Address deleted successfully!');
@@ -210,6 +212,7 @@ export const useAddressManager = (userType) => {
       
       const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
       
+      // Only update the main address, no customer profile updates
       await updateAddressMain(token, addressId, addresses, userInfo, userType);
       
       setUserAddressId(addressId);
