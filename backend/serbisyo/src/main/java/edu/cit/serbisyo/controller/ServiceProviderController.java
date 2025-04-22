@@ -1,7 +1,10 @@
 package edu.cit.serbisyo.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import edu.cit.serbisyo.entity.ServiceProviderEntity;
 import edu.cit.serbisyo.service.ServiceProviderService;
@@ -38,5 +41,31 @@ public class ServiceProviderController {
     @DeleteMapping("/delete/{providerId}")
     public String deleteServiceProvider(@PathVariable Long providerId) {
         return serviceProviderService.deleteServiceProvider(providerId);
+    }
+
+    @PostMapping("/uploadServiceProviderImage/{providerId}")
+    public ResponseEntity<String> uploadServiceProviderImage(
+            @PathVariable Long providerId,
+            @RequestParam("image") MultipartFile image) {
+        try {
+            String result = serviceProviderService.uploadServiceProviderImage(providerId, image);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to upload service provider profile image.");
+        }
+    }
+
+    @GetMapping("/getServiceProviderImage/{providerId}")
+    public ResponseEntity<String> getServiceProviderImage(@PathVariable Long providerId) {
+        try {
+            String profileImagePath = serviceProviderService.getServiceProviderImage(providerId);
+            return ResponseEntity.ok(profileImagePath);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to fetch service provider profile image.");
+        }
     }
 }

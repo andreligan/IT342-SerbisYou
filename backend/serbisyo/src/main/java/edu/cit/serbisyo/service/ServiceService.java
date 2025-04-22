@@ -9,7 +9,12 @@ import edu.cit.serbisyo.repository.ServiceCategoryRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -83,5 +88,41 @@ public class ServiceService {
         } else {
             return "Service with ID " + serviceId + " not found.";
         }
+    }
+
+    public String uploadServiceImage(Long serviceId, MultipartFile image) throws IOException {
+        ServiceEntity service = serviceRepository.findById(serviceId)
+                .orElseThrow(() -> new IllegalArgumentException("Service not found"));
+
+        // Ensure the uploads directory exists
+        Path uploadDir = Paths.get("uploads");
+        if (!Files.exists(uploadDir)) {
+            Files.createDirectories(uploadDir); // Create the directory if it doesn't exist
+        }
+
+        // Save the image to a local directory
+        String fileName = serviceId + "_" + image.getOriginalFilename();
+        Path filePath = Paths.get("uploads/" + fileName);
+        Files.write(filePath, image.getBytes());
+
+        // Save the file path to the database
+        service.setServiceImage(filePath.toString());
+        serviceRepository.save(service);
+
+        return "Service image uploaded successfully.";
+    }
+
+    public String getServiceImage(Long serviceId) {
+        ServiceEntity service = serviceRepository.findById(serviceId)
+                .orElseThrow(() -> new IllegalArgumentException("Service not found"));
+
+        if (service.getServiceImage() == null || service.getServiceImage().isEmpty()) {
+            throw new IllegalArgumentException("Service image not found for the service.");
+        }
+
+        System.out.println("Service Image Path: " + "/uploads/" + Paths.get(service.getServiceImage()).getFileName().toString());
+
+        // Return the relative path of the service image
+        return "/uploads/" + Paths.get(service.getServiceImage()).getFileName().toString();
     }
 }

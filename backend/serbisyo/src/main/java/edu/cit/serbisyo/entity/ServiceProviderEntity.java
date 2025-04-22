@@ -34,6 +34,9 @@ public class ServiceProviderEntity {
     private String status;
     private String paymentMethod;
 
+    @Lob
+    private String serviceProviderImage;
+
     @JsonIgnore
     @OneToMany(mappedBy = "provider", cascade = CascadeType.ALL)
     private List<ServiceEntity> services;
@@ -157,5 +160,13 @@ public class ServiceProviderEntity {
 
     public void setVerification(VerificationEntity verification) {
         this.verification = verification;
+    }
+
+    public String getServiceProviderImage() {
+        return serviceProviderImage;
+    }
+
+    public void setServiceProviderImage(String serviceProviderImage) {
+        this.serviceProviderImage = serviceProviderImage;
     }
 }

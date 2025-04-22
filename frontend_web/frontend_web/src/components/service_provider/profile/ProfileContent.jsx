@@ -122,6 +122,41 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
     }
   }, [userId, token, setSelectedImage]);
 
+  useEffect(() => {
+    const fetchProfileImage = async () => {
+      if (!providerId) return;
+  
+      try {
+        const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+  
+        console.log("Fetching profile image for providerId:", providerId);
+  
+        const profileImageResponse = await axios.get(
+          `/api/service-providers/getServiceProviderImage/${providerId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+  
+        console.log("Fetched Profile Image URL:", profileImageResponse.data);
+  
+        if (profileImageResponse.data) {
+          // Prepend the base URL to the image path
+          const baseURL = "http://localhost:8080"; // Backend base URL
+          const fullImageURL = `${baseURL}${profileImageResponse.data}`;
+          setSelectedImage(fullImageURL); // Set the full image URL
+        }
+      } catch (err) {
+        console.error("Error fetching profile image:", err);
+        // Don't set an error state for image loading failure
+      }
+    };
+  
+    fetchProfileImage();
+  }, [providerId]);
+
   // Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -210,34 +245,47 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
   // Handle image upload
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
-    if (!file || !providerId) return;
-    
-    const reader = new FileReader();
-    reader.onload = () => {
-      setSelectedImage(reader.result);
-      
+    if (!file || !providerId) {
+      setError('No file selected or provider ID missing.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Create FormData object to send the image file
+      const formData = new FormData();
+      formData.append('image', file);
+
       // Upload the image to the server
-      const uploadImage = async () => {
-        try {
-          const formData = new FormData();
-          formData.append('image', file);
-          
-          await axios.post(`/api/service-providers/upload-image/${providerId}`, formData, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'multipart/form-data'
-            }
-          });
-        } catch (err) {
-          console.error('Error uploading image:', err);
-          setError('Failed to upload profile image. Please try again.');
+      const response = await axios.post(
+        `/api/service-providers/uploadServiceProviderImage/${providerId}`,
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          },
         }
+      );
+
+      console.log('Image upload response:', response.data);
+
+      // Update the displayed profile image
+      const reader = new FileReader();
+      reader.onload = () => {
+        setSelectedImage(reader.result);
       };
-      
-      // Uncomment to enable image upload
-      // uploadImage();
-    };
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(file);
+
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      console.error('Error uploading image:', err);
+      setError('Failed to upload profile image. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading && !formData.userName) {
