@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import ChatService from '../../services/ChatService';
-import { mockUsers } from './mockData';
 
 function ChatList({ onSelectUser, searchQuery }) {
   const [users, setUsers] = useState([]);
@@ -17,15 +16,14 @@ function ChatList({ onSelectUser, searchQuery }) {
         if (conversationPartners && conversationPartners.length > 0) {
           setUsers(conversationPartners);
         } else {
-          console.warn('No conversation partners found, using mock data');
-          setUsers(mockUsers);
+          console.log('No conversation partners found');
+          setUsers([]); // Set empty array instead of mock data
         }
         setError(null);
       } catch (err) {
         console.error('Failed to fetch conversation partners:', err);
         setError('Failed to load conversations');
-        // Fall back to mock data
-        setUsers(mockUsers);
+        setUsers([]); // Set empty array instead of mock data
       } finally {
         setLoading(false);
       }
