@@ -212,7 +212,7 @@ function App() {
     <>
       <header className="flex justify-between items-center px-3 py-3 bg-white shadow-md">
         <div className="flex items-center">
-          <img src={serbisyoLogo} alt="SerbisYo Logo" className="h-15 mr-4" />
+          <img src={serbisyoLogo} alt="SerbisYo Logo" className="h-16 mr-4" />
           {/* <h1 className="text-2xl font-bold text-gray-800">Serbisyo</h1> */}
         </div>
         <div>
