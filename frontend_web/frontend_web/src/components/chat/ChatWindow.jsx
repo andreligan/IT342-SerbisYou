@@ -57,7 +57,7 @@ function ChatWindow({ onClose }) {
       {view === 'conversation' ? (
         <Conversation 
           user={selectedUser} 
-          messages={[]} // Empty array instead of mock messages
+          messages={selectedUser?.messages?.length > 0 ? selectedUser.messages : [{ text: "No messages yet.", system: true }]} // Fallback for empty messages
           onBack={handleBackToList}
           onClose={onClose}
           onMessageSent={() => setRefreshList(prev => prev + 1)}
