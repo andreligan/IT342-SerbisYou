@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import ServiceDetailsModal from "../modals/ServiceDetailsModal";
 
 const BASE_URL = "http://localhost:8080";
 
@@ -14,6 +15,9 @@ const ServiceProviderDetails = () => {
   const [servicesLoading, setServicesLoading] = useState(true);
   const [serviceRatings, setServiceRatings] = useState({});
   const [sortBy, setSortBy] = useState('recommended');
+  const [selectedService, setSelectedService] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [clickPosition, setClickPosition] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -229,6 +233,34 @@ const ServiceProviderDetails = () => {
     }
   };
 
+  const handleOpenModal = useCallback((service, event) => {
+    console.log("Selected Service:", service);
+    setSelectedService(service);
+    
+    if (event && event.currentTarget) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setClickPosition({
+        x: rect.left + (rect.width / 2) - (window.innerWidth / 2), 
+        y: rect.top + (rect.height / 2) - (window.innerHeight / 2)
+      });
+    } else {
+      setClickPosition(null);
+    }
+    
+    setIsModalOpen(true);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setSelectedService(null);
+    setIsModalOpen(false);
+  }, []);
+
+  const handleBookService = useCallback(() => {
+    if (selectedService) {
+      navigate("/bookService", { state: { service: selectedService } });
+    }
+  }, [selectedService, navigate]);
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -407,7 +439,7 @@ const ServiceProviderDetails = () => {
                 <div
                   key={service.serviceId}
                   className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer flex flex-col h-full relative overflow-hidden border border-gray-100"
-                  onClick={() => navigate("/bookService", { state: { service } })}
+                  onClick={(e) => handleOpenModal(service, e)}
                 >
                   <div className="relative">
                     <img
@@ -479,6 +511,16 @@ const ServiceProviderDetails = () => {
           )}
         </div>
       </div>
+
+      <ServiceDetailsModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        service={selectedService}
+        serviceRatings={serviceRatings}
+        onBookService={handleBookService}
+        renderStars={renderStars}
+        clickPosition={clickPosition}
+      />
     </div>
   );
 };
