@@ -53,6 +53,25 @@ const BrowseServicesPage = () => {
                 },
               });
               service.serviceImage = imageResponse.data; // Add the image path to the service object
+              
+              // Fetch provider profile image if provider exists
+              if (service.provider && service.provider.providerId) {
+                try {
+                  const providerImageResponse = await axios.get(
+                    `${BASE_URL}/api/service-providers/getServiceProviderImage/${service.provider.providerId}`,
+                    {
+                      headers: {
+                        Authorization: `Bearer ${token}`,
+                      },
+                    }
+                  );
+                  service.provider.profileImage = providerImageResponse.data;
+                  console.log(`Provider ${service.provider.providerId} image path: ${service.provider.profileImage}`);
+                } catch (error) {
+                  console.warn(`Could not fetch provider image for provider ${service.provider.providerId}:`, error);
+                  service.provider.profileImage = null;
+                }
+              }
             } catch (error) {
               console.error(`Error fetching image for service ${service.serviceId}:`, error);
               service.serviceImage = null; // Default to null if the image fetch fails
