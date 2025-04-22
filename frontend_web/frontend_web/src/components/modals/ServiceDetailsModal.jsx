@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
 
 const BASE_URL = "http://localhost:8080";
 
@@ -13,27 +12,7 @@ const ServiceDetailsModal = ({
   clickPosition
 }) => {
   const [animationState, setAnimationState] = useState('closed');
-  const [providerImage, setProviderImage] = useState(null);
   const modalRef = useRef(null);
-  
-  useEffect(() => {
-    if (isOpen && service?.provider?.providerId) {
-      // Fetch the provider's profile image
-      const fetchProviderImage = async () => {
-        try {
-          const response = await axios.get(
-            `${BASE_URL}/api/serviceProviders/getServiceProviderImage/${service.provider.providerId}`,
-            { withCredentials: true } // Include cookies or authentication tokens
-          );
-          setProviderImage(`${BASE_URL}${response.data}`);
-        } catch (error) {
-          console.error("Error fetching provider image:", error);
-          setProviderImage("/default-profile.jpg"); // Fallback to default profile image
-        }
-      };
-      fetchProviderImage();
-    }
-  }, [isOpen, service]);
 
   useEffect(() => {
     if (isOpen) {
@@ -48,6 +27,17 @@ const ServiceDetailsModal = ({
       setAnimationState('closed');
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && service?.provider) {
+      console.log(`Modal opened for service: ${service.serviceName}`);
+      if (service.provider.profileImage) {
+        console.log(`Provider has profile image: ${service.provider.profileImage}`);
+      } else {
+        console.log("Provider has no profile image path");
+      }
+    }
+  }, [isOpen, service]);
   
   if (!isOpen || !service) return null;
   
@@ -130,9 +120,16 @@ const ServiceDetailsModal = ({
           <div className="flex flex-col md:flex-row items-start gap-6 mb-8">
             <div className="flex items-center gap-5 md:w-1/2">
               <img
-                src={providerImage || "/default-profile.jpg"}
+                src={service.provider?.profileImage 
+                  ? `${BASE_URL}${service.provider.profileImage}` 
+                  : "/default-profile.jpg"}
                 alt="Provider Profile"
-                className="w-28 h-28 rounded-full border-2 border-[#F4CE14] shadow-md"
+                className="w-28 h-28 rounded-full border-2 border-[#F4CE14] shadow-md object-cover"
+                onError={(e) => {
+                  console.log(`Failed to load provider image: ${e.target.src}`);
+                  e.target.onerror = null;
+                  e.target.src = "/default-profile.jpg";
+                }}
               />
               <div className="flex flex-col">
                 <div className="mb-3">

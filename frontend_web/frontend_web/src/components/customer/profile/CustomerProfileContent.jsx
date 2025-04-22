@@ -55,15 +55,16 @@ const CustomerProfileContent = () => {
         
         console.log("Found matching customer:", matchingCustomer);
         
-        // Step 3: Get user auth details
-        const userAuthResponse = await axios.get("/api/user-auth/getAll", {
+        // Step 3: Get user auth details directly by ID instead of filtering through all records
+        const userAuthResponse = await axios.get(`/api/user-auth/getById/${userId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
   
-        const userAuth = userAuthResponse.data.find((auth) => auth.userId == userId);
-  
+        console.log("User auth response:", userAuthResponse);
+        const userAuth = userAuthResponse.data;
+        
         if (!userAuth) {
           setError("User authentication details not found.");
           setIsLoading(false);
@@ -92,6 +93,8 @@ const CustomerProfileContent = () => {
         setIsLoading(false);
       } catch (err) {
         console.error("Error fetching profile:", err);
+        console.error("Error response data:", err.response?.data);
+        console.error("Error status code:", err.response?.status);
         setError("Failed to load profile.");
         setIsLoading(false);
       }

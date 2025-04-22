@@ -119,6 +119,10 @@ public Map<String, String> loginUser(UserAuthEntity userAuth) {
     public Object getAllUserAuth() {
         return userAuthRepository.findAll();
     }
+    
+    public UserAuthEntity getUserAuthById(Long authId) {
+        return userAuthRepository.findById(authId).orElse(null);
+    }
 
     public String deleteUserAuth(Long authId) {
         if (userAuthRepository.existsById(authId)) {

@@ -24,23 +24,6 @@ public class UserAuthController {
         this.userAuthService = userAuthService;
     }
 
-    // DELETE user authentication record
-    // @DeleteMapping("/{authId}")
-    // public ResponseEntity<String> deleteUserAuth(@PathVariable Long authId, @RequestHeader("Authorization") String token) {
-    //     // Extract the token (remove "Bearer " prefix)
-    //     String jwt = token.startsWith("Bearer ") ? token.substring(7) : token;
-    
-    //     // Validate the token and delete the user
-    //     String result = userAuthService.deleteUserAuth(authId, jwt);
-    //     return ResponseEntity.ok(result);
-    // }
-
-    // CREATE user authentication record
-    // @PostMapping
-    // public UserAuthEntity createUserAuth(@RequestBody UserAuthEntity userAuth) {
-    //     return userAuthService.createUserAuth(userAuth);
-    // }
-
     @PostMapping("/register")
     public ResponseEntity<String> registerUser(@RequestBody Map<String, Object> requestBody) {
         try {
@@ -69,6 +52,16 @@ public class UserAuthController {
     @GetMapping("/getAll")
     public ResponseEntity<Object> getAllUserAuth() {
         return ResponseEntity.ok(userAuthService.getAllUserAuth());
+    }
+    
+    @GetMapping("/getById/{authId}")
+    public ResponseEntity<Object> getUserAuthById(@PathVariable Long authId) {
+        UserAuthEntity userAuth = userAuthService.getUserAuthById(authId);
+        if (userAuth != null) {
+            return ResponseEntity.ok(userAuth);
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User authentication not found");
+        }
     }
     
     @DeleteMapping("/{authId}")

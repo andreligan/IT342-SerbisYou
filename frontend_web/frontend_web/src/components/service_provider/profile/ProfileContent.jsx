@@ -67,16 +67,17 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
           }
         });
         
-        // Get userAuth details
-        const userAuthResponse = await axios.get('/api/user-auth/getAll', {
+        // Get userAuth details directly using the userAuthId instead of searching through all users
+        const userAuthResponse = await axios.get(`/api/user-auth/getById/${provider.userAuth.userId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
         
-        const userAuth = userAuthResponse.data.find(
-          auth => auth.userId == userId
-        );
+        console.log('UserAuth API response:', userAuthResponse);
+        
+        // Handle the user auth data - no need to find in an array if we're fetching a specific user
+        const userAuth = userAuthResponse.data;
         
         if (detailsResponse.data && userAuth) {
           // Update form data with provider and userAuth details
@@ -106,6 +107,7 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
         setLoading(false);
       } catch (err) {
         console.error('Error fetching provider details:', err);
+        console.error('Error response:', err.response?.data);
         setError('Failed to load provider details. Please try again later.');
         setLoading(false);
       }
@@ -115,7 +117,6 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
       findProviderByUserId();
       console.log('Retrieved userId:', userId);
       console.log('Retrieved token:', token ? 'Token exists' : 'Token is missing');
-      console.log('hello');
     } else {
       setError('Authentication required. Please log in again.');
       setLoading(false);
