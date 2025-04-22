@@ -52,6 +52,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/user-auth/register", "/api/user-auth/login", "/api/oauth/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/", "/error").permitAll()
+                        // Allow access to payment test endpoint
+                        .requestMatchers("/api/test-gcash-payment").permitAll()
                         // Allow OAuth2 endpoints
                         .requestMatchers("/login", "/login/oauth2/**", "/oauth2/**").permitAll()
                         .anyRequest().authenticated())
