@@ -15,7 +15,7 @@ import { useState, useEffect } from "react";
 import ServiceProviderProfile from "./components/service_provider/ServiceProviderProfile";
 import CustomerProfilePage from "./components/customer/CustomerProfilePage";
 import ServiceDetails from "./components/service_provider/ServiceDetails";
-import serbisyoLogo from "./assets/SerbisYo Logo.png";
+import serbisyoLogo from "./assets/Serbisyo_Logo_New.png";
 import API from "./utils/API";
 import axios from "axios";
 import ChatIcon from './components/chat/ChatIcon';
@@ -209,10 +209,10 @@ function App() {
 
   return (
     <>
-      <header className="flex justify-between items-center px-8 py-4 bg-white shadow-md">
+      <header className="flex justify-between items-center px-3 py-3 bg-white shadow-md">
         <div className="flex items-center">
-          <img src={serbisyoLogo} alt="SerbisYo Logo" className="h-12 mr-4" />
-          <h1 className="text-2xl font-bold text-gray-800">Serbisyo</h1>
+          <img src={serbisyoLogo} alt="SerbisYo Logo" className="h-15 mr-4" />
+          {/* <h1 className="text-2xl font-bold text-gray-800">Serbisyo</h1> */}
         </div>
         <div>
           {!isAuthenticated ? (
