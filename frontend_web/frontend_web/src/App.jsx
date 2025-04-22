@@ -15,6 +15,7 @@ import { useState, useEffect } from "react";
 import ServiceProviderProfile from "./components/service_provider/ServiceProviderProfile";
 import CustomerProfilePage from "./components/customer/CustomerProfilePage";
 import ServiceDetails from "./components/service_provider/ServiceDetails";
+import ServiceProviderDetails from "./components/customer/ServiceProviderDetails";
 import serbisyoLogo from "./assets/Serbisyo_Logo_New.png";
 import API from "./utils/API";
 import axios from "axios";
@@ -165,7 +166,7 @@ function App() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79-4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
               />
             </svg>
           </button>
@@ -299,6 +300,10 @@ function App() {
         <Route
           path="/notifications"
           element={<ProtectedRoute element={<NotificationsPage />} allowedRoles={["customer", "service provider"]} />}
+        />
+        <Route
+          path="/providerDetails/:providerId"
+          element={<ProtectedRoute element={<ServiceProviderDetails />} allowedRoles={["customer"]} />}
         />
       </Routes>
 

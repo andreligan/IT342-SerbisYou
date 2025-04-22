@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 
 const BASE_URL = "http://localhost:8080";
 
@@ -13,6 +14,7 @@ const ServiceDetailsModal = ({
 }) => {
   const [animationState, setAnimationState] = useState('closed');
   const modalRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (isOpen) {
@@ -31,6 +33,7 @@ const ServiceDetailsModal = ({
   useEffect(() => {
     if (isOpen && service?.provider) {
       console.log(`Modal opened for service: ${service.serviceName}`);
+      console.log("Provider details:", service.provider);
       if (service.provider.profileImage) {
         console.log(`Provider has profile image: ${service.provider.profileImage}`);
       } else {
@@ -86,6 +89,24 @@ const ServiceDetailsModal = ({
     };
   }
 
+  const handleProviderClick = (e) => {
+    e.stopPropagation();
+    console.log("Provider clicked, provider data:", service.provider);
+    
+    // Check for all possible ID fields in the provider object
+    const providerId = service.provider?.providerId || service.provider?.userId || service.provider?.id;
+    
+    if (providerId) {
+      console.log(`Navigating to provider details: ${providerId}`);
+      onClose(); // Close the modal first
+      setTimeout(() => {
+        navigate(`/providerDetails/${providerId}`);
+      }, 100); // Small delay to ensure modal closes first
+    } else {
+      console.error("No provider ID found in:", service.provider);
+    }
+  };
+
   return (
     <div 
       className="fixed inset-0 flex items-center justify-center z-50 p-4 overflow-auto"
@@ -124,7 +145,8 @@ const ServiceDetailsModal = ({
                   ? `${BASE_URL}${service.provider.profileImage}` 
                   : "/default-profile.jpg"}
                 alt="Provider Profile"
-                className="w-28 h-28 rounded-full border-2 border-[#F4CE14] shadow-md object-cover"
+                className="w-28 h-28 rounded-full border-2 border-[#F4CE14] shadow-md object-cover cursor-pointer hover:border-[#F4CE14] hover:shadow-lg transition-all"
+                onClick={handleProviderClick}
                 onError={(e) => {
                   console.log(`Failed to load provider image: ${e.target.src}`);
                   e.target.onerror = null;
@@ -133,8 +155,12 @@ const ServiceDetailsModal = ({
               />
               <div className="flex flex-col">
                 <div className="mb-3">
-                  <h3 className="text-xl font-bold text-[#495E57] flex items-center gap-2">
-                    <i className="fas fa-user text-[#495E57]"></i>
+                  <h3 
+                    className="text-xl font-bold text-[#495E57] flex items-center gap-2 cursor-pointer hover:text-[#F4CE14] transition-colors group"
+                    onClick={handleProviderClick}
+                    title="View provider details"
+                  >
+                    <i className="fas fa-user text-[#495E57] group-hover:text-[#F4CE14]"></i>
                     {service.provider?.firstName || "Unknown"} {service.provider?.lastName || ""}
                     {service.provider?.verified && (
                       <i className="fas fa-check-circle text-[#F4CE14]" title="Verified Provider"></i>

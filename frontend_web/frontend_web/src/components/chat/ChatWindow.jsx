@@ -3,7 +3,6 @@ import ChatHeader from './ChatHeader';
 import ChatList from './ChatList';
 import UserSearch from './UserSearch';
 import Conversation from './Conversation';
-import { mockMessages } from './mockData';
 
 function ChatWindow({ onClose }) {
   const [selectedUser, setSelectedUser] = useState(null);
@@ -58,10 +57,7 @@ function ChatWindow({ onClose }) {
       {view === 'conversation' ? (
         <Conversation 
           user={selectedUser} 
-          messages={mockMessages.filter(m => 
-            m.sender.userId === selectedUser.userId || 
-            m.receiver.userId === selectedUser.userId
-          )} 
+          messages={[]} // Empty array instead of mock messages
           onBack={handleBackToList}
           onClose={onClose}
           onMessageSent={() => setRefreshList(prev => prev + 1)}
