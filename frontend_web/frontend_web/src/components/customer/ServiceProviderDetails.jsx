@@ -96,6 +96,14 @@ const ServiceProviderDetails = () => {
 
         console.log(`Filtered ${services.length} services for provider ID ${providerId}`);
         
+        // Add the provider's profile image to each service object
+        services = services.map(service => {
+          if (service.provider) {
+            service.provider.profileImage = provider.profileImage || provider.serviceProviderImage;
+          }
+          return service;
+        });
+        
         const ratingsMap = {};
         const servicesWithImages = await Promise.all(
           services.map(async (service) => {
@@ -139,7 +147,13 @@ const ServiceProviderDetails = () => {
           
           console.log("Provider services received from direct endpoint:", altResponse.data);
           
-          const servicesData = altResponse.data;
+          const servicesData = altResponse.data.map(service => {
+            if (service.provider) {
+              service.provider.profileImage = provider.profileImage || provider.serviceProviderImage;
+            }
+            return service;
+          });
+          
           const ratingsMap = {};
           
           await Promise.all(
