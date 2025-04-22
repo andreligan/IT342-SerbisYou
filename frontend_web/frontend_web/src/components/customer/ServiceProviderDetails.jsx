@@ -9,6 +9,7 @@ const ServiceProviderDetails = () => {
   const [provider, setProvider] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [imageFailed, setImageFailed] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -84,6 +85,33 @@ const ServiceProviderDetails = () => {
     return stars;
   };
 
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return "/default-profile.jpg";
+    
+    // If the path already includes the BASE_URL, return it as is
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    
+    // If the path already starts with a slash, concatenate with BASE_URL
+    if (imagePath.startsWith('/')) {
+      return `${BASE_URL}${imagePath}`;
+    }
+    
+    // Otherwise, add a slash and concatenate
+    return `${BASE_URL}/${imagePath}`;
+  };
+
+  const handleImageError = (e) => {
+    console.error("Image failed to load:", e.target.src);
+    
+    // Only set fallback image once to prevent infinite loop
+    if (!imageFailed) {
+      setImageFailed(true);
+      e.target.src = "/default-profile.jpg";
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -124,6 +152,13 @@ const ServiceProviderDetails = () => {
     );
   }
 
+  const profileImagePath = provider.profileImage || provider.serviceProviderImage || null;
+  console.log("Provider image data:", { 
+    rawPath: profileImagePath,
+    processedUrl: getImageUrl(profileImagePath),
+    provider: provider
+  });
+
   return (
     <div className="container mx-auto p-4 max-w-6xl">
       <button
@@ -143,17 +178,19 @@ const ServiceProviderDetails = () => {
           <div className="flex flex-col md:flex-row items-start gap-8">
             {/* Provider image */}
             <div className="md:w-1/4 flex flex-col items-center">
-              <img
-                src={provider.profileImage 
-                  ? `${BASE_URL}${provider.profileImage}` 
-                  : "/default-profile.jpg"}
-                alt={`${provider.firstName} ${provider.lastName}`}
-                className="w-48 h-48 rounded-full border-4 border-[#F4CE14] shadow-lg object-cover"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = "/default-profile.jpg";
-                }}
-              />
+              <div className="relative w-48 h-48">
+                <img
+                  src={getImageUrl(profileImagePath)}
+                  alt={`${provider.firstName} ${provider.lastName}`}
+                  className="w-48 h-48 rounded-full border-4 border-[#F4CE14] shadow-lg object-cover"
+                  onError={handleImageError}
+                />
+                {imageFailed && (
+                  <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500 bg-gray-100 rounded-full">
+                    No Image Available
+                  </div>
+                )}
+              </div>
               {provider.verified && (
                 <div className="mt-4 bg-green-100 text-green-800 px-4 py-2 rounded-full flex items-center gap-2">
                   <i className="fas fa-check-circle"></i>

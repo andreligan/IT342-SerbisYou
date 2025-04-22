@@ -15,6 +15,7 @@ const ServiceDetailsModal = ({
   const [animationState, setAnimationState] = useState('closed');
   const modalRef = useRef(null);
   const navigate = useNavigate();
+  const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -89,6 +90,33 @@ const ServiceDetailsModal = ({
     };
   }
 
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return "/default-profile.jpg";
+    
+    // If the path already includes the BASE_URL, return it as is
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    
+    // If the path already starts with a slash, concatenate with BASE_URL
+    if (imagePath.startsWith('/')) {
+      return `${BASE_URL}${imagePath}`;
+    }
+    
+    // Otherwise, add a slash and concatenate
+    return `${BASE_URL}/${imagePath}`;
+  };
+
+  const handleImageError = (e) => {
+    console.error("Provider image failed to load:", e.target.src);
+    
+    // Only set fallback image once to prevent infinite loop
+    if (!imageFailed) {
+      setImageFailed(true);
+      e.target.src = "/default-profile.jpg";
+    }
+  };
+
   const handleProviderClick = (e) => {
     e.stopPropagation();
     console.log("Provider clicked, provider data:", service.provider);
@@ -140,19 +168,20 @@ const ServiceDetailsModal = ({
           {/* Provider Details - Enhanced Layout */}
           <div className="flex flex-col md:flex-row items-start gap-6 mb-8">
             <div className="flex items-center gap-5 md:w-1/2">
-              <img
-                src={service.provider?.profileImage 
-                  ? `${BASE_URL}${service.provider.profileImage}` 
-                  : "/default-profile.jpg"}
-                alt="Provider Profile"
-                className="w-28 h-28 rounded-full border-2 border-[#F4CE14] shadow-md object-cover cursor-pointer hover:border-[#F4CE14] hover:shadow-lg transition-all"
-                onClick={handleProviderClick}
-                onError={(e) => {
-                  console.log(`Failed to load provider image: ${e.target.src}`);
-                  e.target.onerror = null;
-                  e.target.src = "/default-profile.jpg";
-                }}
-              />
+              <div className="relative w-28 h-28">
+                <img
+                  src={getImageUrl(service.provider?.profileImage)}
+                  alt="Provider Profile"
+                  className="w-28 h-28 rounded-full border-2 border-[#F4CE14] shadow-md object-cover cursor-pointer hover:border-[#F4CE14] hover:shadow-lg transition-all"
+                  onClick={handleProviderClick}
+                  onError={handleImageError}
+                />
+                {imageFailed && (
+                  <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-500 bg-gray-100 rounded-full">
+                    <i className="fas fa-user text-gray-400"></i>
+                  </div>
+                )}
+              </div>
               <div className="flex flex-col">
                 <div className="mb-3">
                   <h3 
