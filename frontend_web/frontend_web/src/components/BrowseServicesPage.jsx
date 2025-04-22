@@ -4,6 +4,8 @@ import axios from "axios";
 import ServiceFilters from "./filters/ServiceFilters";
 import ServiceDetailsModal from "./modals/ServiceDetailsModal";
 
+const BASE_URL = "http://localhost:8080"; // Define the base URL for the backend
+
 const BrowseServicesPage = () => {
   const [services, setServices] = useState([]);
   const [filteredServices, setFilteredServices] = useState([]);
@@ -32,7 +34,7 @@ const BrowseServicesPage = () => {
           return;
         }
 
-        const servicesResponse = await axios.get("/api/services/getAll", {
+        const servicesResponse = await axios.get(`${BASE_URL}/api/services/getAll`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -41,21 +43,39 @@ const BrowseServicesPage = () => {
         const services = servicesResponse.data;
 
         const ratingsMap = {};
-        for (const service of services) {
-          try {
-            const ratingResponse = await axios.get(`/api/reviews/getServiceRating/${service.serviceId}`, {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            });
-            ratingsMap[service.serviceId] = ratingResponse.data;
-          } catch (error) {
-            console.error(`Error fetching rating for service ${service.serviceId}:`, error);
-            ratingsMap[service.serviceId] = { averageRating: 0, reviewCount: 0 };
-          }
-        }
+        const servicesWithImages = await Promise.all(
+          services.map(async (service) => {
+            try {
+              // Fetch the service image path
+              const imageResponse = await axios.get(`${BASE_URL}/api/services/getServiceImage/${service.serviceId}`, {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+              service.serviceImage = imageResponse.data; // Add the image path to the service object
+            } catch (error) {
+              console.error(`Error fetching image for service ${service.serviceId}:`, error);
+              service.serviceImage = null; // Default to null if the image fetch fails
+            }
 
-        const servicesWithCategories = services.map((service) => ({
+            try {
+              // Fetch the service rating
+              const ratingResponse = await axios.get(`${BASE_URL}/api/reviews/getServiceRating/${service.serviceId}`, {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+              ratingsMap[service.serviceId] = ratingResponse.data;
+            } catch (error) {
+              console.error(`Error fetching rating for service ${service.serviceId}:`, error);
+              ratingsMap[service.serviceId] = { averageRating: 0, reviewCount: 0 };
+            }
+
+            return service;
+          })
+        );
+
+        const servicesWithCategories = servicesWithImages.map((service) => ({
           ...service,
           categoryName: service.category?.categoryName || "Uncategorized",
         }));
@@ -189,7 +209,7 @@ const BrowseServicesPage = () => {
       >
         <div className="relative">
           <img
-            src={service.image || "/default-service.jpg"}
+            src={service.serviceImage ? `${BASE_URL}${service.serviceImage}` : "/default-service.jpg"}
             alt={service.serviceName}
             className="w-full h-52 object-cover"
             loading="lazy"

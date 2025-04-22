@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+// Base URL for the backend server
+const BASE_URL = "http://localhost:8080";
+
 function MyServicesContent() {
   // Add navigate for routing
   const navigate = useNavigate();
@@ -34,6 +37,9 @@ function MyServicesContent() {
     categoryId: ''
   });
   
+  // State for service images
+  const [serviceImages, setServiceImages] = useState({});
+
   // Get userId and token from localStorage or sessionStorage
   const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
   const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
@@ -145,6 +151,34 @@ function MyServicesContent() {
     
     fetchServices();
   }, [providerId, token]);
+
+  // Fetch service images after services are loaded
+  useEffect(() => {
+    const fetchServiceImages = async () => {
+      try {
+        const images = {};
+        for (const service of services) {
+          try {
+            const response = await axios.get(`/api/services/getServiceImage/${service.serviceId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            // Prepend the base URL to the relative path
+            images[service.serviceId] = `${BASE_URL}${response.data}`;
+          } catch (err) {
+            console.error(`Error fetching image for service ${service.serviceId}:`, err);
+            images[service.serviceId] = null; // Handle missing images gracefully
+          }
+        }
+        setServiceImages(images);
+      } catch (err) {
+        console.error('Error fetching service images:', err);
+      }
+    };
+
+    if (services.length > 0) {
+      fetchServiceImages();
+    }
+  }, [services, token]);
   
   // Navigate to add service page instead of opening dialog
   const handleAddClick = () => {
@@ -309,6 +343,31 @@ function MyServicesContent() {
     }
   };
 
+  // Handle image upload
+  const handleImageUpload = async (serviceId, file) => {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await axios.post(`/api/services/uploadServiceImage/${serviceId}`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      console.log(response.data);
+
+      // Update the service image state with the new image path
+      setServiceImages((prev) => ({
+        ...prev,
+        [serviceId]: `${BASE_URL}/uploads/${serviceId}_${file.name}`,
+      }));
+    } catch (err) {
+      console.error('Error uploading service image:', err);
+    }
+  };
+
   return (
     <div className="max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
@@ -419,6 +478,34 @@ function MyServicesContent() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {servicesByCategory[activeTab].services.map((service) => (
                   <div key={service.serviceId} className="bg-white rounded-lg overflow-hidden shadow hover:shadow-md transition-shadow border border-gray-100">
+                    {/* Service Image */}
+                    <div className="relative">
+                      <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
+                        {serviceImages[service.serviceId] ? (
+                          <img
+                            src={serviceImages[service.serviceId]}
+                            alt={service.serviceName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-gray-400">No Image</span>
+                        )}
+                      </div>
+                      <label
+                        htmlFor={`upload-image-${service.serviceId}`}
+                        className="absolute bottom-2 right-2 bg-[#F4CE14] text-[#495E57] px-3 py-1 rounded-md text-sm cursor-pointer hover:bg-yellow-300"
+                      >
+                        {serviceImages[service.serviceId] ? 'Change Image' : 'Add Image'}
+                        <input
+                          id={`upload-image-${service.serviceId}`}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleImageUpload(service.serviceId, e.target.files[0])}
+                        />
+                      </label>
+                    </div>
+
                     {/* Clickable area for service details */}
                     <Link
                       to={`/service/${service.serviceId}`}

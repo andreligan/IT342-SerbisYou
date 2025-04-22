@@ -25,6 +25,9 @@ public class ServiceEntity {
     private String serviceDescription;
     private int price; // Changed from String priceRange
     private String durationEstimate;
+    
+    @Lob
+    private String serviceImage;
 
     @JsonIgnore
     @OneToMany(mappedBy = "service", cascade = CascadeType.ALL)
@@ -93,5 +96,13 @@ public class ServiceEntity {
 
     public void setBookings(List<BookingEntity> bookings) {
         this.bookings = bookings;
+    }
+
+    public String getServiceImage() {
+        return serviceImage;
+    }
+
+    public void setServiceImage(String serviceImage) {
+        this.serviceImage = serviceImage;
     }
 }

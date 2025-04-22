@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
+import axios from "axios";
+
+const BASE_URL = "http://localhost:8080";
 
 const ServiceDetailsModal = ({ 
   isOpen, 
@@ -10,8 +13,28 @@ const ServiceDetailsModal = ({
   clickPosition
 }) => {
   const [animationState, setAnimationState] = useState('closed');
+  const [providerImage, setProviderImage] = useState(null);
   const modalRef = useRef(null);
   
+  useEffect(() => {
+    if (isOpen && service?.provider?.providerId) {
+      // Fetch the provider's profile image
+      const fetchProviderImage = async () => {
+        try {
+          const response = await axios.get(
+            `${BASE_URL}/api/serviceProviders/getServiceProviderImage/${service.provider.providerId}`,
+            { withCredentials: true } // Include cookies or authentication tokens
+          );
+          setProviderImage(`${BASE_URL}${response.data}`);
+        } catch (error) {
+          console.error("Error fetching provider image:", error);
+          setProviderImage("/default-profile.jpg"); // Fallback to default profile image
+        }
+      };
+      fetchProviderImage();
+    }
+  }, [isOpen, service]);
+
   useEffect(() => {
     if (isOpen) {
       // Start opening animation
@@ -107,7 +130,7 @@ const ServiceDetailsModal = ({
           <div className="flex flex-col md:flex-row items-start gap-6 mb-8">
             <div className="flex items-center gap-5 md:w-1/2">
               <img
-                src={service.provider?.profilePicture || "/default-profile.jpg"}
+                src={providerImage || "/default-profile.jpg"}
                 alt="Provider Profile"
                 className="w-28 h-28 rounded-full border-2 border-[#F4CE14] shadow-md"
               />
@@ -164,9 +187,9 @@ const ServiceDetailsModal = ({
           <div className="flex flex-col md:flex-row gap-8">
             <div className="md:w-2/5">
               <img
-                src={service.image || "/default-service.jpg"}
-                alt="Service"
-                className="w-full h-64 md:h-80 object-cover rounded-lg shadow-md"
+                src={`${BASE_URL}${service.serviceImage}`}
+                alt={service.serviceName}
+                className="w-full h-64 object-cover rounded-lg shadow-md"
               />
               <div className="mt-4 bg-[#F4CE14] text-[#495E57] text-xl font-bold text-center px-6 py-3 rounded-md shadow-sm">
                 ₱{service.price}.00
