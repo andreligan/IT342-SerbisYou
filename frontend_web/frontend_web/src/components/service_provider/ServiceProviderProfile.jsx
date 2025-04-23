@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Home, MapPin, Briefcase, Lock, Package } from 'lucide-react';
+import { User, Home, MapPin, Briefcase, Lock, Package, Calendar } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Footer from '../Footer';
 import tate from '../../assets/tate.webp';
@@ -9,6 +9,7 @@ import ProfileContent from './profile/ProfileContent';
 import AddressContent from './profile/AddressContent';
 import BusinessDetailsContent from './profile/BusinessDetailsContent';
 import MyServicesContent from './profile/MyServicesContent';
+import ScheduleContent from './profile/ScheduleContent';
 import ChangePasswordContent from './profile/ChangePasswordContent';
 
 function ServiceProviderProfile() {
@@ -20,7 +21,7 @@ function ServiceProviderProfile() {
   // Set active section based on URL parameter when component mounts or tab changes
   useEffect(() => {
     if (tab) {
-      if (['profile', 'address', 'business', 'services', 'password'].includes(tab)) {
+      if (['profile', 'address', 'business', 'services', 'schedule', 'password'].includes(tab)) {
         setActiveSection(tab);
       } else {
         // If invalid tab parameter, navigate to the default tab
@@ -46,6 +47,8 @@ function ServiceProviderProfile() {
         return <BusinessDetailsContent />;
       case 'services':
         return <MyServicesContent />;
+      case 'schedule':
+        return <ScheduleContent />;
       case 'password':
         return <ChangePasswordContent />;
       default:
@@ -93,6 +96,13 @@ function ServiceProviderProfile() {
                   >
                     <span className="w-10"><Package size={18} /></span>
                     <span>My Services</span>
+                  </li>
+                  <li 
+                    className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'schedule' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
+                    onClick={() => handleTabChange('schedule')}
+                  >
+                    <span className="w-10"><Calendar size={18} /></span>
+                    <span>Schedule</span>
                   </li>
                   <li 
                     className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'password' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
