@@ -24,6 +24,8 @@ import ChatWindow from './components/chat/ChatWindow';
 import OAuth2RedirectHandler from "./components/OAuth2RedirectHandler";
 import NotificationIcon from "./components/notifications/NotificationIcon";
 import NotificationsPage from "./components/notifications/NotificationsPage";
+import PaymentSuccessPage from './components/payment/PaymentSuccessPage';
+import PaymentCancelPage from './components/payment/PaymentCancelPage';
 
 // Protected Route component for role-based access control
 const ProtectedRoute = ({ element, allowedRoles }) => {
@@ -305,6 +307,8 @@ function App() {
           path="/providerDetails/:providerId"
           element={<ProtectedRoute element={<ServiceProviderDetails />} allowedRoles={["customer"]} />}
         />
+        <Route path="/payment-success" element={<PaymentSuccessPage />} />
+        <Route path="/payment-cancel" element={<PaymentCancelPage />} />
       </Routes>
 
       <SignupOptionsPopup
