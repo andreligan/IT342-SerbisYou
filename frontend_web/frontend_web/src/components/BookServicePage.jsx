@@ -53,42 +53,85 @@ const BookServicePage = () => {
     }
   }, [serviceData]);
 
-  // Fetch user address
+  // Fetch user address - improved approach using existing APIs
   useEffect(() => {
     const fetchAddress = async () => {
       try {
+        setIsLoading(true);
         const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-        if (!token) {
-          setError("Authentication token not found.");
+        const userId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
+        
+        if (!token || !userId) {
+          setError("Authentication information not found.");
           setIsLoading(false);
           return;
         }
 
-        // Decode the token to get the user ID
-        const decodedToken = JSON.parse(atob(token.split(".")[1]));
-        const userId = decodedToken.userId;
-
-        // Fetch all addresses
-        const response = await axios.get("/api/addresses/getAll", {
+        console.log("Current User ID:", userId);
+        
+        // Get all customers - we'll find our match here
+        const customersResponse = await axios.get("/api/customers/getAll", {
           headers: { Authorization: `Bearer ${token}` },
         });
-
-        // Find the address for this user
-        const matchedAddress = response.data.find(
-          (addr) => addr.userAuth?.userId === userId
-        );
-
-        if (matchedAddress) {
-          setAddress(
-            `${matchedAddress.streetName}, ${matchedAddress.barangay}, ${matchedAddress.city}, ${matchedAddress.province}`
-          );
-        } else {
-          setError("No address found for your account.");
+        
+        console.log("Customers received:", customersResponse.data.length);
+        
+        // More careful matching of customer to user ID
+        const customer = customersResponse.data.find(cust => {
+          // Handle different data formats and potential type issues
+          if (!cust.userAuth) return false;
+          
+          const custUserId = cust.userAuth.userId;
+          return custUserId == userId; // Use loose equality to handle string/number differences
+        });
+        
+        console.log("Matching customer found:", customer ? "Yes" : "No");
+        
+        if (!customer) {
+          setError("Customer profile not found. Please complete your profile setup.");
+          setIsLoading(false);
+          return;
         }
-        setIsLoading(false);
+        
+        // Now get all addresses
+        const addressesResponse = await axios.get("/api/addresses/getAll", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        console.log("Total addresses:", addressesResponse.data.length);
+        
+        // Find addresses that match this customer
+        const addresses = addressesResponse.data.filter(addr => {
+          if (!addr.customer) return false;
+          return addr.customer.customerId == customer.customerId;
+        });
+        
+        console.log("Found addresses for customer:", addresses.length);
+        
+        // Prefer the main address, fall back to any address
+        let selectedAddress = addresses.find(addr => addr.main === true);
+        if (!selectedAddress && addresses.length > 0) {
+          selectedAddress = addresses[0];
+        }
+        
+        if (selectedAddress) {
+          // Safely construct address string, handling possible null values
+          const parts = [
+            selectedAddress.streetName, 
+            selectedAddress.barangay, 
+            selectedAddress.city, 
+            selectedAddress.province
+          ].filter(Boolean); // Remove any null/undefined/empty values
+          
+          setAddress(parts.join(', '));
+          setError(null); // Clear any previous errors
+        } else {
+          setError("No address found. Please add your address in your profile.");
+        }
       } catch (error) {
-        console.error("Error fetching addresses:", error);
-        setError("An error occurred while fetching your address information.");
+        console.error("Error fetching customer address:", error);
+        setError("Failed to load your address information.");
+      } finally {
         setIsLoading(false);
       }
     };
