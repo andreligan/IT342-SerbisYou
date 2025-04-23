@@ -94,4 +94,19 @@ public class ScheduleController {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    @GetMapping("/debug/{scheduleId}")
+    public ResponseEntity<?> debugSchedule(@PathVariable Long scheduleId) {
+        try {
+            ScheduleEntity schedule = scheduleService.getScheduleById(scheduleId);
+            // Print to console to verify the boolean field's value
+            System.out.println("Schedule ID: " + schedule.getScheduleId());
+            System.out.println("Is Available: " + schedule.isAvailable());
+            return new ResponseEntity<>(schedule, HttpStatus.OK);
+        } catch (NoSuchElementException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }

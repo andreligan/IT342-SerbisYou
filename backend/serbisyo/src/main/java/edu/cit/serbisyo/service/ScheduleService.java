@@ -48,6 +48,12 @@ public class ScheduleService {
         return scheduleRepository.findByServiceProviderProviderIdAndDayOfWeekAndIsAvailableTrue(providerId, dayOfWeek);
     }
     
+    // Get schedule by ID
+    public ScheduleEntity getScheduleById(Long scheduleId) {
+        return scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new NoSuchElementException("Schedule with ID " + scheduleId + " not found"));
+    }
+    
     // Update a schedule
     public ScheduleEntity updateSchedule(Long scheduleId, ScheduleEntity updatedSchedule) {
         ScheduleEntity existingSchedule = scheduleRepository.findById(scheduleId)

@@ -57,6 +57,12 @@ function ScheduleContent() {
           Authorization: `Bearer ${token}`
         }
       });
+      
+      // Log one schedule to debug the property names
+      if (response.data && response.data.length > 0) {
+        console.log("Sample schedule object:", response.data[0]);
+      }
+      
       setSchedules(response.data || []);
       setError(null);
     } catch (err) {
@@ -152,6 +158,13 @@ function ScheduleContent() {
     const ampm = hour >= 12 ? 'PM' : 'AM';
     const formattedHour = hour % 12 || 12;
     return `${formattedHour}:${minutes} ${ampm}`;
+  };
+
+  // Helper function to check if a schedule is available
+  const isScheduleAvailable = (schedule) => {
+    if (schedule.isAvailable !== undefined) return schedule.isAvailable;
+    if (schedule.available !== undefined) return schedule.available;
+    return true;
   };
 
   const groupedSchedules = daysOfWeek.map(day => ({
@@ -264,7 +277,9 @@ function ScheduleContent() {
                         <li key={schedule.scheduleId} className="flex justify-between items-center bg-gray-50 p-2 rounded">
                           <span>
                             {formatTime(schedule.startTime)} - {formatTime(schedule.endTime)}
-                            {!schedule.isAvailable && <span className="ml-2 text-red-500">(Unavailable)</span>}
+                            {isScheduleAvailable(schedule) ? 
+                              <span className="ml-2 text-green-500">(Available)</span> : 
+                              <span className="ml-2 text-red-500">(Booked)</span>}
                           </span>
                           <button
                             onClick={() => handleDeleteSchedule(schedule.scheduleId)}
