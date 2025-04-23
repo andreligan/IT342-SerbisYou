@@ -5,6 +5,8 @@ import edu.cit.serbisyo.repository.BookingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -13,6 +15,9 @@ public class BookingService {
 
     @Autowired
     private BookingRepository bookingRepository;
+    
+    @Autowired
+    private ScheduleService scheduleService;
 
     public BookingService() {
         super();
@@ -20,6 +25,18 @@ public class BookingService {
 
     // CREATE a new booking
     public BookingEntity createBooking(BookingEntity booking) {
+        // Check if the service provider is available at the requested date and time
+        Long providerId = booking.getService().getProvider().getProviderId();
+        
+        boolean isAvailable = scheduleService.isProviderAvailable(
+                providerId, 
+                booking.getBookingDate(),
+                booking.getBookingTime() != null ? booking.getBookingTime().toString() : null);
+        
+        if (!isAvailable) {
+            throw new IllegalArgumentException("The service provider is not available at the requested time");
+        }
+        
         return bookingRepository.save(booking);
     }
 
@@ -39,9 +56,26 @@ public class BookingService {
         BookingEntity existingBooking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new NoSuchElementException("Booking with ID " + bookingId + " not found"));
 
-//        existingBooking.setCustomer(newBookingDetails.getCustomer());
+        // Check if the new time is available (if changing date/time)
+        if (newBookingDetails.getBookingDate() != null && 
+            newBookingDetails.getBookingTime() != null && 
+            (!newBookingDetails.getBookingDate().equals(existingBooking.getBookingDate()) ||
+             !newBookingDetails.getBookingTime().equals(existingBooking.getBookingTime()))) {
+            
+            Long providerId = existingBooking.getService().getProvider().getProviderId();
+            boolean isAvailable = scheduleService.isProviderAvailable(
+                    providerId, 
+                    newBookingDetails.getBookingDate(),
+                    newBookingDetails.getBookingTime().toString());
+            
+            if (!isAvailable) {
+                throw new IllegalArgumentException("The service provider is not available at the requested time");
+            }
+        }
+
         existingBooking.setService(newBookingDetails.getService());
         existingBooking.setBookingDate(newBookingDetails.getBookingDate());
+        existingBooking.setBookingTime(newBookingDetails.getBookingTime());
         existingBooking.setTotalCost(newBookingDetails.getTotalCost());
         existingBooking.setStatus(newBookingDetails.getStatus());
 

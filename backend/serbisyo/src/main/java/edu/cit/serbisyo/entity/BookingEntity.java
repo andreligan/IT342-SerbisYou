@@ -2,6 +2,7 @@ package edu.cit.serbisyo.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -22,6 +23,7 @@ public class BookingEntity {
     private ServiceEntity service;
 
     private LocalDate bookingDate;
+    private LocalTime bookingTime; // Added field for booking time
     private String status;
     private double totalCost;
 
@@ -59,6 +61,14 @@ public class BookingEntity {
 
     public void setBookingDate(LocalDate bookingDate) {
         this.bookingDate = bookingDate;
+    }
+
+    public LocalTime getBookingTime() {
+        return bookingTime;
+    }
+
+    public void setBookingTime(LocalTime bookingTime) {
+        this.bookingTime = bookingTime;
     }
 
     public String getStatus() {
