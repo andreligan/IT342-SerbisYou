@@ -261,6 +261,36 @@ const BookServicePage = () => {
     return null;
   };
 
+  // Function to create a GCash checkout session via PayMongo
+  const createGCashCheckout = async () => {
+    try {
+      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      
+      // Prepare the payload for the PayMongo API
+      const payload = {
+        amount: totalPrice,
+        description: `Payment for ${serviceData.serviceName}`,
+        successUrl: `${window.location.origin}/payment-success`,
+        cancelUrl: `${window.location.origin}/payment-cancel`
+      };
+      
+      console.log("Creating GCash checkout with payload:", payload);
+      
+      // Call our backend API to create a checkout session
+      const response = await axios.post('/api/create-gcash-checkout', payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      console.log("Checkout session created:", response.data);
+      
+      // Return the checkout URL from the response
+      return response.data.checkout_url;
+    } catch (error) {
+      console.error("Error creating GCash checkout:", error);
+      throw new Error("Failed to create GCash payment session.");
+    }
+  };
+
   // Proceed to next step
   const handleNext = () => {
     if (step === 1) {
@@ -319,7 +349,8 @@ const BookServicePage = () => {
         bookingTime: timeString,  // Now properly formatted with seconds
         status: "Pending",
         totalCost: totalPrice,
-        note: note || "" // Ensure note is not null
+        note: note || "", // Ensure note is not null
+        paymentMethod: paymentMethod
       };
       
       // Update debug info to show provider data
@@ -334,27 +365,44 @@ const BookServicePage = () => {
           basePrice: serviceData.price,
           payMongoFee: payMongoFee,
           appFee: appFee,
-          customerAddress: address
+          customerAddress: address,
+          paymentMethod: paymentMethod
         }
       };
       
       setDebugInfo(debugData);
       console.log('DEBUG - Complete Booking Request:', debugData);
       
-      // Send booking request with error handling
+      // Different flow for GCash payments
+      if (paymentMethod === 'gcash') {
+        try {
+          // Create a GCash checkout session and get the checkout URL
+          const checkoutUrl = await createGCashCheckout();
+          
+          // Store booking info in session storage for use after payment is complete
+          // This is needed because the PayMongo flow will redirect the user away from our app
+          sessionStorage.setItem('pendingBooking', JSON.stringify(bookingRequest));
+          
+          // Redirect the user to PayMongo's checkout page
+          console.log("Redirecting to GCash payment page:", checkoutUrl);
+          window.location.href = checkoutUrl;
+          return; // Stop execution here since we're redirecting
+        } catch (paymentError) {
+          console.error("Payment processing error:", paymentError);
+          setError("Failed to process GCash payment: " + paymentError.message);
+          setIsProcessingPayment(false);
+          return;
+        }
+      }
+      
+      // For cash payments, continue with booking creation normally
       try {
         const response = await axios.post('/api/bookings/postBooking', bookingRequest, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
         console.log('Booking successful:', response.data);
-        
-        // Handle different payment methods
-        if (paymentMethod === 'gcash') {
-          navigate('/payment-success');
-        } else {
-          navigate('/payment-success', { state: { bookingData: response.data } });
-        }
+        navigate('/payment-success', { state: { bookingData: response.data } });
       } catch (apiError) {
         console.error("API Error:", apiError);
         

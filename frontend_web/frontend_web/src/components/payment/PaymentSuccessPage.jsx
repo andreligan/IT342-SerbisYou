@@ -1,80 +1,100 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const PaymentSuccessPage = () => {
   const navigate = useNavigate();
-  const [isProcessing, setIsProcessing] = useState(true);
+  const location = useLocation();
+  const [isLoading, setIsLoading] = useState(true);
+  const [message, setMessage] = useState('Payment successful!');
   const [error, setError] = useState(null);
-
+  
   useEffect(() => {
-    const processSuccessfulPayment = async () => {
+    const processPayment = async () => {
       try {
-        // Retrieve booking data from localStorage
-        const pendingBookingString = localStorage.getItem('pendingBooking');
-        if (!pendingBookingString) {
-          setError("No pending booking found.");
-          setIsProcessing(false);
-          return;
+        // Check if redirected from PayMongo and there's a pending booking
+        const pendingBooking = sessionStorage.getItem('pendingBooking');
+        
+        if (pendingBooking) {
+          setMessage('Processing your booking...');
+          
+          // Parse the booking request
+          const bookingRequest = JSON.parse(pendingBooking);
+          
+          // Submit the booking to the backend
+          const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+          const response = await axios.post('/api/bookings/postBooking', bookingRequest, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          console.log('Booking created after successful payment:', response.data);
+          
+          // Clear the pending booking from session storage
+          sessionStorage.removeItem('pendingBooking');
+          
+          setMessage('Your payment was successful and your booking has been confirmed!');
+        } else if (location.state?.bookingData) {
+          // Direct navigation from BookServicePage for cash payments
+          setMessage('Your booking has been confirmed!');
         }
-
-        // Simply mark payment as successful without making another booking
-        console.log("Payment processed successfully");
-        
-        // Clean up the localStorage
-        localStorage.removeItem('pendingBooking');
-        
-        setIsProcessing(false);
-        
-        // After 2 seconds, redirect to customer home page
-        setTimeout(() => {
-          navigate('/customerHomePage');
-        }, 2000);
-        
       } catch (error) {
-        console.error("Error processing payment:", error);
-        setError("Failed to process payment. Please contact support.");
-        setIsProcessing(false);
+        console.error('Error processing booking after payment:', error);
+        setError('We received your payment, but there was an issue creating your booking. Please contact support.');
+      } finally {
+        setIsLoading(false);
       }
     };
-
-    processSuccessfulPayment();
-  }, [navigate]);
-
+    
+    processPayment();
+  }, [location]);
+  
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
-        {isProcessing ? (
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#495E57] mx-auto"></div>
-            <p className="mt-4 text-gray-600">Processing your payment...</p>
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-md p-8 max-w-lg w-full text-center">
+        {isLoading ? (
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#495E57]"></div>
+            <p className="mt-4 text-lg text-gray-600">Processing your payment...</p>
           </div>
         ) : error ? (
-          <div className="text-center">
-            <div className="text-red-500 text-5xl mb-4">
-              <i className="fas fa-exclamation-circle"></i>
+          <div>
+            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-red-100 mb-6">
+              <svg className="h-10 w-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Payment Error</h2>
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Payment Issue</h2>
             <p className="text-gray-600 mb-6">{error}</p>
             <button 
-              onClick={() => navigate('/customerHomePage')} 
-              className="bg-[#495E57] text-white py-2 px-6 rounded-lg hover:bg-[#3A4A47] transition"
+              onClick={() => navigate('/dashboard')}
+              className="bg-[#495E57] text-white px-6 py-2 rounded-md hover:bg-[#3a4a43] transition-colors"
             >
-              Go to Home
+              Return to Dashboard
             </button>
           </div>
         ) : (
-          <div className="text-center">
-            <div className="text-green-500 text-5xl mb-4">
-              <i className="fas fa-check-circle"></i>
+          <div>
+            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-green-100 mb-6">
+              <svg className="h-10 w-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+              </svg>
             </div>
-            <h2 className="text-2xl font-bold text-[#495E57] mb-2">Payment Successful!</h2>
-            <p className="text-gray-600 mb-6">Your booking has been confirmed.</p>
-            <button 
-              onClick={() => navigate('/customerHomePage')} 
-              className="bg-[#495E57] text-white py-2 px-6 rounded-lg hover:bg-[#3A4A47] transition"
-            >
-              Go to Home
-            </button>
+            <h2 className="text-2xl font-bold text-[#495E57] mb-4">Payment Successful</h2>
+            <p className="text-gray-600 mb-6">{message}</p>
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <button 
+                onClick={() => navigate('/dashboard')}
+                className="bg-[#495E57] text-white px-6 py-2 rounded-md hover:bg-[#3a4a43] transition-colors"
+              >
+                Go to Dashboard
+              </button>
+              <button 
+                onClick={() => navigate('/browseServices')}
+                className="bg-[#F4CE14] text-[#495E57] px-6 py-2 rounded-md hover:bg-yellow-300 transition-colors"
+              >
+                Browse More Services
+              </button>
+            </div>
           </div>
         )}
       </div>
