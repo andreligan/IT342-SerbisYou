@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import Footer from "../Footer";
 import axios from "axios";
 import serviceImage1 from "../../assets/appliance repair.jpg";
@@ -180,72 +180,98 @@ function ServiceProviderHomePage() {
         </div>
       </div>
 
-{/* Services Offered Section */}
-<div className="p-10 bg-gray-50">
-  <h5 className="font-bold text-2xl text-[#495E57] mb-4 text-center">
-    Your Services
-  </h5>
-  
-  {loading ? (
-    <div className="flex justify-center my-8">
-      <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  ) : error ? (
-    <div className="max-w-xl mx-auto my-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-      {error}
-    </div>
-  ) : services.length === 0 ? (
-    <div className="text-center my-6">
-      <h6 className="text-lg text-gray-600">
-        You haven't added any services yet.
-      </h6>
-      <button 
-        className="mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-colors shadow-md hover:shadow-lg"
-        onClick={() => navigate("/addService")}
-      >
-        Add Your First Service
-      </button>
-    </div>
-  ) : (
-    <>
-      <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-thumb-rounded">
-        <div className="flex flex-row justify-center flex-nowrap mt-1 pb-1 w-max min-w-full">
-          {Object.keys(categoryGroups).map((categoryName, index) => (
-            <div className="w-56 flex-none mx-2" key={categoryName}>
-              <div className="border border-gray-300 rounded-lg p-5 bg-white shadow-md hover:scale-105 transition-transform duration-300">
-                <img 
-                  src={categoryImageMap[categoryName] || defaultImages[index % defaultImages.length]} 
-                  alt={categoryName}
-                  className="w-full h-40 object-cover rounded-lg" 
-                />
-                <h6 className="text-lg font-bold text-[#495E57] mt-2 text-center">{categoryName}</h6>
-                <p className="text-sm text-gray-600 text-center mt-1">
-                  {categoryGroups[categoryName].length} service{categoryGroups[categoryName].length !== 1 ? 's' : ''}
-                </p>
-              </div>
-            </div>
-          ))}
+      {/* Quick Actions Section */}
+      <div className="bg-white p-6 rounded-lg shadow-lg mb-6">
+        <h2 className="text-xl font-bold text-[#495E57] mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Link 
+            to="/addService" 
+            className="flex items-center justify-center p-4 bg-[#F4CE14] text-black rounded-lg hover:bg-yellow-500 transition"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add New Service
+          </Link>
+          
+          <Link 
+            to="/schedule-management" 
+            className="flex items-center justify-center p-4 bg-[#495E57] text-white rounded-lg hover:bg-[#3A4A47] transition"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Manage Schedule
+          </Link>
         </div>
       </div>
-      
-      <div className="flex justify-center gap-5 mt-4">
-        <button
-          className="w-40 h-12 bg-[#F4CE14] hover:bg-[#e0b813] text-[#495E57] px-4 py-2 rounded transition-colors text-center shadow-md hover:shadow-lg"
-          onClick={() => navigate("/addService")}
-        >
-          Add New Service
-        </button>
-          
-        <button
-          className="w-40 bg-[#495E57] hover:bg-[#3a4a45] text-white px-4 py-2 rounded transition-colors text-center shadow-md hover:shadow-lg"
-          onClick={() => navigate("/myServices")}
-        >
-          Manage Services
-        </button>
+
+      {/* Services Offered Section */}
+      <div className="p-10 bg-gray-50">
+        <h5 className="font-bold text-2xl text-[#495E57] mb-4 text-center">
+          Your Services
+        </h5>
+        
+        {loading ? (
+          <div className="flex justify-center my-8">
+            <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : error ? (
+          <div className="max-w-xl mx-auto my-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        ) : services.length === 0 ? (
+          <div className="text-center my-6">
+            <h6 className="text-lg text-gray-600">
+              You haven't added any services yet.
+            </h6>
+            <button 
+              className="mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-colors shadow-md hover:shadow-lg"
+              onClick={() => navigate("/addService")}
+            >
+              Add Your First Service
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-thumb-rounded">
+              <div className="flex flex-row justify-center flex-nowrap mt-1 pb-1 w-max min-w-full">
+                {Object.keys(categoryGroups).map((categoryName, index) => (
+                  <div className="w-56 flex-none mx-2" key={categoryName}>
+                    <div className="border border-gray-300 rounded-lg p-5 bg-white shadow-md hover:scale-105 transition-transform duration-300">
+                      <img 
+                        src={categoryImageMap[categoryName] || defaultImages[index % defaultImages.length]} 
+                        alt={categoryName}
+                        className="w-full h-40 object-cover rounded-lg" 
+                      />
+                      <h6 className="text-lg font-bold text-[#495E57] mt-2 text-center">{categoryName}</h6>
+                      <p className="text-sm text-gray-600 text-center mt-1">
+                        {categoryGroups[categoryName].length} service{categoryGroups[categoryName].length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex justify-center gap-5 mt-4">
+              <button
+                className="w-40 h-12 bg-[#F4CE14] hover:bg-[#e0b813] text-[#495E57] px-4 py-2 rounded transition-colors text-center shadow-md hover:shadow-lg"
+                onClick={() => navigate("/addService")}
+              >
+                Add New Service
+              </button>
+                
+              <button
+                className="w-40 bg-[#495E57] hover:bg-[#3a4a45] text-white px-4 py-2 rounded transition-colors text-center shadow-md hover:shadow-lg"
+                onClick={() => navigate("/myServices")}
+              >
+                Manage Services
+              </button>
+            </div>
+          </>
+        )}
       </div>
-    </>
-  )}
-</div>
 
       {/* Footer Section */}
       <Footer />

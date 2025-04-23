@@ -16,6 +16,7 @@ import ServiceProviderProfile from "./components/service_provider/ServiceProvide
 import CustomerProfilePage from "./components/customer/CustomerProfilePage";
 import ServiceDetails from "./components/service_provider/ServiceDetails";
 import ServiceProviderDetails from "./components/customer/ServiceProviderDetails";
+import ScheduleManagement from "./components/service_provider/ScheduleManagement"; // Import the new component
 import serbisyoLogo from "./assets/Serbisyo_Logo_New.png";
 import API from "./utils/API";
 import axios from "axios";
@@ -298,6 +299,10 @@ function App() {
         <Route
           path="/service/:serviceId"
           element={<ProtectedRoute element={<ServiceDetails />} allowedRoles={["service provider"]} />}
+        />
+        <Route
+          path="/schedule-management"
+          element={<ProtectedRoute element={<ScheduleManagement />} allowedRoles={["service provider"]} />}
         />
         <Route
           path="/notifications"
