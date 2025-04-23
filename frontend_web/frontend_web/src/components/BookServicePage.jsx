@@ -22,7 +22,7 @@ const BookServicePage = () => {
   const [isLoadingTimeSlots, setIsLoadingTimeSlots] = useState(false);
   const [error, setError] = useState(null);
   const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
-  const [paymentMethod, setPaymentMethod] = useState("card");
+  const [paymentMethod, setPaymentMethod] = useState("cash"); // Changed default from "card" to "cash"
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [serviceFee, setServiceFee] = useState(0);
   const [totalPrice, setTotalPrice] = useState(0);
@@ -348,7 +348,7 @@ const BookServicePage = () => {
         console.log('Booking successful:', response.data);
         
         // Handle different payment methods
-        if (paymentMethod === 'card') {
+        if (paymentMethod === 'gcash') {
           navigate('/payment-success');
         } else {
           navigate('/payment-success', { state: { bookingData: response.data } });
@@ -583,6 +583,78 @@ const BookServicePage = () => {
                 placeholder="Add any special instructions or notes for the service provider..."
                 className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#495E57] min-h-[100px]"
               />
+            </div>
+
+            {/* Payment Method Selection - New section */}
+            <div className="mb-8">
+              <h3 className="text-lg font-medium text-[#495E57] mb-4 pb-2 border-b">Payment Method</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Cash Option */}
+                <div 
+                  className={`border ${
+                    paymentMethod === 'cash' 
+                      ? 'border-[#F4CE14] bg-yellow-50' 
+                      : 'border-gray-200 bg-white'
+                  } rounded-lg p-4 cursor-pointer transition-all hover:shadow-md`}
+                  onClick={() => setPaymentMethod('cash')}
+                >
+                  <div className="flex items-center">
+                    <div className={`w-6 h-6 rounded-full border-2 mr-3 flex items-center justify-center ${
+                      paymentMethod === 'cash' ? 'border-[#495E57]' : 'border-gray-300'
+                    }`}>
+                      {paymentMethod === 'cash' && (
+                        <div className="w-3 h-3 bg-[#495E57] rounded-full"></div>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between flex-1">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 bg-[#495E57] bg-opacity-10 rounded-full flex items-center justify-center mr-3">
+                          <svg className="w-5 h-5 text-[#495E57]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-800">Cash</p>
+                          <p className="text-xs text-gray-500">Pay with cash when service is complete</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* GCash Option */}
+                <div 
+                  className={`border ${
+                    paymentMethod === 'gcash' 
+                      ? 'border-[#F4CE14] bg-blue-50' 
+                      : 'border-gray-200 bg-white'
+                  } rounded-lg p-4 cursor-pointer transition-all hover:shadow-md`}
+                  onClick={() => setPaymentMethod('gcash')}
+                >
+                  <div className="flex items-center">
+                    <div className={`w-6 h-6 rounded-full border-2 mr-3 flex items-center justify-center ${
+                      paymentMethod === 'gcash' ? 'border-[#495E57]' : 'border-gray-300'
+                    }`}>
+                      {paymentMethod === 'gcash' && (
+                        <div className="w-3 h-3 bg-[#495E57] rounded-full"></div>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between flex-1">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 bg-blue-500 bg-opacity-10 rounded-full flex items-center justify-center mr-3">
+                          <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-800">GCash</p>
+                          <p className="text-xs text-gray-500">Pay using GCash mobile payment</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Payment Summary - Updated with detailed fee breakdown */}
