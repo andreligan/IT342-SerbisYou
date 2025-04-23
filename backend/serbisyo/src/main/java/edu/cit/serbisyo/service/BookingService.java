@@ -78,6 +78,7 @@ public class BookingService {
         existingBooking.setBookingTime(newBookingDetails.getBookingTime());
         existingBooking.setTotalCost(newBookingDetails.getTotalCost());
         existingBooking.setStatus(newBookingDetails.getStatus());
+        existingBooking.setNote(newBookingDetails.getNote()); // Add this line to handle the note field
 
         return bookingRepository.save(existingBooking);
     }

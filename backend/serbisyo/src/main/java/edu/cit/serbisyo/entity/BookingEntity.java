@@ -26,6 +26,9 @@ public class BookingEntity {
     private LocalTime bookingTime; // Added field for booking time
     private String status;
     private double totalCost;
+    
+    @Column(length = 1000) // Allow for longer notes
+    private String note; // Special instructions field
 
     @JsonIgnore
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
@@ -85,6 +88,14 @@ public class BookingEntity {
 
     public void setTotalCost(double totalCost) {
         this.totalCost = totalCost;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 
     public List<TransactionEntity> getTransactions() {
