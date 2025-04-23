@@ -125,32 +125,6 @@ function ScheduleContent() {
     }
   };
 
-  const handleInitializeSchedule = async () => {
-    if (!providerId) {
-      setError('Provider ID not found. Please reload the page.');
-      return;
-    }
-    
-    if (!window.confirm('This will create a default weekly schedule (Mon-Fri, 9AM-5PM). Continue?')) {
-      return;
-    }
-    
-    try {
-      await axios.post(`/api/schedules/provider/${providerId}/initialize`, {}, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      
-      setSuccessMessage('Default schedule initialized successfully!');
-      setTimeout(() => setSuccessMessage(''), 3000);
-      fetchSchedules(providerId);
-    } catch (err) {
-      console.error('Error initializing schedule:', err);
-      setError('Failed to initialize schedule. Please try again.');
-    }
-  };
-
   const formatTime = (time) => {
     if (!time) return '';
     const [hours, minutes] = time.split(':');
@@ -244,14 +218,6 @@ function ScheduleContent() {
                 className="bg-[#495E57] text-white py-2 px-4 rounded hover:bg-[#3A4A47] transition"
               >
                 Add Schedule
-              </button>
-              
-              <button
-                type="button"
-                onClick={handleInitializeSchedule}
-                className="bg-yellow-400 text-black py-2 px-4 rounded hover:bg-yellow-500 transition"
-              >
-                Initialize Default Schedule
               </button>
             </div>
           </form>
