@@ -183,17 +183,7 @@ export const createAddress = async (token, addressData, entityId, isFirstAddress
       );
       
       // Update customer with new address
-      await axios.put(
-        `/api/customers/update/${entityId}`, 
-        {
-          addressId: newAddressId,
-          firstName: customer.firstName,
-          lastName: customer.lastName,
-          phoneNumber: customer.phoneNumber,
-          // Add any other required customer fields
-        },
-        { headers: { 'Authorization': `Bearer ${token}` }}
-      );
+// Removed commented-out axios.put call for clarity.
     }
     
     // Set main flag in the response for UI consistency
