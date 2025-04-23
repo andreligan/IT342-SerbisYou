@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 
 const PaymentSuccessPage = () => {
   const navigate = useNavigate();
@@ -18,28 +17,9 @@ const PaymentSuccessPage = () => {
           return;
         }
 
-        const pendingBooking = JSON.parse(pendingBookingString);
-        const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-
-        // Create the booking in the database
-        const response = await axios.post(
-          'http://localhost:8080/api/bookings/create', 
-          {
-            serviceId: pendingBooking.serviceId,
-            providerId: pendingBooking.providerId,
-            bookingDate: pendingBooking.bookingDate,
-            bookingTime: pendingBooking.bookingTime,
-            address: pendingBooking.address,
-            amount: pendingBooking.amount,
-            status: "BOOKED",
-            paymentMethod: pendingBooking.paymentMethod,
-            paymentStatus: "PAID"
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` }
-          }
-        );
-
+        // Simply mark payment as successful without making another booking
+        console.log("Payment processed successfully");
+        
         // Clean up the localStorage
         localStorage.removeItem('pendingBooking');
         
@@ -51,8 +31,8 @@ const PaymentSuccessPage = () => {
         }, 2000);
         
       } catch (error) {
-        console.error("Error processing successful payment:", error);
-        setError("Failed to complete booking. Please contact support.");
+        console.error("Error processing payment:", error);
+        setError("Failed to process payment. Please contact support.");
         setIsProcessing(false);
       }
     };

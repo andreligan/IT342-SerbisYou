@@ -1,14 +1,21 @@
 package edu.cit.serbisyo.service;
 
 import edu.cit.serbisyo.entity.BookingEntity;
+import edu.cit.serbisyo.entity.CustomerEntity;
+import edu.cit.serbisyo.entity.ServiceEntity;
+import edu.cit.serbisyo.entity.ServiceProviderEntity;
 import edu.cit.serbisyo.repository.BookingRepository;
+import edu.cit.serbisyo.repository.CustomerRepository;
+import edu.cit.serbisyo.repository.ServiceProviderRepository;
+import edu.cit.serbisyo.repository.ServiceRepository;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 
 @Service
 public class BookingService {
@@ -17,79 +24,117 @@ public class BookingService {
     private BookingRepository bookingRepository;
     
     @Autowired
-    private ScheduleService scheduleService;
+    private CustomerRepository customerRepository;
+    
+    @Autowired
+    private ServiceRepository serviceRepository;
+    
+    @Autowired
+    private ServiceProviderRepository serviceProviderRepository;
 
-    public BookingService() {
-        super();
-    }
-
-    // CREATE a new booking
+    // Create booking with proper entity relationships
+    @Transactional
     public BookingEntity createBooking(BookingEntity booking) {
-        // Check if the service provider is available at the requested date and time
-        Long providerId = booking.getService().getProvider().getProviderId();
-        
-        boolean isAvailable = scheduleService.isProviderAvailable(
-                providerId, 
-                booking.getBookingDate(),
-                booking.getBookingTime() != null ? booking.getBookingTime().toString() : null);
-        
-        if (!isAvailable) {
-            throw new IllegalArgumentException("The service provider is not available at the requested time");
+        if (booking.getCustomer() == null || booking.getCustomer().getCustomerId() == null) {
+            throw new IllegalArgumentException("Customer information is required");
+        }
+        if (booking.getService() == null || booking.getService().getServiceId() == null) {
+            throw new IllegalArgumentException("Service information is required");
         }
         
+        // Get full customer entity
+        Optional<CustomerEntity> customerOpt = customerRepository.findById(booking.getCustomer().getCustomerId());
+        if (!customerOpt.isPresent()) {
+            throw new IllegalArgumentException("Customer with ID " + booking.getCustomer().getCustomerId() + " not found");
+        }
+        
+        // Get full service entity
+        Optional<ServiceEntity> serviceOpt = serviceRepository.findById(booking.getService().getServiceId());
+        if (!serviceOpt.isPresent()) {
+            throw new IllegalArgumentException("Service with ID " + booking.getService().getServiceId() + " not found");
+        }
+        
+        // Get the full service entity with its relationships
+        ServiceEntity fullService = serviceOpt.get();
+        
+        // Check if provider is properly loaded - if not, load it explicitly
+        if (fullService.getProvider() == null) {
+            // Log the issue for debugging
+            System.out.println("WARNING: Service provider is null for service ID: " + fullService.getServiceId());
+            
+            // Find the provider directly for this service - this is a workaround
+            // You might need to modify the ServiceRepository to have a method to find the provider for a service
+            // For now, let's just load all services and find the matching one to get its provider
+            List<ServiceEntity> allServices = serviceRepository.findAll();
+            for (ServiceEntity s : allServices) {
+                if (s.getServiceId().equals(fullService.getServiceId()) && s.getProvider() != null) {
+                    fullService.setProvider(s.getProvider());
+                    System.out.println("Fixed provider relationship for service: " + s.getServiceId());
+                    break;
+                }
+            }
+            
+            // If we still don't have a provider, throw an exception
+            if (fullService.getProvider() == null) {
+                throw new IllegalArgumentException("Service provider information is missing for service ID: " + fullService.getServiceId());
+            }
+        }
+        
+        // Set the complete entities in the booking
+        booking.setCustomer(customerOpt.get());
+        booking.setService(fullService);
+        
+        // Save the booking
         return bookingRepository.save(booking);
     }
 
-    // READ all bookings
+    // Get all bookings
     public List<BookingEntity> getAllBookings() {
         return bookingRepository.findAll();
     }
 
-    // READ a booking by ID
+    // Get booking by ID
     public BookingEntity getBookingById(Long bookingId) {
         return bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new NoSuchElementException("Booking with ID " + bookingId + " not found"));
+                .orElseThrow(() -> new NoSuchElementException("Booking not found with ID: " + bookingId));
     }
 
-    // UPDATE an existing booking
-    public BookingEntity updateBooking(Long bookingId, BookingEntity newBookingDetails) {
+    // Update booking
+    @Transactional
+    public BookingEntity updateBooking(Long bookingId, BookingEntity updatedBooking) {
         BookingEntity existingBooking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new NoSuchElementException("Booking with ID " + bookingId + " not found"));
+                .orElseThrow(() -> new NoSuchElementException("Booking not found with ID: " + bookingId));
 
-        // Check if the new time is available (if changing date/time)
-        if (newBookingDetails.getBookingDate() != null && 
-            newBookingDetails.getBookingTime() != null && 
-            (!newBookingDetails.getBookingDate().equals(existingBooking.getBookingDate()) ||
-             !newBookingDetails.getBookingTime().equals(existingBooking.getBookingTime()))) {
-            
-            Long providerId = existingBooking.getService().getProvider().getProviderId();
-            boolean isAvailable = scheduleService.isProviderAvailable(
-                    providerId, 
-                    newBookingDetails.getBookingDate(),
-                    newBookingDetails.getBookingTime().toString());
-            
-            if (!isAvailable) {
-                throw new IllegalArgumentException("The service provider is not available at the requested time");
-            }
+        // Update the fields
+        if (updatedBooking.getBookingDate() != null) {
+            existingBooking.setBookingDate(updatedBooking.getBookingDate());
         }
-
-        existingBooking.setService(newBookingDetails.getService());
-        existingBooking.setBookingDate(newBookingDetails.getBookingDate());
-        existingBooking.setBookingTime(newBookingDetails.getBookingTime());
-        existingBooking.setTotalCost(newBookingDetails.getTotalCost());
-        existingBooking.setStatus(newBookingDetails.getStatus());
-        existingBooking.setNote(newBookingDetails.getNote()); // Add this line to handle the note field
+        
+        if (updatedBooking.getBookingTime() != null) {
+            existingBooking.setBookingTime(updatedBooking.getBookingTime());
+        }
+        
+        if (updatedBooking.getStatus() != null) {
+            existingBooking.setStatus(updatedBooking.getStatus());
+        }
+        
+        if (updatedBooking.getTotalCost() > 0) {
+            existingBooking.setTotalCost(updatedBooking.getTotalCost());
+        }
+        
+        if (updatedBooking.getNote() != null) {
+            existingBooking.setNote(updatedBooking.getNote());
+        }
 
         return bookingRepository.save(existingBooking);
     }
 
-    // DELETE a booking
+    // Delete booking
     public String deleteBooking(Long bookingId) {
-        if (bookingRepository.existsById(bookingId)) {
-            bookingRepository.deleteById(bookingId);
-            return "Booking with ID " + bookingId + " has been deleted successfully.";
-        } else {
-            return "Booking with ID " + bookingId + " not found.";
+        if (!bookingRepository.existsById(bookingId)) {
+            throw new NoSuchElementException("Booking not found with ID: " + bookingId);
         }
+        bookingRepository.deleteById(bookingId);
+        return "Booking deleted successfully";
     }
 }

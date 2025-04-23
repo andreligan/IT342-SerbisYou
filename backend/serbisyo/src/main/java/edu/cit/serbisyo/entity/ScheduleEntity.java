@@ -69,11 +69,19 @@ public class ScheduleEntity {
         this.endTime = endTime;
     }
 
+    public boolean getIsAvailable() {
+        return isAvailable;
+    }
+
+    public void setIsAvailable(boolean isAvailable) {
+        this.isAvailable = isAvailable;
+    }
+
     public boolean isAvailable() {
         return isAvailable;
     }
 
     public void setAvailable(boolean available) {
-        isAvailable = available;
+        this.isAvailable = available;
     }
 }

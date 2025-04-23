@@ -81,12 +81,16 @@ function ScheduleContent() {
     }
     
     try {
+      // Update the property name to match both possible backend methods
       const scheduleData = {
         dayOfWeek: selectedDay,
         startTime: startTime,
         endTime: endTime,
-        isAvailable: isAvailable
+        isAvailable: isAvailable,
+        available: isAvailable  // Add this as a fallback
       };
+      
+      console.log("Sending schedule data:", scheduleData); // Add debug
       
       await axios.post(`/api/schedules/provider/${providerId}`, scheduleData, {
         headers: {
