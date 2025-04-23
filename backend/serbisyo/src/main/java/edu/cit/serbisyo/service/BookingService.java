@@ -88,6 +88,11 @@ public class BookingService {
         return bookingRepository.save(booking);
     }
 
+    // Change return type from Booking to BookingEntity
+    public BookingEntity saveBooking(BookingEntity booking) {
+        return bookingRepository.save(booking);
+    }
+
     // Get all bookings
     public List<BookingEntity> getAllBookings() {
         return bookingRepository.findAll();

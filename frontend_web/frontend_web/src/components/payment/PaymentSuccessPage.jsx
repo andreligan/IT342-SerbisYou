@@ -10,33 +10,58 @@ const PaymentSuccessPage = () => {
   const [error, setError] = useState(null);
   
   useEffect(() => {
-    const processPayment = async () => {
+    // This function will only run once per page load
+    const processPaymentOnce = async () => {
       try {
-        // Check if redirected from PayMongo and there's a pending booking
-        const pendingBooking = sessionStorage.getItem('pendingBooking');
-        
-        if (pendingBooking) {
-          setMessage('Processing your booking...');
-          
-          // Parse the booking request
-          const bookingRequest = JSON.parse(pendingBooking);
-          
-          // Submit the booking to the backend
-          const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-          const response = await axios.post('/api/bookings/postBooking', bookingRequest, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          
-          console.log('Booking created after successful payment:', response.data);
-          
-          // Clear the pending booking from session storage
-          sessionStorage.removeItem('pendingBooking');
-          
-          setMessage('Your payment was successful and your booking has been confirmed!');
-        } else if (location.state?.bookingData) {
-          // Direct navigation from BookServicePage for cash payments
-          setMessage('Your booking has been confirmed!');
+        // Check if we've already processed this payment
+        const isProcessed = sessionStorage.getItem('paymentProcessed');
+        if (isProcessed) {
+          setMessage('Your booking has already been processed.');
+          setIsLoading(false);
+          return;
         }
+
+        // Check if there's a pending booking from GCash flow
+        const pendingBooking = sessionStorage.getItem('pendingBooking');
+        if (!pendingBooking) {
+          // If there's no pending booking but we have booking data in location state
+          // (from cash payment flow), just show success
+          if (location.state?.bookingData) {
+            setMessage('Your booking has been confirmed!');
+          } else {
+            setMessage('Payment successful!');
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        // Mark as being processed immediately to prevent duplicate processing
+        sessionStorage.setItem('paymentProcessed', 'true');
+        
+        setMessage('Processing your booking...');
+        
+        // Parse the booking request
+        const bookingRequest = JSON.parse(pendingBooking);
+        
+        // Add an idempotency key based on timestamp and service to help prevent duplicates
+        const idempotencyKey = `booking_${bookingRequest.customer.customerId}_${bookingRequest.service.serviceId}_${Date.now()}`;
+        bookingRequest.idempotencyKey = idempotencyKey;
+        
+        // Submit the booking to the backend
+        const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+        const response = await axios.post('/api/bookings/postBooking', bookingRequest, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'X-Idempotency-Key': idempotencyKey // Add idempotency header
+          }
+        });
+        
+        console.log('Booking created after successful payment:', response.data);
+        
+        // Clear the pending booking from session storage
+        sessionStorage.removeItem('pendingBooking');
+        
+        setMessage('Your payment was successful and your booking has been confirmed!');
       } catch (error) {
         console.error('Error processing booking after payment:', error);
         setError('We received your payment, but there was an issue creating your booking. Please contact support.');
@@ -45,8 +70,16 @@ const PaymentSuccessPage = () => {
       }
     };
     
-    processPayment();
-  }, [location]);
+    processPaymentOnce();
+    
+    // Cleanup function to clear the processed flag when navigating away
+    return () => {
+      // Only clear if we're actually navigating away, not on initial render
+      setTimeout(() => {
+        sessionStorage.removeItem('paymentProcessed');
+      }, 1000);
+    };
+  }, []); // Empty dependency array means this effect runs only once when component mounts
   
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
@@ -83,10 +116,10 @@ const PaymentSuccessPage = () => {
             <p className="text-gray-600 mb-6">{message}</p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button 
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/customerProfile/bookingHistory')}
                 className="bg-[#495E57] text-white px-6 py-2 rounded-md hover:bg-[#3a4a43] transition-colors"
               >
-                Go to Dashboard
+                Booking History
               </button>
               <button 
                 onClick={() => navigate('/browseServices')}

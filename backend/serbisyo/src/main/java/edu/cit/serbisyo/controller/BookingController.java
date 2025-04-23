@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping(path = "/api/bookings")
@@ -19,21 +20,44 @@ public class BookingController {
     @Autowired
     private BookingService bookingService;
 
+    // In-memory idempotency key store (for demonstration - use a persistent store in production)
+    private static final ConcurrentHashMap<String, String> processedIdempotencyKeys = new ConcurrentHashMap<>();
+
     @GetMapping("/print")
     public String print() {
         return "Booking Controller is working!";
     }
 
     @PostMapping("/postBooking")
-    public ResponseEntity<?> createBooking(@RequestBody BookingEntity booking) {
+    public ResponseEntity<?> createBooking(
+            @RequestBody BookingEntity booking,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey) {
+
         try {
-            BookingEntity createdBooking = bookingService.createBooking(booking);
-            return new ResponseEntity<>(createdBooking, HttpStatus.CREATED);
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+            // Check for idempotency key to prevent duplicate bookings
+            if (idempotencyKey != null && !idempotencyKey.isEmpty()) {
+                // If this key has been processed before, return the previous response
+                if (processedIdempotencyKeys.containsKey(idempotencyKey)) {
+                    return ResponseEntity.ok().body(Map.of(
+                        "message", "Booking already processed",
+                        "status", "DUPLICATE",
+                        "bookingId", processedIdempotencyKeys.get(idempotencyKey)
+                    ));
+                }
+            }
+
+            // Create the booking
+            BookingEntity savedBooking = bookingService.saveBooking(booking);
+
+            // Store the idempotency key and booking ID for future reference
+            if (idempotencyKey != null && !idempotencyKey.isEmpty()) {
+                processedIdempotencyKeys.put(idempotencyKey, savedBooking.getBookingId().toString());
+            }
+
+            return ResponseEntity.ok(savedBooking);
         } catch (Exception e) {
-            return new ResponseEntity<>("An error occurred while creating the booking: " + e.getMessage(), 
-                    HttpStatus.INTERNAL_SERVER_ERROR);
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
