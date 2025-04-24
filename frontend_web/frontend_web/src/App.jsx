@@ -62,6 +62,7 @@ function App() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSignupPopupVisible, setIsSignupPopupVisible] = useState(false); // Add state for signup popup visibility
+  const [profileImage, setProfileImage] = useState(null); // Add new state for profile image
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -76,6 +77,80 @@ function App() {
     setUserRole(role);
     console.log("Authentication check. isAuthenticated:", !!token, "Role:", role);
   }, [location]);
+
+  // Fetch user's profile image - updated to match the approach used in profile components
+  useEffect(() => {
+    const fetchProfileImage = async () => {
+      try {
+        const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+        const userId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
+        const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
+        
+        if (!token || !userId || !role) return;
+        
+        let entityId;
+        
+        if (role.toLowerCase() === "customer") {
+          // Get all customers to find the one matching this user
+          const customersResponse = await axios.get("/api/customers/getAll", {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          // Find the customer that matches this user ID
+          const customer = customersResponse.data.find(c => 
+            c.userAuth && c.userAuth.userId == userId
+          );
+          
+          if (!customer) return;
+          entityId = customer.customerId;
+          
+          // Now fetch image with the correct customer ID
+          const imageResponse = await axios.get(`/api/customers/getProfileImage/${entityId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          if (imageResponse.data) {
+            // Prepend base URL to make a complete image path
+            const baseURL = "http://localhost:8080"; // Backend base URL
+            const fullImageURL = `${baseURL}${imageResponse.data}`;
+            setProfileImage(fullImageURL);
+          }
+        } 
+        else if (role.toLowerCase() === "service provider") {
+          // Get all providers to find the one matching this user
+          const providersResponse = await axios.get("/api/service-providers/getAll", {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          // Find the provider that matches this user ID
+          const provider = providersResponse.data.find(p => 
+            p.userAuth && p.userAuth.userId == userId
+          );
+          
+          if (!provider) return;
+          entityId = provider.providerId;
+          
+          // Now fetch image with the correct provider ID
+          const imageResponse = await axios.get(`/api/service-providers/getServiceProviderImage/${entityId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          if (imageResponse.data) {
+            // Prepend base URL to make a complete image path
+            const baseURL = "http://localhost:8080"; // Backend base URL
+            const fullImageURL = `${baseURL}${imageResponse.data}`;
+            setProfileImage(fullImageURL);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching profile image:", error);
+      }
+    };
+    
+    if (isAuthenticated) {
+      fetchProfileImage();
+    }
+  }, [isAuthenticated]);
 
   const confirmLogout = () => {
     console.log("User has logged out.");
@@ -107,7 +182,7 @@ function App() {
     if (!isAuthenticated) return null;
 
     return (
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-6 mr-6">
         <button
           onClick={() => navigate(userRole === "customer" ? "/customerHomePage" : "/serviceProviderHomePage")}
           className="p-2 rounded-full hover:bg-gray-200"
@@ -158,22 +233,35 @@ function App() {
                 setDropdownOpen(false);
               }
             }, 100)}
-            className="p-2 rounded-full hover:bg-gray-200"
+            className="rounded-full hover:bg-gray-200 overflow-hidden"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79-4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+            {profileImage ? (
+              <img 
+                src={profileImage}
+                alt="Profile"
+                className="h-10 w-10 rounded-full object-cover"
+                onError={(e) => {
+                  // Fallback to default icon if image fails to load
+                  e.target.onerror = null;
+                  setProfileImage(null);
+                }}
               />
-            </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79-4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                />
+              </svg>
+            )}
           </button>
           {dropdownOpen && (
             <div 
