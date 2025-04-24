@@ -34,6 +34,11 @@ public class BookingService {
                 .orElseThrow(() -> new NoSuchElementException("Booking with ID " + bookingId + " not found"));
     }
  
+    // Get bookings by customer ID
+    public List<BookingEntity> getBookingsByCustomerId(Long customerId) {
+        return bookingRepository.findByCustomerCustomerId(customerId);
+    }
+ 
     // UPDATE an existing booking
     public BookingEntity updateBooking(Long bookingId, BookingEntity newBookingDetails) {
         BookingEntity existingBooking = bookingRepository.findById(bookingId)

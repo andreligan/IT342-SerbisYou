@@ -1,47 +1,82 @@
 package edu.cit.serbisyo.controller;
- 
+
 import edu.cit.serbisyo.entity.BookingEntity;
+import edu.cit.serbisyo.entity.CustomerEntity;
+import edu.cit.serbisyo.repository.CustomerRepository;
 import edu.cit.serbisyo.service.BookingService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
- 
+
 import java.util.List;
- 
+import java.util.Optional;
+
 @RestController
 @RequestMapping(method = RequestMethod.GET, path = "/api/bookings")
 public class BookingController {
- 
+
     @Autowired
     private BookingService bookingService;
- 
+
+    @Autowired
+    private CustomerRepository customerRepository;
+
     @GetMapping("/print")
     public String print() {
         return "Booking Controller is working!";
     }
- 
+
     @PostMapping("/postBooking")
     public BookingEntity createBooking(@RequestBody BookingEntity booking) {
         return bookingService.createBooking(booking);
     }
- 
+
     @GetMapping("/getAll")
     public List<BookingEntity> getAllBookings() {
         return bookingService.getAllBookings();
     }
- 
+
     @GetMapping("/getById/{bookingId}")
     public BookingEntity getBookingById(@PathVariable Long bookingId) {
         return bookingService.getBookingById(bookingId);
     }
- 
+
     @PutMapping("/updateBooking/{bookingId}")
     public BookingEntity updateBooking(@PathVariable Long bookingId, @RequestBody BookingEntity updatedBooking) {
         return bookingService.updateBooking(bookingId, updatedBooking);
     }
- 
+
     @DeleteMapping("/delete/{bookingId}")
     public String deleteBooking(@PathVariable Long bookingId) {
         return bookingService.deleteBooking(bookingId);
     }
+
+    @GetMapping("/getCustomerBookings")
+    public ResponseEntity<?> getCustomerBookings() {
+        try {
+            // Get current authenticated user
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+
+            // Find the customer by username
+            Optional<CustomerEntity> customerOpt = customerRepository.findByUserAuthUserName(username);
+
+            if (!customerOpt.isPresent()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Customer not found for the authenticated user");
+            }
+
+            Long customerId = customerOpt.get().getCustomerId();
+
+            // Get bookings for this customer
+            List<BookingEntity> bookings = bookingService.getBookingsByCustomerId(customerId);
+            return ResponseEntity.ok(bookings);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error retrieving bookings: " + e.getMessage());
+        }
+    }
 }
- 
