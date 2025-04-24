@@ -41,6 +41,9 @@ public class ServiceProviderEntity {
     @OneToMany(mappedBy = "provider", cascade = CascadeType.ALL)
     private List<ServiceEntity> services;
 
+    @JsonIgnore
+    @OneToMany(mappedBy = "serviceProvider", cascade = CascadeType.ALL)
+    private List<ScheduleEntity> schedules;
 
     public boolean isVerified() {
         return verified;
@@ -168,5 +171,13 @@ public class ServiceProviderEntity {
 
     public void setServiceProviderImage(String serviceProviderImage) {
         this.serviceProviderImage = serviceProviderImage;
+    }
+
+    public List<ScheduleEntity> getSchedules() {
+        return schedules;
+    }
+
+    public void setSchedules(List<ScheduleEntity> schedules) {
+        this.schedules = schedules;
     }
 }

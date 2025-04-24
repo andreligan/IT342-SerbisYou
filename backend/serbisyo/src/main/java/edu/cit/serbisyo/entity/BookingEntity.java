@@ -2,6 +2,7 @@ package edu.cit.serbisyo.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -22,8 +23,12 @@ public class BookingEntity {
     private ServiceEntity service;
 
     private LocalDate bookingDate;
+    private LocalTime bookingTime; // Added field for booking time
     private String status;
     private double totalCost;
+    
+    @Column(length = 1000) // Allow for longer notes
+    private String note; // Special instructions field
 
     @JsonIgnore
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
@@ -61,6 +66,14 @@ public class BookingEntity {
         this.bookingDate = bookingDate;
     }
 
+    public LocalTime getBookingTime() {
+        return bookingTime;
+    }
+
+    public void setBookingTime(LocalTime bookingTime) {
+        this.bookingTime = bookingTime;
+    }
+
     public String getStatus() {
         return status;
     }
@@ -75,6 +88,14 @@ public class BookingEntity {
 
     public void setTotalCost(double totalCost) {
         this.totalCost = totalCost;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 
     public List<TransactionEntity> getTransactions() {

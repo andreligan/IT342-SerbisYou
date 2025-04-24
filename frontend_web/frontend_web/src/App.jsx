@@ -24,6 +24,8 @@ import ChatWindow from './components/chat/ChatWindow';
 import OAuth2RedirectHandler from "./components/OAuth2RedirectHandler";
 import NotificationIcon from "./components/notifications/NotificationIcon";
 import NotificationsPage from "./components/notifications/NotificationsPage";
+import PaymentSuccessPage from './components/payment/PaymentSuccessPage';
+import PaymentCancelPage from './components/payment/PaymentCancelPage';
 
 // Protected Route component for role-based access control
 const ProtectedRoute = ({ element, allowedRoles }) => {
@@ -212,12 +214,12 @@ function App() {
     <>
       <header className="flex justify-between items-center px-3 py-3 bg-white shadow-md">
         <div className="flex items-center">
-          <img src={serbisyoLogo} alt="SerbisYo Logo" className="h-16 mr-4" />
+          <img src={serbisyoLogo} alt="SerbisYo Logo" className="h-20 ml-6 mr-4" />
           {/* <h1 className="text-2xl font-bold text-gray-800">Serbisyo</h1> */}
         </div>
         <div>
           {!isAuthenticated ? (
-            <div className="flex gap-4">
+            <div className="flex gap-4 mr-6">
               <button
                 onClick={() => setIsSignupPopupVisible(true)}
                 className="px-4 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500"
@@ -305,6 +307,8 @@ function App() {
           path="/providerDetails/:providerId"
           element={<ProtectedRoute element={<ServiceProviderDetails />} allowedRoles={["customer"]} />}
         />
+        <Route path="/payment-success" element={<PaymentSuccessPage />} />
+        <Route path="/payment-cancel" element={<PaymentCancelPage />} />
       </Routes>
 
       <SignupOptionsPopup
