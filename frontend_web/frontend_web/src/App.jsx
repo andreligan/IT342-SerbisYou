@@ -190,112 +190,116 @@ function App() {
 
     return (
       <div className="flex items-center gap-6 mr-6">
+        {/* Home Icon with SVG glow effect */}
         <button
           onClick={() => navigate(userRole === "customer" ? "/customerHomePage" : "/serviceProviderHomePage")}
-          className="p-2 rounded-full hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center"
+          className="p-2.5 rounded-full flex items-center justify-center"
           aria-label="Home"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            className="h-6 w-6 text-[#495E57] hover:text-[#F4CE14] transition-colors duration-200"
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V10z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 21V9h6v12" />
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
           </svg>
         </button>
 
-        {/* {userRole !== "admin" && (
-          <button
-            onClick={() => navigate("/messages")}
-            className="p-2 rounded-full hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center"
-            aria-label="Messages"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-7 w-7"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M8 10h.01M12 10h.01M16 10h.01M21 16.5a2.5 2.5 0 01-2.5 2.5H5.5A2.5 2.5 0 013 16.5V5.5A2.5 2.5 0 015.5 3h13a2.5 2.5 0 012.5 2.5v11z"
-              />
-            </svg>
-          </button>
-        )} */}
+        {/* Notification Icon Wrapper with SVG glow effect */}
+        <div className="relative">
+          <div className="p-2.5 rounded-full flex items-center justify-center">
+            <NotificationIcon glowEffect={true} />
+          </div>
+        </div>
 
-        {/* Replace the notification button with our new NotificationIcon component */}
-        <NotificationIcon />
-
+        {/* Enhanced User Profile Dropdown */}
         <div className="relative">
           <button
             onMouseEnter={() => setDropdownOpen(true)}
             onMouseLeave={() => setTimeout(() => {
-              // Small timeout to allow cursor to move to dropdown
               if (!document.querySelector('.dropdown-menu:hover')) {
                 setDropdownOpen(false);
               }
             }, 100)}
-            className={`rounded-full overflow-hidden hover:ring-2 hover:ring-[#F4CE14] transition-all duration-200 ${dropdownOpen ? 'ring-2 ring-[#F4CE14]' : ''}`}
+            className={`rounded-full overflow-hidden transition-all duration-200 transform hover:scale-105 ${
+              dropdownOpen ? 'ring-2 ring-[#F4CE14] shadow-lg' : 'hover:shadow-md'
+            }`}
             aria-label="User menu"
           >
             {profileImage ? (
-              <div className="h-11 w-11 rounded-full border-2 border-[#F4CE14] overflow-hidden">
+              <div className="h-11 w-11 rounded-full overflow-hidden border-2 border-white shadow-inner">
                 <img 
                   src={profileImage}
                   alt="Profile"
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover transform transition-transform duration-500 hover:scale-110"
                   onError={(e) => {
-                    // Fallback to default icon if image fails to load
                     e.target.onerror = null;
                     setProfileImage(null);
                   }}
                 />
               </div>
             ) : (
-              <div className="h-11 w-11 rounded-full border-2 border-[#F4CE14] bg-gray-100 flex items-center justify-center">
+              <div className="h-11 w-11 rounded-full bg-gradient-to-br from-[#e0c03b] to-[#F4CE14] flex items-center justify-center shadow-md">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-7 w-7 text-gray-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+                  className="h-6 w-6 text-white"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
                 >
                   <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79-4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                    fillRule="evenodd"
+                    d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                    clipRule="evenodd"
                   />
                 </svg>
               </div>
             )}
+            {userFirstName && (
+              <span className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-400 rounded-full border-2 border-white"></span>
+            )}
           </button>
+          
           {dropdownOpen && (
             <div 
               className="absolute right-0 mt-3 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-50 dropdown-menu transform transition-all duration-200 ease-in-out"
               onMouseEnter={() => setDropdownOpen(true)}
               onMouseLeave={() => setDropdownOpen(false)}
             >
-              <div className="p-4 border-b border-gray-100">
-                {profileImage && (
-                  <div className="flex items-center space-x-4">
-                    <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-[#F4CE14]">
+              <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-[#f6f2e1] to-white rounded-t-xl">
+                <div className="flex items-center space-x-4">
+                  {profileImage ? (
+                    <div className="h-14 w-14 rounded-full overflow-hidden border-2 border-[#F4CE14] shadow-md">
                       <img src={profileImage} alt="Profile" className="h-full w-full object-cover" />
                     </div>
-                    <div>
-                      {/* Display first name instead of role */}
-                      <p className="text-sm font-medium text-gray-900">{userFirstName || "User"}</p>
+                  ) : (
+                    <div className="h-14 w-14 rounded-full bg-gradient-to-br from-[#e0c03b] to-[#F4CE14] flex items-center justify-center shadow-md">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-8 w-8 text-white"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
                     </div>
+                  )}
+                  <div>
+                    <p className="font-medium text-gray-900">{userFirstName || "User"}</p>
+                    <p className="text-xs text-gray-500 mt-1">{userRole?.toLowerCase() || "user"}</p>
                   </div>
-                )}
+                </div>
               </div>
+              
               <div className="p-2">
                 <button
                   onClick={() => {
@@ -312,7 +316,7 @@ function App() {
                   className="w-full flex items-center px-4 py-3 text-left text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-150"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                   Manage Profile
                 </button>
@@ -321,7 +325,7 @@ function App() {
                   className="w-full flex items-center px-4 py-3 text-left text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-150"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 01-3-3h4a3 3 0 013 3v1" />
                   </svg>
                   Logout
                 </button>
@@ -333,12 +337,29 @@ function App() {
     );
   };
 
+  // Handle logo click to redirect to appropriate homepage
+  const handleLogoClick = () => {
+    if (isAuthenticated) {
+      if (userRole?.toLowerCase() === "customer") {
+        navigate("/customerHomePage");
+      } else if (userRole?.toLowerCase() === "service provider") {
+        navigate("/serviceProviderHomePage");
+      }
+    } else {
+      navigate("/");
+    }
+  };
+
   return (
     <>
       {/* Only render header when not on booking page */}
       {!isBookingPage && (
         <header className="flex justify-between items-center px-4 py-2 bg-white shadow-md sticky top-0 z-30">
-          <div className="flex items-center">
+          <div 
+            className="flex items-center cursor-pointer" 
+            onClick={handleLogoClick}
+            aria-label="Go to homepage"
+          >
             <img src={serbisyoLogo} alt="SerbisYo Logo" className="h-16 ml-4 mr-2" />
           </div>
           <div>
