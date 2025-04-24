@@ -323,113 +323,172 @@ const ServiceProviderDetails = () => {
   });
 
   return (
-    <div className="container mx-auto p-4 max-w-6xl">
-      <button
-        onClick={() => navigate(-1)}
-        className="mb-6 flex items-center gap-2 text-[#495E57] hover:text-[#F4CE14] transition-colors"
-      >
-        <i className="fas fa-arrow-left"></i> Back
-      </button>
-      
-      <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
-        <div className="bg-[#495E57] p-6 text-white relative">
-          <h1 className="text-3xl font-bold">Service Provider Details</h1>
+    <div className="bg-gray-50 min-h-screen pb-12">
+      {/* Hero section with provider details */}
+      <div className="relative bg-[#495E57] text-white">
+        {/* Background decorative elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-0 right-0 w-1/3 h-64 bg-[#F4CE14]/10 blur-3xl rounded-full"></div>
+          <div className="absolute bottom-0 left-1/4 w-48 h-48 bg-[#F4CE14]/5 blur-xl rounded-full"></div>
         </div>
         
-        <div className="p-6">
-          <div className="flex flex-col md:flex-row items-start gap-8">
-            <div className="md:w-1/4 flex flex-col items-center">
-              <div className="relative w-48 h-48">
+        <div className="container mx-auto px-4 py-8 relative z-10">
+          <button
+            onClick={() => navigate(-1)}
+            className="mb-4 flex items-center gap-2 text-white hover:text-[#F4CE14] transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
+            </svg>
+            Back
+          </button>
+          
+          <div className="flex flex-col md:flex-row items-center gap-8 py-6">
+            <div className="relative">
+              <div className="w-40 h-40 md:w-48 md:h-48 rounded-full overflow-hidden border-4 border-white shadow-xl">
                 <img
                   src={getImageUrl(profileImagePath)}
                   alt={`${provider.firstName} ${provider.lastName}`}
-                  className="w-48 h-48 rounded-full border-4 border-[#F4CE14] shadow-lg object-cover"
+                  className="w-full h-full object-cover"
                   onError={handleImageError}
                 />
                 {imageFailed && (
                   <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500 bg-gray-100 rounded-full">
-                    No Image Available
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                    </svg>
                   </div>
                 )}
               </div>
+              
               {provider.verified && (
-                <div className="mt-4 bg-green-100 text-green-800 px-4 py-2 rounded-full flex items-center gap-2">
-                  <i className="fas fa-check-circle"></i>
-                  <span>Verified Provider</span>
+                <div className="absolute bottom-0 right-0 bg-[#F4CE14] text-[#495E57] p-2 rounded-full shadow-md">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
                 </div>
               )}
             </div>
             
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-[#495E57] mb-2">
-                {provider.firstName} {provider.lastName}
-              </h2>
+            <div className="text-center md:text-left md:flex-1">
+              <h1 className="text-3xl md:text-4xl font-bold mb-2">{provider.firstName} {provider.lastName}</h1>
               
               {provider.businessName && (
-                <p className="text-lg text-gray-700 mb-4">
-                  <i className="fas fa-briefcase text-[#495E57] mr-2"></i>
+                <p className="text-xl text-[#F4CE14] font-medium mb-4">
                   {provider.businessName}
                 </p>
               )}
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-[#495E57] mb-2">Contact Information</h3>
-                  <p className="flex items-center gap-2 mb-2">
-                    <i className="fas fa-envelope text-[#495E57]"></i>
-                    {provider.email}
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <i className="fas fa-phone text-[#495E57]"></i>
-                    {provider.phoneNumber || "No phone number provided"}
-                  </p>
+              <div className="flex flex-wrap gap-3 justify-center md:justify-start mt-3">
+                <div className="bg-white/10 backdrop-blur-sm px-4 py-1 rounded-full flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                  <span>{provider.averageRating?.toFixed(1) || "No ratings"}</span>
                 </div>
                 
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-[#495E57] mb-2">Experience & Rating</h3>
-                  <p className="flex items-center gap-2 mb-2">
-                    <i className="fas fa-calendar-alt text-[#495E57]"></i>
-                    {provider.yearsOfExperience ? `${provider.yearsOfExperience} years experience` : "Experience not specified"}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <div className="flex">
-                      {renderStars(provider.averageRating || 0)}
-                    </div>
-                    <span className="text-gray-700">
-                      ({provider.averageRating?.toFixed(1) || "No ratings"})
-                    </span>
-                  </div>
+                <div className="bg-white/10 backdrop-blur-sm px-4 py-1 rounded-full flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                  </svg>
+                  <span>{provider.yearsOfExperience ? `${provider.yearsOfExperience} years experience` : "Experience not specified"}</span>
                 </div>
               </div>
-              
-              <div className="mt-6 bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-[#495E57] mb-2">Availability</h3>
-                <p className="text-gray-700">
-                  {provider.availabilitySchedule || "Contact provider for availability details"}
-                </p>
-              </div>
-              
-              {provider.description && (
-                <div className="mt-6">
-                  <h3 className="font-semibold text-[#495E57] mb-2">About</h3>
-                  <p className="text-gray-700 leading-relaxed">
-                    {provider.description}
-                  </p>
-                </div>
-              )}
+            </div>
+            
+            <div className="flex-shrink-0 hidden md:block">
+              <button
+                onClick={() => navigate('/browseServices')}
+                className="bg-[#F4CE14] text-[#495E57] px-6 py-3 rounded-full font-bold hover:bg-yellow-400 transition-colors shadow-lg flex items-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                </svg>
+                Browse More Services
+              </button>
             </div>
           </div>
         </div>
+        
+        {/* Curved bottom edge */}
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gray-50 rounded-t-[50%] transform translate-y-8"></div>
       </div>
       
-      <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
-        <div className="bg-[#495E57] p-6 text-white relative">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold">Services Offered</h2>
-            <div className="text-sm">
-              <span>Sort by: </span>
+      <div className="container mx-auto px-4 mt-12 relative z-10">
+        {/* Quick info cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 -mt-20 mb-12">
+          <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-start">
+              <div className="p-3 bg-[#F4CE14]/20 rounded-full mr-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-[#495E57]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-700 mb-1">Email</h3>
+                <p className="text-gray-600">{provider.email || "Not available"}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-start">
+              <div className="p-3 bg-[#F4CE14]/20 rounded-full mr-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-[#495E57]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-700 mb-1">Phone</h3>
+                <p className="text-gray-600">{provider.phoneNumber || "Not available"}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-start">
+              <div className="p-3 bg-[#F4CE14]/20 rounded-full mr-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-[#495E57]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-700 mb-1">Availability</h3>
+                <p className="text-gray-600">{provider.availabilitySchedule || "Contact for details"}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* About section if description exists */}
+        {provider.description && (
+          <div className="bg-white rounded-xl shadow-md p-6 mb-10">
+            <h2 className="text-2xl font-bold text-[#495E57] mb-4 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              About
+            </h2>
+            <p className="text-gray-700 leading-relaxed">
+              {provider.description}
+            </p>
+          </div>
+        )}
+        
+        {/* Services Section */}
+        <div className="mb-10">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-[#495E57] flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Services Offered
+            </h2>
+            
+            <div className="flex items-center bg-white rounded-full shadow-sm p-1 pr-3">
+              <span className="text-sm text-gray-600 mr-2">Sort by:</span>
               <select 
-                className="bg-transparent border-b border-white focus:outline-none text-white cursor-pointer ml-1"
+                className="bg-transparent border-none focus:outline-none text-[#495E57] text-sm font-medium cursor-pointer"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >
@@ -440,87 +499,113 @@ const ServiceProviderDetails = () => {
               </select>
             </div>
           </div>
-        </div>
-        
-        <div className="p-6">
+          
           {servicesLoading ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#495E57]"></div>
+            <div className="flex justify-center items-center h-64 bg-white rounded-xl shadow-md">
+              <div className="flex flex-col items-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#F4CE14]"></div>
+                <p className="mt-4 text-gray-500">Loading services...</p>
+              </div>
             </div>
           ) : providerServices.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {sortServices(providerServices).map(service => (
                 <div
                   key={service.serviceId}
-                  className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer flex flex-col h-full relative overflow-hidden border border-gray-100"
                   onClick={(e) => handleOpenModal(service, e)}
+                  className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col h-full relative overflow-hidden border border-gray-100 transform hover:-translate-y-1"
                 >
                   <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
                     <img
                       src={service.serviceImage ? `${BASE_URL}${service.serviceImage}` : "/default-service.jpg"}
                       alt={service.serviceName}
-                      className="w-full h-52 object-cover"
+                      className="w-full h-48 object-cover"
                       loading="lazy"
                       onError={(e) => {
                         e.target.onerror = null;
                         e.target.src = "/default-service.jpg";
                       }}
                     />
-                    <div className="absolute top-0 left-0 bg-[#495E57] bg-opacity-75 text-white text-xs font-semibold px-2 py-1 rounded-br-md">
+                    <div className="absolute top-3 left-3 bg-[#495E57]/80 text-white text-xs font-semibold px-3 py-1.5 rounded-full backdrop-blur-sm z-20 shadow-sm">
                       {service.categoryName || 'Uncategorized'}
                     </div>
-                  </div>
-
-                  <div className="flex flex-col justify-between p-4 h-full">
-                    <div>
-                      <h2 className="text-lg font-bold text-[#495E57] text-center">{service.serviceName}</h2>
-                      <p className="text-sm text-gray-600 text-center mt-2 line-clamp-2">
-                        {service.serviceDescription}
-                      </p>
-                    </div>
-                    <div className="mt-4 border-t border-gray-100 pt-3">
-                      <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
-                        <span>Duration:</span>
-                        <span className="font-medium">{service.durationEstimate || "Not specified"}</span>
-                      </div>
-                      <div className="flex items-center justify-left mt-2">
-                        {serviceRatings[service.serviceId]?.averageRating > 0 ? (
-                          <>
-                            {renderStars(serviceRatings[service.serviceId]?.averageRating || 0)}
-                            <span className="ml-1 text-sm text-gray-600">
-                              ({serviceRatings[service.serviceId]?.averageRating.toFixed(1)})
-                            </span>
-                            <span className="ml-1 text-xs text-gray-500">
-                              {serviceRatings[service.serviceId]?.reviewCount} review/s
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-sm text-gray-400 italic">No reviews yet</span>
-                        )}
-                      </div>
-                      <button 
-                        className="mt-3 bg-[#495E57] hover:bg-[#3e4f49] text-white w-full py-2 rounded transition-colors flex items-center justify-center gap-2"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate('/bookService', { state: { service } });
-                        }}
-                      >
-                        <i className="fas fa-calendar-check"></i> Book Now
-                      </button>
+                    <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+                      <h3 className="text-xl font-bold text-white drop-shadow-md">
+                        {service.serviceName}
+                      </h3>
                     </div>
                   </div>
 
-                  <div className="absolute bottom-0 right-0 bg-[#F4CE14] text-[#495E57] font-bold px-3 py-1.5 rounded-lg shadow-sm">
-                    ₱ {service.price}.00
+                  <div className="flex flex-col justify-between p-4 flex-grow">
+                    <p className="text-sm text-gray-600 line-clamp-2 mb-4">
+                      {service.serviceDescription}
+                    </p>
+                    
+                    <div className="mt-auto space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#495E57]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span className="ml-2 text-sm text-gray-600">{service.durationEstimate || "Not specified"}</span>
+                        </div>
+                        <div className="bg-[#F4CE14]/10 text-[#495E57] font-bold px-3 py-1 rounded-full text-sm">
+                          ₱{service.price}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <div className="flex items-center mb-1">
+                          {serviceRatings[service.serviceId]?.averageRating > 0 ? (
+                            <>
+                              <div className="flex">
+                                {renderStars(serviceRatings[service.serviceId]?.averageRating || 0)}
+                              </div>
+                              <span className="ml-1 text-sm text-gray-600">
+                                {serviceRatings[service.serviceId]?.averageRating.toFixed(1)}
+                              </span>
+                              <span className="ml-1 text-xs text-gray-500">
+                                ({serviceRatings[service.serviceId]?.reviewCount})
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-sm text-gray-400 italic">No reviews yet</span>
+                          )}
+                        </div>
+                        <button 
+                          className="w-full bg-[#495E57] hover:bg-[#3e4f49] text-white py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate('/bookService', { state: { service } });
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                          Book Now
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 text-gray-500">
-              <i className="fas fa-tools text-5xl mb-4 text-gray-300"></i>
-              <h3 className="text-xl font-semibold mb-2">No Services Listed</h3>
-              <p>This provider hasn't added any services yet.</p>
+            <div className="bg-white rounded-xl shadow-md p-12 text-center">
+              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">No Services Listed</h3>
+              <p className="text-gray-600 mb-6">This provider hasn't added any services yet.</p>
+              <button 
+                onClick={() => navigate('/browseServices')}
+                className="px-6 py-2 bg-[#F4CE14] text-[#495E57] font-medium rounded-full hover:bg-[#e5c119] transition-colors duration-300"
+              >
+                Browse All Services
+              </button>
             </div>
           )}
         </div>
