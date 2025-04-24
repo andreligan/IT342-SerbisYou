@@ -1,9 +1,16 @@
 package com.example.serbisyo_it342_g3
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ObjectAnimator
 import android.app.AlertDialog
 import android.app.Dialog
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
@@ -18,6 +25,7 @@ import com.example.serbisyo_it342_g3.adapters.CustomerServiceAdapter
 import com.example.serbisyo_it342_g3.api.BookingApiClient
 import com.example.serbisyo_it342_g3.api.NotificationApiClient
 import com.example.serbisyo_it342_g3.api.ServiceApiClient
+import com.example.serbisyo_it342_g3.api.UserApiClient
 import com.example.serbisyo_it342_g3.data.Booking
 import com.example.serbisyo_it342_g3.data.Service
 import com.example.serbisyo_it342_g3.data.ServiceCategory
@@ -28,10 +36,13 @@ import com.example.serbisyo_it342_g3.fragments.NotificationsFragment
 import com.example.serbisyo_it342_g3.fragments.ProfileFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.imageview.ShapeableImageView
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
 class CustomerDashboardActivity : AppCompatActivity() {
+    // Existing view variables
     private lateinit var tvWelcome: TextView
     private lateinit var tvNoServices: TextView
     private lateinit var rvServices: RecyclerView
@@ -45,14 +56,35 @@ class CustomerDashboardActivity : AppCompatActivity() {
     private lateinit var fragmentContainer: FrameLayout
     private lateinit var btnViewBookings: Button
     private lateinit var bookingApiClient: BookingApiClient
+    private lateinit var ivProfileImage: ShapeableImageView
+    
+    // Hero section and slideshow elements
+    private lateinit var btnHeroBookService: Button
+    private lateinit var slideshowImage1: ImageView
+    private lateinit var slideshowImage2: ImageView
+    private lateinit var slideshowImage3: ImageView
+    private var currentSlideshowImage = 0
+    private val slideshowHandler = Handler(Looper.getMainLooper())
+    private val slideshowRunnable = object : Runnable {
+        override fun run() {
+            changeSlideshowImage()
+            slideshowHandler.postDelayed(this, SLIDESHOW_DELAY)
+        }
+    }
     
     private val services = mutableListOf<Service>()
     private val filteredServices = mutableListOf<Service>()
     private val allServices = mutableListOf<Service>()
     private val categories = mutableListOf<ServiceCategory>()
     private lateinit var serviceApiClient: ServiceApiClient
+    private lateinit var userApiClient: UserApiClient
     private var token: String = ""
+    private var userId: Long = 0
     private val TAG = "CustomerDashboard"
+    
+    // Slideshow constants
+    private val SLIDESHOW_DELAY = 3000L // 3 seconds between slides
+    private val FADE_DURATION = 500L // 0.5 second fade animation
     
     // Special category for "All Categories"
     private val ALL_CATEGORIES = ServiceCategory(0, "All Categories")
@@ -83,12 +115,16 @@ class CustomerDashboardActivity : AppCompatActivity() {
 
         // Initialize ServiceApiClient with context
         serviceApiClient = ServiceApiClient(this)
+        userApiClient = UserApiClient(this)
         
         // Get SharedPreferences
         val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
         token = sharedPref.getString("token", "") ?: ""
+        val userIdStr = sharedPref.getString("userId", "0") ?: "0"
+        userId = userIdStr.toLongOrNull() ?: 0
         
         Log.d(TAG, "Retrieved token: $token")
+        Log.d(TAG, "Retrieved user ID: $userId")
 
         // Initialize views
         tvWelcome = findViewById(R.id.tvWelcome)
@@ -102,6 +138,16 @@ class CustomerDashboardActivity : AppCompatActivity() {
         dashboardContent = findViewById(R.id.dashboardContent)
         fragmentContainer = findViewById(R.id.fragmentContainer)
         btnViewBookings = findViewById(R.id.btnViewBookings)
+        ivProfileImage = findViewById(R.id.ivProfileImage)
+
+        // Initialize hero section and slideshow views
+        btnHeroBookService = findViewById(R.id.btnHeroBookService)
+        slideshowImage1 = findViewById(R.id.slideshowImage1)
+        slideshowImage2 = findViewById(R.id.slideshowImage2)
+        slideshowImage3 = findViewById(R.id.slideshowImage3)
+
+        // Set up slideshow images
+        setupSlideshowImages()
 
         // Set up toolbar
         setSupportActionBar(findViewById(R.id.toolbar))
@@ -112,22 +158,20 @@ class CustomerDashboardActivity : AppCompatActivity() {
 
         // Set welcome message
         tvWelcome.text = "Welcome, $username!"
+        
+        // Load profile image
+        loadProfileImage()
 
-        // Setup Book Service button
-        btnBookService.setOnClickListener {
-            // Scroll to services section
-            dashboardContent.post {
-                dashboardContent.smoothScrollTo(0, categoriesContainer.top)
-            }
-            
-            // Show message
-            Toast.makeText(this, "Browse and select a service to book", Toast.LENGTH_SHORT).show()
-        }
+        // Setup Book Service buttons
+        setupBookServiceButtons()
 
         // Setup View Bookings button
         btnViewBookings.setOnClickListener {
             showBookingHistory()
         }
+
+        // Hide search EditText if it exists
+
 
         // Setup RecyclerView
         serviceAdapter = CustomerServiceAdapter(
@@ -149,8 +193,64 @@ class CustomerDashboardActivity : AppCompatActivity() {
 
         // Initialize BookingApiClient
         bookingApiClient = BookingApiClient(this)
+
+        // Start slideshow
+        startSlideshow()
     }
     
+    private fun loadProfileImage() {
+        try {
+            val prefs = getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
+            val savedImagePath = prefs.getString("profile_image_$userId", null)
+            
+            if (savedImagePath != null) {
+                try {
+                    // Check if this is a file path or content URI
+                    if (savedImagePath.startsWith("/")) {
+                        // It's a file path, use File directly
+                        val file = File(savedImagePath)
+                        if (file.exists() && file.length() > 0) {
+                            ivProfileImage.setImageURI(Uri.fromFile(file))
+                            return
+                        }
+                    }
+                    
+                    // If not a file or file doesn't exist, try as content URI
+                    val uri = Uri.parse(savedImagePath)
+                    ivProfileImage.setImageURI(uri)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error loading saved profile image, using default", e)
+                    ivProfileImage.setImageResource(R.drawable.default_profile)
+                }
+            } else {
+                // Load customer data to check if they have a profile image
+                if (userId > 0) {
+                    userApiClient.getCustomerProfile(userId, token) { customer, error -> 
+                        if (error != null || customer == null) {
+                            Log.e(TAG, "Error getting customer profile for image", error)
+                            return@getCustomerProfile
+                        }
+                        
+                        if (!customer.profileImage.isNullOrEmpty()) {
+                            try {
+                                val profileImageFile = File(customer.profileImage)
+                                if (profileImageFile.exists() && profileImageFile.length() > 0) {
+                                    runOnUiThread {
+                                        ivProfileImage.setImageURI(Uri.fromFile(profileImageFile))
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error loading profile image from customer data", e)
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading profile image", e)
+        }
+    }
+
     private fun setupBottomNavigation() {
         bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
@@ -216,7 +316,7 @@ class CustomerDashboardActivity : AppCompatActivity() {
     private fun loadCategories() {
         progressBar.visibility = View.VISIBLE
         
-        serviceApiClient.getServiceCategories(token) { categoryList, error ->
+        serviceApiClient.getServiceCategories(token) { categoryList, error -> 
             if (error != null) {
                 Log.e(TAG, "Error loading categories", error)
                 return@getServiceCategories
@@ -280,12 +380,13 @@ class CustomerDashboardActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         loadServices() // Refresh services list when returning to this activity
+        loadProfileImage() // Refresh profile image when returning to this activity
     }
 
     private fun loadServices() {
         progressBar.visibility = View.VISIBLE
         
-        serviceApiClient.getAllServices(token) { servicesList, error ->
+        serviceApiClient.getAllServices(token) { servicesList, error -> 
             runOnUiThread {
                 progressBar.visibility = View.GONE
                 
@@ -476,7 +577,7 @@ class CustomerDashboardActivity : AppCompatActivity() {
         
         progressBar.visibility = View.VISIBLE
         
-        bookingApiClient.createBooking(serviceId, customerId, bookingDate, token) { booking, error ->
+        bookingApiClient.createBooking(serviceId, customerId, bookingDate, token) { booking, error -> 
             runOnUiThread {
                 progressBar.visibility = View.GONE
                 
@@ -539,7 +640,7 @@ class CustomerDashboardActivity : AppCompatActivity() {
             "booking",
             message,
             token
-        ) { notification, error ->
+        ) { notification, error -> 
             if (error != null) {
                 Log.e(TAG, "Error sending notification to provider: ${error.message}", error)
                 // Try to log details of the error for debugging
@@ -557,7 +658,7 @@ class CustomerDashboardActivity : AppCompatActivity() {
             }
         }
     }
-    
+
     private fun testSendNotification() {
         // Get first service provider
         if (allServices.isEmpty()) {
@@ -605,7 +706,7 @@ class CustomerDashboardActivity : AppCompatActivity() {
             "test",
             message,
             token
-        ) { notification, error ->
+        ) { notification, error -> 
             runOnUiThread {
                 progressBar.visibility = View.GONE
                 
@@ -630,7 +731,7 @@ class CustomerDashboardActivity : AppCompatActivity() {
         
         progressBar.visibility = View.VISIBLE
         
-        bookingApiClient.getBookingsByCustomerId(customerId, token) { bookings, error ->
+        bookingApiClient.getBookingsByCustomerId(customerId, token) { bookings, error -> 
             runOnUiThread {
                 progressBar.visibility = View.GONE
                 
@@ -694,6 +795,109 @@ class CustomerDashboardActivity : AppCompatActivity() {
                 true
             }
             else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Stop slideshow when activity is paused
+        slideshowHandler.removeCallbacks(slideshowRunnable)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Stop slideshow when activity is destroyed
+        slideshowHandler.removeCallbacks(slideshowRunnable)
+    }
+
+    private fun startSlideshow() {
+        // Start the slideshow
+        slideshowHandler.postDelayed(slideshowRunnable, SLIDESHOW_DELAY)
+    }
+
+    private fun changeSlideshowImage() {
+        try {
+            // Get the current and next image views
+            val currentImageView = when (currentSlideshowImage) {
+                0 -> slideshowImage1
+                1 -> slideshowImage2
+                else -> slideshowImage3
+            }
+            
+            // Update current image index
+            currentSlideshowImage = (currentSlideshowImage + 1) % 3
+            
+            // Get the next image view
+            val nextImageView = when (currentSlideshowImage) {
+                0 -> slideshowImage1
+                1 -> slideshowImage2
+                else -> slideshowImage3
+            }
+            
+            // Make next image visible but transparent
+            nextImageView.alpha = 0f
+            nextImageView.visibility = View.VISIBLE
+            
+            // Fade out current image
+            val fadeOut = ObjectAnimator.ofFloat(currentImageView, "alpha", 1f, 0f)
+            fadeOut.duration = FADE_DURATION
+            fadeOut.addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    currentImageView.visibility = View.INVISIBLE
+                }
+            })
+            
+            // Fade in next image
+            val fadeIn = ObjectAnimator.ofFloat(nextImageView, "alpha", 0f, 1f)
+            fadeIn.duration = FADE_DURATION
+            
+            // Start animations
+            fadeOut.start()
+            fadeIn.start()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error changing slideshow image", e)
+        }
+    }
+    
+    private fun setupSlideshowImages() {
+        try {
+            // Set the slideshow images from the drawable resources
+            slideshowImage1.setImageResource(R.drawable.cleaning)
+            slideshowImage2.setImageResource(R.drawable.appliance_repair)
+            slideshowImage3.setImageResource(R.drawable.carpentry)
+            
+            // Make sure the first image is visible and others are invisible
+            slideshowImage1.visibility = View.VISIBLE
+            slideshowImage1.alpha = 1f
+            slideshowImage2.visibility = View.INVISIBLE
+            slideshowImage3.visibility = View.INVISIBLE
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting up slideshow images", e)
+        }
+    }
+
+    private fun setupBookServiceButtons() {
+        // Setup Hero Book Service button
+        btnHeroBookService = findViewById(R.id.btnHeroBookService)
+        btnHeroBookService.setOnClickListener {
+            // Scroll to services section
+            dashboardContent.post {
+                dashboardContent.smoothScrollTo(0, categoriesContainer.top)
+            }
+            
+            // Show message
+            Toast.makeText(this, "Browse and select a service to book", Toast.LENGTH_SHORT).show()
+        }
+
+        // Setup regular Book Service button
+        btnBookService.setOnClickListener {
+            // Scroll to services section
+            dashboardContent.post {
+                dashboardContent.smoothScrollTo(0, categoriesContainer.top)
+            }
+            
+            // Show message
+            Toast.makeText(this, "Browse and select a service to book", Toast.LENGTH_SHORT).show()
         }
     }
 }

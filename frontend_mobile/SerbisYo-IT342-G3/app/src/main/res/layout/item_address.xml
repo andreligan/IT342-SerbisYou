@@ -6,67 +6,103 @@
     android:layout_height="wrap_content"
     app:cardCornerRadius="8dp"
     app:cardElevation="2dp"
-    android:layout_marginBottom="8dp">
+    android:layout_marginBottom="16dp"
+    app:cardBackgroundColor="@android:color/white"
+    app:contentPadding="16dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/tvStreet"
+        <!-- Address Info Section -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="123 Main Street"
-            android:textStyle="bold"
-            android:textSize="16sp"
-            android:textColor="@color/primary_green"
-            android:layout_marginBottom="8dp" />
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
 
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvStreet"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="123 Main Street"
+                    android:textStyle="bold"
+                    android:textSize="16sp"
+                    android:textColor="@color/primary_green" />
+
+                <LinearLayout
+                    android:id="@+id/mainAddressIndicator"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/yellow_badge_background"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="2dp"
+                    android:layout_marginTop="4dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Main Address"
+                        android:textSize="12sp"
+                        android:textColor="@color/primary_green"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Action Buttons -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                
+                <ImageButton
+                    android:id="@+id/btnEdit"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@android:drawable/ic_menu_edit"
+                    android:tint="@android:color/darker_gray"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Edit address" />
+
+                <ImageButton
+                    android:id="@+id/btnDelete"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@android:drawable/ic_menu_delete" 
+                    android:tint="@android:color/darker_gray"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Delete address" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Address Details -->
         <TextView
-            android:id="@+id/tvBarangay"
+            android:id="@+id/tvCityProvince"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Barangay: Sample Barangay"
+            android:text="City, Province 12345"
             android:textSize="14sp"
-            android:layout_marginBottom="4dp" />
+            android:layout_marginBottom="16dp" />
 
-        <TextView
-            android:id="@+id/tvCity"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="City: Sample City"
-            android:textSize="14sp"
-            android:layout_marginBottom="4dp" />
-
-        <TextView
-            android:id="@+id/tvProvince"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Province: Sample Province"
-            android:textSize="14sp"
-            android:layout_marginBottom="4dp" />
-
-        <TextView
-            android:id="@+id/tvZipCode"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Zip Code: 12345"
-            android:textSize="14sp"
-            android:layout_marginBottom="12dp" />
-
+        <!-- "Set as Main" Button -->
         <Button
-            android:id="@+id/btnDelete"
+            android:id="@+id/btnSetAsMain"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Delete"
-            android:textColor="#FF0000"
-            android:background="?android:attr/selectableItemBackground"
+            android:layout_height="36dp"
+            android:text="Set as Main"
+            android:textColor="@color/primary_green"
             android:textAllCaps="false"
-            android:drawableStart="@android:drawable/ic_menu_delete"
-            android:drawableTint="#FF0000"
-            android:drawablePadding="8dp"
+            android:background="@drawable/outline_button_background"
+            android:paddingHorizontal="12dp"
+            android:visibility="visible"
             android:layout_gravity="end" />
     </LinearLayout>
-</androidx.cardview.widget.CardView> 
+</androidx.cardview.widget.CardView>

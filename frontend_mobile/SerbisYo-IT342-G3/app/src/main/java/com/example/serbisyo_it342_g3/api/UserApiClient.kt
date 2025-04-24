@@ -6,32 +6,19 @@ import com.example.serbisyo_it342_g3.data.Address
 import com.example.serbisyo_it342_g3.data.Customer
 import com.example.serbisyo_it342_g3.data.ServiceProvider
 import com.example.serbisyo_it342_g3.data.User
-import com.google.gson.Gson
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 
-class UserApiClient(private val context: Context) {
-    private val client = OkHttpClient()
-    private val gson = Gson()
-
+class UserApiClient(context: Context) {
+    private val baseApiClient = BaseApiClient(context)
+    private val client = baseApiClient.client
+    private val gson = baseApiClient.gson
     
-    // CONFIGURATION FOR BACKEND CONNECTION
-    // For Android Emulator - Virtual Device (default)
-    private val EMULATOR_URL = "http://10.0.2.2:8080" 
-    
-    // For Physical Device - Use your computer's actual IP address from ipconfig
-    private val PHYSICAL_DEVICE_URL = "http://192.168.254.103:8080"
-    
-    // SWITCH BETWEEN CONNECTION TYPES:
-    // Uncomment the one you need and comment out the other
-    // private val BASE_URL = EMULATOR_URL     // For Android Emulator
-    private val BASE_URL = PHYSICAL_DEVICE_URL // For Physical Device
-    
-
     private val TAG = "UserApiClient"
 
     // Get customer profile
@@ -45,7 +32,7 @@ class UserApiClient(private val context: Context) {
         }
         
         // Use the actual endpoint from CustomerController
-        val url = "$BASE_URL/api/customers/getById/$userId"
+        val url = "${baseApiClient.getBaseUrl()}/api/customers/getById/$userId"
         Log.d(TAG, "Request URL: $url")
         Log.d(TAG, "Token length: ${token.length}, Token snippet: ${token.take(20)}...")
         
@@ -144,7 +131,7 @@ class UserApiClient(private val context: Context) {
 
         // Use the actual endpoint from CustomerController
         // Note: This will fail due to controller-level GET restriction!
-        val url = "$BASE_URL/api/customers/updateCustomer/${customer.customerId}"
+        val url = "${baseApiClient.getBaseUrl()}/api/customers/updateCustomer/${customer.customerId}"
         val request = Request.Builder()
             .url(url)
             .put(requestBody)
@@ -207,7 +194,7 @@ class UserApiClient(private val context: Context) {
         
         val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
         
-        val url = "$BASE_URL/api/user-auth/update"
+        val url = "${baseApiClient.getBaseUrl()}/api/user-auth/update"
         val request = Request.Builder()
             .url(url)
             .put(requestBody)
@@ -252,7 +239,7 @@ class UserApiClient(private val context: Context) {
         }
         
         // Use similar endpoint pattern as customer controller
-        val url = "$BASE_URL/api/service-providers/getById/$userId"
+        val url = "${baseApiClient.getBaseUrl()}/api/service-providers/getById/$userId"
         Log.d(TAG, "Request URL: $url")
         Log.d(TAG, "Token length: ${token.length}, Token snippet: ${token.take(20)}...")
         
@@ -339,7 +326,7 @@ class UserApiClient(private val context: Context) {
 
         // Use similar endpoint pattern as customer controller
         // Note: This will likely fail due to controller-level GET restriction!
-        val url = "$BASE_URL/api/service-providers/updateServiceProvider/${provider.providerId}"
+        val url = "${baseApiClient.getBaseUrl()}/api/service-providers/updateServiceProvider/${provider.providerId}"
         val request = Request.Builder()
             .url(url)
             .put(requestBody)
@@ -396,7 +383,7 @@ class UserApiClient(private val context: Context) {
         val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
         
         val request = Request.Builder()
-            .url("$BASE_URL/api/users/change-password")
+            .url("${baseApiClient.getBaseUrl()}/api/users/change-password")
             .put(requestBody)
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
@@ -436,79 +423,90 @@ class UserApiClient(private val context: Context) {
 
     // Upload profile image
     fun uploadProfileImage(userId: Long, imageFile: File, token: String, callback: (Boolean, Exception?) -> Unit) {
-        if (token.isBlank()) {
-            Log.e(TAG, "Token is empty or blank")
-            callback(false, Exception("Authentication token is required"))
-            return
-        }
-        
-        if (!imageFile.exists()) {
-            Log.e(TAG, "Image file does not exist: ${imageFile.absolutePath}")
-            callback(false, Exception("Image file not found"))
-            return
-        }
-        
-        Log.d(TAG, "Uploading profile image for user: $userId")
-        Log.d(TAG, "Image file path: ${imageFile.absolutePath}, size: ${imageFile.length()} bytes")
-        
         try {
+            Log.d(TAG, "Uploading profile image for user: $userId")
+            Log.d(TAG, "Image file path: ${imageFile.absolutePath}, size: ${imageFile.length()} bytes")
+
+            // Check if the file is valid and not empty
+            if (!imageFile.exists() || imageFile.length() == 0L) {
+                Log.e(TAG, "Image file is empty or does not exist")
+                callback(false, Exception("Image file is empty or does not exist"))
+                return
+            }
+
+            // Create the request body with the image file
             val requestBody = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart(
-                    "image", 
-                    imageFile.name, 
-                    RequestBody.create("image/jpeg".toMediaTypeOrNull(), imageFile)
+                    "image", // Parameter name must match backend's @RequestParam("image")
+                    imageFile.name,
+                    imageFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
                 )
-                .addFormDataPart("userId", userId.toString())
                 .build()
-                
+
+            // Changed to the correct endpoint based on CustomerController.java
+            val url = "${baseApiClient.getBaseUrl()}/api/customers/upload-image/$userId"
+            Log.d(TAG, "Sending profile image upload request to $url")
+
             val request = Request.Builder()
-                .url("$BASE_URL/api/users/upload-profile-image")
-                .post(requestBody)
+                .url(url)
                 .header("Authorization", "Bearer $token")
+                .post(requestBody)
                 .build()
-                
-            Log.d(TAG, "Sending profile image upload request to ${request.url}")
-            
+
             client.newCall(request).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
                     Log.e(TAG, "Failed to upload profile image", e)
                     callback(false, e)
                 }
-                
+
                 override fun onResponse(call: Call, response: Response) {
-                    val responseBody = response.body?.string()
                     Log.d(TAG, "Response code: ${response.code}")
                     
-                    when (response.code) {
-                        200, 201 -> {
-                            Log.d(TAG, "Profile image uploaded successfully")
-                            callback(true, null)
-                        }
-                        401 -> {
-                            Log.e(TAG, "Unauthorized error (401): $responseBody")
-                            callback(false, Exception("Authentication error: Please log in again"))
-                        }
-                        403 -> {
-                            Log.e(TAG, "Forbidden error (403): $responseBody")
-                            callback(false, Exception("You don't have permission to upload this image"))
-                        }
-                        413 -> {
-                            Log.e(TAG, "Payload Too Large error (413): $responseBody")
-                            callback(false, Exception("The image is too large to upload"))
-                        }
-                        else -> {
-                            // For other errors, still allow the user to proceed but report the error
-                            Log.e(TAG, "Error uploading profile image: ${response.code}")
-                            Log.e(TAG, "Error response body: $responseBody")
-                            callback(false, Exception("Backend error: ${response.code}"))
-                        }
+                    if (response.isSuccessful) {
+                        Log.d(TAG, "Profile image uploaded successfully")
+                        callback(true, null)
+                    } else {
+                        val errorBody = response.body?.string() ?: "Unknown error"
+                        Log.e(TAG, "Error uploading profile image: ${response.code}")
+                        Log.e(TAG, "Error response body: $errorBody")
+                        
+                        // Try updating the customer profile with the image path locally
+                        // This ensures the app can still display the image even if server upload fails
+                        updateCustomerProfileImageLocally(userId, imageFile.absolutePath, token)
+                        
+                        // Return success=false but don't treat as a full failure
+                        // This allows the UI to still show the selected image
+                        callback(false, Exception("Backend error: ${response.code}"))
                     }
                 }
             })
         } catch (e: Exception) {
-            Log.e(TAG, "Exception preparing profile image upload", e)
+            Log.e(TAG, "Exception during profile image upload", e)
             callback(false, e)
         }
     }
-} 
+
+    private fun updateCustomerProfileImageLocally(userId: Long, imagePath: String, token: String) {
+        try {
+            // Get current customer data first
+            getCustomerProfile(userId, token) { customer, error ->
+                if (customer != null) {
+                    // Update only the image path
+                    val updatedCustomer = customer.copy(profileImage = imagePath)
+                    
+                    // Update customer profile
+                    updateCustomerProfile(updatedCustomer, token) { success, updateError ->
+                        if (success) {
+                            Log.d(TAG, "Customer profile updated with local image path")
+                        } else {
+                            Log.e(TAG, "Failed to update customer with local image path", updateError)
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating profile with local image path", e)
+        }
+    }
+}

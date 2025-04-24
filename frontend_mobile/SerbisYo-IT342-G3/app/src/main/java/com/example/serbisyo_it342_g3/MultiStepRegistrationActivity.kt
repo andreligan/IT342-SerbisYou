@@ -19,6 +19,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
 import kotlin.concurrent.thread
+import com.example.serbisyo_it342_g3.api.BaseApiClient
 
 class MultiStepRegistrationActivity : AppCompatActivity() {
 
@@ -55,9 +56,15 @@ class MultiStepRegistrationActivity : AppCompatActivity() {
     
     private val TAG = "MultiStepRegistration"
 
+    // Add BaseApiClient field
+    private lateinit var baseApiClient: BaseApiClient
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_multi_step_registration)
+
+        // Initialize BaseApiClient
+        baseApiClient = BaseApiClient(this)
 
         // Initialize UI components
         initViews()
@@ -261,7 +268,8 @@ class MultiStepRegistrationActivity : AppCompatActivity() {
         
         thread {
             try {
-                val client = OkHttpClient()
+                // Use baseApiClient's client instead
+                val client = baseApiClient.client
 
                 // Step 1: Create user auth
                 val userAuthJson = JSONObject().apply {
@@ -338,7 +346,7 @@ class MultiStepRegistrationActivity : AppCompatActivity() {
                 Log.d(TAG, "Registration request: $requestBodyJson")
 
                 val request = Request.Builder()
-                    .url("http://192.168.254.103:8080/api/user-auth/register")
+                    .url("${baseApiClient.getBaseUrl()}/api/user-auth/register")
                     .post(requestBody)
                     .build()
 

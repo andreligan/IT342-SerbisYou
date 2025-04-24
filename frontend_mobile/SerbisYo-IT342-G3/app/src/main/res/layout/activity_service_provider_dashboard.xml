@@ -44,61 +44,110 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <androidx.cardview.widget.CardView
-                android:id="@+id/welcomeCard"
+            <!-- Hero Section with Slideshow (similar to web version) -->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/heroSection"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginTop="16dp"
-                android:layout_marginEnd="16dp"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="2dp"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
+                android:layout_height="220dp"
                 app:layout_constraintTop_toTopOf="parent">
 
+                <!-- Left content with green background -->
                 <androidx.constraintlayout.widget.ConstraintLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:padding="16dp">
+                    android:id="@+id/heroLeftContent"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:background="@color/primary_green"
+                    android:padding="16dp"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toLeftOf="@+id/heroRightContent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintWidth_percent="0.5">
 
                     <TextView
-                        android:id="@+id/tvWelcome"
-                        android:layout_width="0dp"
+                        android:id="@+id/tvHeroTitle"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Welcome, Provider!"
-                        android:textColor="@color/primary_green"
-                        android:textSize="24sp"
+                        android:gravity="center"
+                        android:text="Welcome,"
+                        android:textColor="@color/primary_yellow"
+                        android:textSize="20sp"
                         android:textStyle="bold"
-                        app:layout_constraintEnd_toStartOf="@+id/btnAddService"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toTopOf="parent" />
+                        app:layout_constraintBottom_toTopOf="@+id/tvProviderName"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintVertical_chainStyle="packed" />
 
                     <TextView
-                        android:id="@+id/tvSubwelcome"
-                        android:layout_width="0dp"
+                        android:id="@+id/tvProviderName"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="Manage your services and bookings"
-                        android:textColor="#757575"
+                        android:gravity="center"
+                        android:text="Service Provider!"
+                        android:textColor="@color/primary_yellow"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        app:layout_constraintBottom_toTopOf="@+id/tvHeroSubtitle"
+                        app:layout_constraintTop_toBottomOf="@+id/tvHeroTitle" />
+
+                    <TextView
+                        android:id="@+id/tvHeroSubtitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center"
+                        android:text="Add your services and start connecting with customers today."
+                        android:textColor="@android:color/white"
                         android:textSize="14sp"
-                        app:layout_constraintEnd_toStartOf="@+id/btnAddService"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@+id/tvWelcome" />
+                        app:layout_constraintBottom_toTopOf="@+id/btnAddServiceHero"
+                        app:layout_constraintTop_toBottomOf="@+id/tvProviderName" />
 
                     <Button
-                        android:id="@+id/btnAddService"
-                        android:layout_width="wrap_content"
+                        android:id="@+id/btnAddServiceHero"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:backgroundTint="@color/primary_green"
-                        android:text="Add Service"
-                        android:textColor="@color/primary_yellow"
+                        android:layout_marginTop="16dp"
+                        android:backgroundTint="@color/primary_yellow"
+                        android:text="Add a Service"
+                        android:textAllCaps="false"
+                        android:textColor="@color/white"
                         app:layout_constraintBottom_toBottomOf="parent"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintTop_toTopOf="parent" />
-
+                        app:layout_constraintTop_toBottomOf="@+id/tvHeroSubtitle" />
                 </androidx.constraintlayout.widget.ConstraintLayout>
-            </androidx.cardview.widget.CardView>
+
+                <!-- Right content with slideshow -->
+                <FrameLayout
+                    android:id="@+id/heroRightContent"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    app:layout_constraintLeft_toRightOf="@+id/heroLeftContent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintWidth_percent="0.5">
+
+                    <ImageView
+                        android:id="@+id/slideshowImage1"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/service_image1"
+                        android:visibility="visible" />
+
+                    <ImageView
+                        android:id="@+id/slideshowImage2"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/service_image2"
+                        android:visibility="invisible" />
+
+                    <ImageView
+                        android:id="@+id/slideshowImage3"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/service_image3"
+                        android:visibility="invisible" />
+                </FrameLayout>
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
             <androidx.cardview.widget.CardView
                 android:id="@+id/statsCard"
@@ -111,7 +160,7 @@
                 app:cardElevation="2dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/welcomeCard">
+                app:layout_constraintTop_toBottomOf="@+id/heroSection">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -216,34 +265,104 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="@+id/tvServicesTitle" />
 
+            <!-- Category Horizontal Scroll -->
+            <HorizontalScrollView
+                android:id="@+id/categoryScrollView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:scrollbars="none"
+                app:layout_constraintTop_toBottomOf="@+id/tvServicesTitle">
+
+                <LinearLayout
+                    android:id="@+id/categoryContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="8dp">
+
+                    <!-- Categories will be added here dynamically -->
+                </LinearLayout>
+            </HorizontalScrollView>
+
+            <LinearLayout
+                android:id="@+id/buttonContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginEnd="16dp"
+                android:orientation="horizontal"
+                android:weightSum="2"
+                app:layout_constraintTop_toBottomOf="@+id/categoryScrollView">
+
+                <Button
+                    android:id="@+id/btnAddService"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:layout_weight="1"
+                    android:backgroundTint="@color/primary_yellow"
+                    android:text="Add New Service"
+                    android:textAllCaps="false"
+                    android:textColor="@color/white" />
+
+                <Button
+                    android:id="@+id/btnManageServices"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/secondary_button_background"
+                    android:text="Manage Services"
+                    android:textAllCaps="false"
+                    android:textColor="@android:color/white" />
+            </LinearLayout>
+
+            <!-- Horizontal Services Section -->
+            <HorizontalScrollView
+                android:id="@+id/servicesScrollView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:clipToPadding="false"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:scrollbars="none"
+                app:layout_constraintTop_toBottomOf="@+id/buttonContainer">
+
+                <LinearLayout
+                    android:id="@+id/servicesContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingBottom="16dp">
+
+                    <!-- Services will be added here dynamically -->
+                </LinearLayout>
+            </HorizontalScrollView>
+
+            <!-- Keep RecyclerView for backward compatibility, but hide it -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvServices"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:clipToPadding="false"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:paddingBottom="80dp"
-                android:nestedScrollingEnabled="false"
+                android:visibility="gone"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/tvServicesTitle"
-                app:layout_constraintBottom_toBottomOf="parent"
-                tools:itemCount="2"
-                tools:listitem="@layout/item_service" />
+                app:layout_constraintTop_toBottomOf="@+id/servicesScrollView" />
 
             <TextView
                 android:id="@+id/tvNoServices"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
-                android:text="No services added yet"
+                android:text="You haven't added any services yet."
                 android:textColor="@color/primary_green"
                 android:visibility="gone"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/tvServicesTitle" />
+                app:layout_constraintTop_toBottomOf="@+id/buttonContainer" />
 
             <ProgressBar
                 android:id="@+id/progressBar"
@@ -254,22 +373,10 @@
                 android:visibility="gone"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/tvServicesTitle" />
+                app:layout_constraintTop_toBottomOf="@+id/buttonContainer" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabAddService"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:contentDescription="Add new service"
-        android:src="@android:drawable/ic_input_add"
-        app:backgroundTint="@color/primary_yellow"
-        app:layout_constraintBottom_toTopOf="@+id/bottomNavigation"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:tint="@color/primary_green" />
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNavigation"

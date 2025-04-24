@@ -8,11 +8,11 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
-import com.bumptech.glide.request.RequestOptions
 import com.example.serbisyo_it342_g3.R
 import com.example.serbisyo_it342_g3.data.Conversation
 import java.util.Date
+import android.net.Uri
+import android.util.Log
 
 class ConversationAdapter(
     private val context: Context,
@@ -52,10 +52,21 @@ class ConversationAdapter(
 
         // Load profile image
         if (conversation.profileImage != null) {
-            Glide.with(context)
-                .load(conversation.profileImage)
-                .apply(RequestOptions().centerCrop().placeholder(R.drawable.ic_profile))
-                .into(holder.profileImage)
+            try {
+                // Set default profile image
+                holder.profileImage.setImageResource(R.drawable.ic_profile)
+                
+                // Try to load from URI if possible
+                try {
+                    val uri = Uri.parse(conversation.profileImage)
+                    holder.profileImage.setImageURI(uri)
+                } catch (e: Exception) {
+                    Log.e("ConversationAdapter", "Error loading profile image URI", e)
+                }
+            } catch (e: Exception) {
+                Log.e("ConversationAdapter", "Error loading profile image", e)
+                holder.profileImage.setImageResource(R.drawable.ic_profile)
+            }
         } else {
             holder.profileImage.setImageResource(R.drawable.ic_profile)
         }

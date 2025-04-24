@@ -8,6 +8,7 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.example.serbisyo_it342_g3.api.BaseApiClient
 import com.google.gson.Gson
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
@@ -22,6 +23,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var etPassword: EditText
     private lateinit var btnLogin: Button
     private lateinit var tvSignUp: TextView
+    private lateinit var baseApiClient: BaseApiClient
     
     private val TAG = "LoginActivity"
 
@@ -33,6 +35,14 @@ class LoginActivity : AppCompatActivity() {
         etPassword = findViewById(R.id.etPassword)
         btnLogin = findViewById(R.id.btnLogin)
         tvSignUp = findViewById(R.id.tvSignUp)
+
+        // Initialize BaseApiClient
+        baseApiClient = BaseApiClient(this)
+        
+        // Network connectivity check
+        if (!baseApiClient.isNetworkAvailable()) {
+            Toast.makeText(this, "No network connection available", Toast.LENGTH_LONG).show()
+        }
 
         btnLogin.setOnClickListener {
             val username = etUsername.text.toString()
@@ -60,7 +70,7 @@ class LoginActivity : AppCompatActivity() {
         thread {
             try {
                 Log.d(TAG, "Creating HTTP client")
-                val client = OkHttpClient()
+                val client = baseApiClient.client
                 
                 val jsonObject = JSONObject()
                 jsonObject.put("userName", username)
@@ -69,8 +79,7 @@ class LoginActivity : AppCompatActivity() {
                 val requestBody = jsonObject.toString()
                     .toRequestBody("application/json".toMediaTypeOrNull())
                 
-                //val requestUrl = "http://10.0.2.2:8080/api/user-auth/login"
-                val requestUrl = "http://192.168.254.103:8080/api/user-auth/login"
+                val requestUrl = "${baseApiClient.getBaseUrl()}/api/user-auth/login"
 
                 Log.d(TAG, "Sending login request to: $requestUrl")
                 Log.d(TAG, "Request body: $jsonObject")

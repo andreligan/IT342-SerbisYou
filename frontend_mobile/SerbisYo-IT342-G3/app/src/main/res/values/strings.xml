@@ -1,3 +1,22 @@
 <resources>
     <string name="app_name">SerbisYo-IT342-G3</string>
+    
+    <!-- Profile Fragment -->
+    <string name="profile_not_found">Customer profile not found. Please contact support.</string>
+    <string name="error_username_empty">Username cannot be empty</string>
+    <string name="error_email_empty">Email cannot be empty</string>
+    <string name="error_email_invalid">Please enter a valid email address</string>
+    <string name="error_firstname_empty">First name cannot be empty</string>
+    <string name="error_lastname_empty">Last name cannot be empty</string>
+    <string name="error_phone_empty">Phone number cannot be empty</string>
+    <string name="profile_update_success">Profile updated successfully</string>
+    <string name="profile_update_failed">Failed to update profile</string>
+    <string name="uploading_profile_image">Uploading profile image…</string>
+    <string name="profile_update_with_image">Profile updated successfully with new image</string>
+    <string name="error_image_access">Could not access the selected image</string>
+    <string name="error_image_too_large">Image is too large to upload. Please choose a smaller image.</string>
+    <string name="error_auth">Authentication error. Please log in again.</string>
+    <string name="error_permission">You don\'t have permission to upload images.</string>
+    <string name="error_image_upload">Profile updated successfully but image could not be uploaded to server: %1$s</string>
+    <string name="error_image_prep">Error preparing image: %1$s</string>
 </resources>

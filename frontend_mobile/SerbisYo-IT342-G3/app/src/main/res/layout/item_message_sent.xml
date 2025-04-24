@@ -24,15 +24,44 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:text="Hey there! How are you doing today? I wanted to check in about the service." />
 
-    <TextView
-        android:id="@+id/tvTimestamp"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:textColor="@android:color/darker_gray"
-        android:textSize="12sp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
         app:layout_constraintEnd_toEndOf="@+id/tvMessageContent"
-        app:layout_constraintTop_toBottomOf="@+id/tvMessageContent"
-        tools:text="10:30 AM" />
+        app:layout_constraintTop_toBottomOf="@+id/tvMessageContent">
 
-</androidx.constraintlayout.widget.ConstraintLayout> 
+        <TextView
+            android:id="@+id/tvTimestamp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/darker_gray"
+            android:textSize="12sp"
+            tools:text="10:30 AM" />
+
+        <ImageView
+            android:id="@+id/ivMessageStatus"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginStart="4dp"
+            android:visibility="visible"
+            tools:src="@android:drawable/ic_popup_sync" />
+
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/btnRetry"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@android:drawable/ic_menu_rotate"
+        android:tint="#FF5252"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@+id/tvMessageContent"
+        app:layout_constraintStart_toEndOf="@+id/tvMessageContent"
+        app:layout_constraintTop_toTopOf="@+id/tvMessageContent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

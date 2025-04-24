@@ -88,42 +88,6 @@
                 android:inputType="text"
                 android:layout_marginBottom="16dp" />
 
-            <!-- Barangay Field -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Barangay"
-                android:textColor="@color/primary_green"
-                android:layout_marginBottom="4dp" />
-
-            <EditText
-                android:id="@+id/etBarangay"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/edit_text_border"
-                android:padding="12dp"
-                android:hint="Barangay name"
-                android:inputType="text"
-                android:layout_marginBottom="16dp" />
-
-            <!-- City Field -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="City"
-                android:textColor="@color/primary_green"
-                android:layout_marginBottom="4dp" />
-
-            <EditText
-                android:id="@+id/etCity"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/edit_text_border"
-                android:padding="12dp"
-                android:hint="City"
-                android:inputType="text"
-                android:layout_marginBottom="16dp" />
-
             <!-- Province Field -->
             <TextView
                 android:layout_width="match_parent"
@@ -132,14 +96,44 @@
                 android:textColor="@color/primary_green"
                 android:layout_marginBottom="4dp" />
 
-            <EditText
-                android:id="@+id/etProvince"
+            <Spinner
+                android:id="@+id/spinnerProvince"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@drawable/edit_text_border"
                 android:padding="12dp"
-                android:hint="Province"
-                android:inputType="text"
+                android:layout_marginBottom="16dp" />
+
+            <!-- City/Municipality Field -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="City/Municipality"
+                android:textColor="@color/primary_green"
+                android:layout_marginBottom="4dp" />
+
+            <Spinner
+                android:id="@+id/spinnerCity"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/edit_text_border"
+                android:padding="12dp"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Barangay Field -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Barangay"
+                android:textColor="@color/primary_green"
+                android:layout_marginBottom="4dp" />
+
+            <Spinner
+                android:id="@+id/spinnerBarangay"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/edit_text_border"
+                android:padding="12dp"
                 android:layout_marginBottom="16dp" />
 
             <!-- Zip Code Field -->
@@ -211,4 +205,4 @@
         </LinearLayout>
     </LinearLayout>
 
-</androidx.core.widget.NestedScrollView> 
+</androidx.core.widget.NestedScrollView>
