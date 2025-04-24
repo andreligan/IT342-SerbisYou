@@ -12,14 +12,12 @@ import android.widget.Spinner
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.serbisyo_it342_g3.api.AddressApiClient
-import com.example.serbisyo_it342_g3.api.Barangay
-import com.example.serbisyo_it342_g3.api.City
 import com.example.serbisyo_it342_g3.api.PSGCApiClient
-import com.example.serbisyo_it342_g3.api.Province
+import com.example.serbisyo_it342_g3.data.Barangay
+import com.example.serbisyo_it342_g3.data.Municipality
+import com.example.serbisyo_it342_g3.data.Province
 import com.example.serbisyo_it342_g3.model.Address
-import com.example.serbisyo_it342_g3.utils.PreferenceManager
 import com.google.android.material.textfield.TextInputEditText
-import org.json.JSONObject
 
 class AddressUpdateActivity : AppCompatActivity() {
     private val TAG = "AddressUpdateActivity"
@@ -32,16 +30,15 @@ class AddressUpdateActivity : AppCompatActivity() {
     private lateinit var btnUpdateAddress: Button
     private lateinit var progressBar: ProgressBar
     
-    private lateinit var preferenceManager: PreferenceManager
     private lateinit var addressApiClient: AddressApiClient
     private lateinit var psgcApiClient: PSGCApiClient
     private lateinit var sharedPrefs: SharedPreferences
     
     private var provinceList: List<Province> = emptyList()
-    private var cityList: List<City> = emptyList()
+    private var cityList: List<Municipality> = emptyList()
     private var barangayList: List<Barangay> = emptyList()
     
-    private var userId: Int = 0
+    private var userId: Long = 0
     private var userToken: String = ""
     private var addressId: Int? = null
     
@@ -58,18 +55,20 @@ class AddressUpdateActivity : AppCompatActivity() {
         btnUpdateAddress = findViewById(R.id.btnUpdateAddress)
         progressBar = findViewById(R.id.progressBar)
         
-        // Initialize API clients and preference manager
-        preferenceManager = PreferenceManager(this)
+        // Initialize API clients
         addressApiClient = AddressApiClient(this)
         psgcApiClient = PSGCApiClient(this)
         
         // Initialize shared preferences
-        sharedPrefs = getSharedPreferences("serbisyo_prefs", MODE_PRIVATE)
+        sharedPrefs = getSharedPreferences("UserPrefs", MODE_PRIVATE)
         
         // Get user info from preferences
-        userToken = preferenceManager.getString("token", "")
-        userId = preferenceManager.getInt("user_id", 0)
-        addressId = preferenceManager.getInt("address_id", 0)
+        userToken = sharedPrefs.getString("token", "") ?: ""
+        val userIdStr = sharedPrefs.getString("userId", "0") ?: "0"
+        userId = userIdStr.toLongOrNull() ?: 0
+        
+        // Get address ID from intent if available
+        addressId = intent.getIntExtra("address_id", 0)
         if (addressId == 0) addressId = null
         
         // Fetch existing address if available
@@ -123,70 +122,69 @@ class AddressUpdateActivity : AppCompatActivity() {
     
     private fun loadProvinces() {
         showLoading(true)
-        psgcApiClient.getProvinces(
-            onSuccess = { provinces ->
-                runOnUiThread {
-                    provinceList = provinces
-                    val provinceNames = provinces.map { it.name }
-                    val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, provinceNames)
+        psgcApiClient.getProvinces { provinces, error ->
+            runOnUiThread {
+                showLoading(false)
+                
+                if (error != null) {
+                    Toast.makeText(this, "Error loading provinces: ${error.message}", Toast.LENGTH_SHORT).show()
+                    return@runOnUiThread
+                }
+                
+                if (provinces != null) {
+                    provinceList = provinces.sortedBy { it.name }
+                    val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, provinceList)
                     adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
                     spinnerProvince.adapter = adapter
-                    showLoading(false)
-                }
-            },
-            onError = { errorMessage ->
-                runOnUiThread {
-                    showLoading(false)
-                    Toast.makeText(this, "Error loading provinces: $errorMessage", Toast.LENGTH_SHORT).show()
                 }
             }
-        )
+        }
     }
     
     private fun loadCities(provinceCode: String) {
         showLoading(true)
-        psgcApiClient.getCitiesByProvince(
-            provinceCode = provinceCode,
-            onSuccess = { cities ->
-                runOnUiThread {
-                    cityList = cities
-                    val cityNames = cities.map { it.name }
-                    val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, cityNames)
+        psgcApiClient.getMunicipalitiesByProvince(provinceCode) { municipalities, error ->
+            runOnUiThread {
+                showLoading(false)
+                
+                if (error != null) {
+                    Toast.makeText(this, "Error loading cities: ${error.message}", Toast.LENGTH_SHORT).show()
+                    return@runOnUiThread
+                }
+                
+                if (municipalities != null) {
+                    cityList = municipalities.sortedBy { it.name }
+                    val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, cityList)
                     adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
                     spinnerCity.adapter = adapter
-                    showLoading(false)
-                }
-            },
-            onError = { errorMessage ->
-                runOnUiThread {
-                    showLoading(false)
-                    Toast.makeText(this, "Error loading cities: $errorMessage", Toast.LENGTH_SHORT).show()
+                    
+                    // Clear barangay spinner
+                    barangayList = emptyList()
+                    spinnerBarangay.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, emptyList<String>())
                 }
             }
-        )
+        }
     }
     
     private fun loadBarangays(cityCode: String) {
         showLoading(true)
-        psgcApiClient.getBarangaysByCity(
-            cityCode = cityCode,
-            onSuccess = { barangays ->
-                runOnUiThread {
-                    barangayList = barangays
-                    val barangayNames = barangays.map { it.name }
-                    val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, barangayNames)
+        psgcApiClient.getBarangaysByMunicipality(cityCode) { barangays, error ->
+            runOnUiThread {
+                showLoading(false)
+                
+                if (error != null) {
+                    Toast.makeText(this, "Error loading barangays: ${error.message}", Toast.LENGTH_SHORT).show()
+                    return@runOnUiThread
+                }
+                
+                if (barangays != null) {
+                    barangayList = barangays.sortedBy { it.name }
+                    val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, barangayList)
                     adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
                     spinnerBarangay.adapter = adapter
-                    showLoading(false)
-                }
-            },
-            onError = { errorMessage ->
-                runOnUiThread {
-                    showLoading(false)
-                    Toast.makeText(this, "Error loading barangays: $errorMessage", Toast.LENGTH_SHORT).show()
                 }
             }
-        )
+        }
     }
     
     private fun fetchUserAddress() {
@@ -196,15 +194,16 @@ class AddressUpdateActivity : AppCompatActivity() {
                 addressId = addressId!!,
                 token = userToken,
                 callback = { address, error ->
-                    if (address != null) {
-                        runOnUiThread {
-                            populateAddressFields(address)
-                            showLoading(false)
-                        }
-                    } else {
-                        runOnUiThread {
-                            showLoading(false)
+                    runOnUiThread {
+                        showLoading(false)
+                        
+                        if (error != null) {
                             Toast.makeText(this, "Error loading address: $error", Toast.LENGTH_SHORT).show()
+                            return@runOnUiThread
+                        }
+                        
+                        if (address != null) {
+                            populateAddressFields(address)
                         }
                     }
                 }
@@ -217,9 +216,8 @@ class AddressUpdateActivity : AppCompatActivity() {
         etStreetAddress.setText(address.street)
         etPostalCode.setText(address.zipCode)
         
-        // Province, city, and barangay will be populated when data is loaded
-        // We'll need to match the values from the address with the loaded data
-        // This is a bit complex since we need to wait for data to load
+        // We'll need to select the matching province, city, and barangay in the spinners
+        // This will happen after the data is loaded
     }
     
     private fun validateInputs(): Boolean {
@@ -261,6 +259,8 @@ class AddressUpdateActivity : AppCompatActivity() {
     }
     
     private fun updateAddress() {
+        if (!validateInputs()) return
+        
         showLoading(true)
         btnUpdateAddress.isEnabled = false
         
@@ -273,77 +273,61 @@ class AddressUpdateActivity : AppCompatActivity() {
         // Create address object
         val address = Address(
             id = addressId ?: 0,
-            province = selectedProvince.name,
-            city = selectedCity.name,
-            barangay = selectedBarangay.name,
             street = streetAddress,
+            city = selectedCity.name,
+            province = selectedProvince.name,
+            barangay = selectedBarangay.name,
             zipCode = postalCode
         )
         
         // Call API to update address
-        val addrId = addressId ?: 0
-        if (addrId > 0) {
+        if (addressId != null && addressId!! > 0) {
             // Update existing address
-            addressApiClient.updateAddress(
-                addressId = addrId,
-                address = address,
-                token = userToken,
-                callback = { success, errorMessage ->
-                    runOnUiThread {
-                        showLoading(false)
-                        btnUpdateAddress.isEnabled = true
-                        
-                        if (success) {
-                            Toast.makeText(this, "Address updated successfully", Toast.LENGTH_SHORT).show()
-                            finish() // Close the activity
-                        } else {
-                            try {
-                                val jsonError = errorMessage?.let { JSONObject(it) }
-                                val message = jsonError?.optString("message", errorMessage) ?: errorMessage
-                                Toast.makeText(this, "Error updating address: $message", Toast.LENGTH_LONG).show()
-                            } catch (e: Exception) {
-                                Toast.makeText(this, "Error updating address: $errorMessage", Toast.LENGTH_LONG).show()
-                            }
-                            
-                            Log.e(TAG, "Error updating address: $errorMessage")
-                        }
+            addressApiClient.updateAddress(addressId!!, address, userToken) { success, error ->
+                runOnUiThread {
+                    showLoading(false)
+                    btnUpdateAddress.isEnabled = true
+                    
+                    if (error != null) {
+                        Toast.makeText(this, "Error updating address: $error", Toast.LENGTH_LONG).show()
+                        Log.e(TAG, "Error updating address: $error")
+                        return@runOnUiThread
+                    }
+                    
+                    if (success) {
+                        Toast.makeText(this, "Address updated successfully", Toast.LENGTH_SHORT).show()
+                        finish() // Close the activity
+                    } else {
+                        Toast.makeText(this, "Failed to update address", Toast.LENGTH_LONG).show()
                     }
                 }
-            )
+            }
         } else {
             // Create new address
-            addressApiClient.createAddress(
-                address = address,
-                token = userToken,
-                callback = { newAddressId, errorMessage ->
-                    runOnUiThread {
-                        showLoading(false)
-                        btnUpdateAddress.isEnabled = true
-                        
-                        if (newAddressId != null) {
-                            // Save the address ID to preferences
-                            preferenceManager.setInt("address_id", newAddressId)
-                            
-                            Toast.makeText(this, "Address created successfully", Toast.LENGTH_SHORT).show()
-                            finish() // Close the activity
-                        } else {
-                            try {
-                                val jsonError = errorMessage?.let { JSONObject(it) }
-                                val message = jsonError?.optString("message", errorMessage) ?: errorMessage
-                                Toast.makeText(this, "Error creating address: $message", Toast.LENGTH_LONG).show()
-                            } catch (e: Exception) {
-                                Toast.makeText(this, "Error creating address: $errorMessage", Toast.LENGTH_LONG).show()
-                            }
-                            
-                            Log.e(TAG, "Error creating address: $errorMessage")
-                        }
+            addressApiClient.createAddress(address, userId, userToken) { newAddressId, error ->
+                runOnUiThread {
+                    showLoading(false)
+                    btnUpdateAddress.isEnabled = true
+                    
+                    if (error != null) {
+                        Toast.makeText(this, "Error creating address: $error", Toast.LENGTH_LONG).show()
+                        Log.e(TAG, "Error creating address: $error")
+                        return@runOnUiThread
+                    }
+                    
+                    if (newAddressId != null) {
+                        Toast.makeText(this, "Address created successfully", Toast.LENGTH_SHORT).show()
+                        finish() // Close the activity
+                    } else {
+                        Toast.makeText(this, "Failed to create address", Toast.LENGTH_LONG).show()
                     }
                 }
-            )
+            }
         }
     }
     
     private fun showLoading(isLoading: Boolean) {
         progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+        btnUpdateAddress.isEnabled = !isLoading
     }
-} 
+}

@@ -39,148 +39,227 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+            android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/tvWelcome"
+            <!-- Profile and Welcome Section - Moved to top -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:text="Welcome, Customer!"
-                android:textColor="@color/primary_green"
-                android:textSize="24sp"
-                android:textStyle="bold" />
+                android:layout_marginBottom="8dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp">
 
-            <!-- Search bar -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginBottom="16dp"
-                app:cardCornerRadius="24dp"
-                app:cardElevation="2dp">
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/ivProfileImage"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginEnd="12dp"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/default_profile"
+                    app:shapeAppearanceOverlay="@style/circleImageView" />
 
-                <LinearLayout
+                <TextView
+                    android:id="@+id/tvWelcome"
                     android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Welcome, Customer!"
+                    android:textColor="@color/primary_green"
+                    android:textSize="24sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Hero Section with Slideshow - Similar to web version -->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/heroSection"
+                android:layout_width="match_parent"
+                android:layout_height="220dp">
+
+                <!-- Left content with green background -->
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/heroLeftContent"
+                    android:layout_width="0dp"
                     android:layout_height="match_parent"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="8dp">
+                    android:background="@color/primary_green"
+                    android:padding="16dp"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toLeftOf="@+id/heroRightContent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintWidth_percent="0.5">
+
+                    <TextView
+                        android:id="@+id/tvHeroTitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="Welcome, Our Dear Customer!"
+                        android:textColor="@color/primary_yellow"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        app:layout_constraintBottom_toTopOf="@+id/tvHeroSubtitle"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintVertical_chainStyle="packed" />
+
+                    <TextView
+                        android:id="@+id/tvHeroSubtitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center"
+                        android:text="Helpful services to ease your stress are here. Start connecting with reliable service providers today!"
+                        android:textColor="@android:color/white"
+                        android:textSize="14sp"
+                        app:layout_constraintBottom_toTopOf="@+id/btnHeroBookService"
+                        app:layout_constraintTop_toBottomOf="@+id/tvHeroTitle" />
+
+                    <Button
+                        android:id="@+id/btnHeroBookService"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:backgroundTint="@color/primary_yellow"
+                        android:text="Book a Service"
+                        android:textAllCaps="false"
+                        android:textColor="@color/primary_green"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/tvHeroSubtitle" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <!-- Right content with slideshow -->
+                <FrameLayout
+                    android:id="@+id/heroRightContent"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    app:layout_constraintLeft_toRightOf="@+id/heroLeftContent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintWidth_percent="0.5">
 
                     <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_marginStart="8dp"
-                        android:src="@android:drawable/ic_menu_search"
-                        android:tint="@android:color/darker_gray" />
-
-                    <EditText
-                        android:id="@+id/etSearch"
+                        android:id="@+id/slideshowImage1"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:layout_marginStart="8dp"
-                        android:background="@null"
-                        android:hint="Search services..."
-                        android:imeOptions="actionSearch"
-                        android:inputType="text"
-                        android:textSize="14sp" />
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
+                        android:scaleType="centerCrop"
+                        android:visibility="visible" />
 
-            <!-- Categories Spinner -->
-            <Spinner
-                android:id="@+id/spinnerCategories"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginBottom="16dp"
-                android:background="@drawable/edit_text_border"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp" />
+                    <ImageView
+                        android:id="@+id/slideshowImage2"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:visibility="invisible" />
 
-            <!-- Horizontal Categories -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:text="Categories"
-                android:textColor="@color/primary_green"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                    <ImageView
+                        android:id="@+id/slideshowImage3"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:visibility="invisible" />
+                </FrameLayout>
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
-            <HorizontalScrollView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:scrollbars="none">
+                android:orientation="vertical"
+                android:padding="16dp">
 
-                <LinearLayout
-                    android:id="@+id/categoriesContainer"
+
+                <!-- Categories Spinner -->
+                <Spinner
+                    android:id="@+id/spinnerCategories"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginBottom="16dp"
+                    android:background="@drawable/edit_text_border"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp" />
+
+                <!-- Featured Home Categories Section -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Featured Home Categories"
+                    android:textColor="@color/primary_green"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:id="@+id/categoriesContainer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal" />
+                </HorizontalScrollView>
+
+                <!-- Book Service Button -->
+                <Button
+                    android:id="@+id/btnBookService"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:background="@drawable/yellow_button_background"
+                    android:padding="12dp"
+                    android:text="Book a Service"
+                    android:textAllCaps="false"
+                    android:textColor="@color/white" />
+
+                <!-- View Bookings Button -->
+                <Button
+                    android:id="@+id/btnViewBookings"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:background="@drawable/secondary_button_background"
+                    android:padding="12dp"
+                    android:text="View My Bookings"
+                    android:textAllCaps="false"
+                    android:textColor="@android:color/white" />
+
+                <!-- Services Header -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Available Services"
+                    android:textColor="@color/primary_green"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <!-- No Services Message -->
+                <TextView
+                    android:id="@+id/tvNoServices"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:gravity="center"
+                    android:text="No services available for this category"
+                    android:textColor="@android:color/darker_gray"
+                    android:textSize="16sp"
+                    android:visibility="gone" />
+
+                <!-- Progress Bar -->
+                <ProgressBar
+                    android:id="@+id/progressBar"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal" />
-            </HorizontalScrollView>
+                    android:layout_gravity="center"
+                    android:layout_marginTop="16dp"
+                    android:visibility="visible" />
 
-            <!-- Book Service Button -->
-            <Button
-                android:id="@+id/btnBookService"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:background="@drawable/yellow_button_background"
-                android:padding="12dp"
-                android:text="Book a Service"
-                android:textAllCaps="false"
-                android:textColor="@color/primary_green" />
-
-            <!-- View Bookings Button -->
-            <Button
-                android:id="@+id/btnViewBookings"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:background="@drawable/secondary_button_background"
-                android:padding="12dp"
-                android:text="View My Bookings"
-                android:textAllCaps="false"
-                android:textColor="@android:color/white" />
-
-            <!-- Services Header -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:text="Available Services"
-                android:textColor="@color/primary_green"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <!-- No Services Message -->
-            <TextView
-                android:id="@+id/tvNoServices"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:gravity="center"
-                android:text="No services available for this category"
-                android:textColor="@android:color/darker_gray"
-                android:textSize="16sp"
-                android:visibility="gone" />
-
-            <!-- Progress Bar -->
-            <ProgressBar
-                android:id="@+id/progressBar"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:layout_marginTop="16dp"
-                android:visibility="visible" />
-
-            <!-- Services List -->
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvServices"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:nestedScrollingEnabled="false" />
+                <!-- Services List -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvServices"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false" />
+            </LinearLayout>
         </LinearLayout>
     </ScrollView>
 

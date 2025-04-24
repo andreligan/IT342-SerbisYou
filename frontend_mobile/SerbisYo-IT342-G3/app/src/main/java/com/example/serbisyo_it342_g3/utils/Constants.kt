@@ -6,7 +6,7 @@ object Constants {
     private const val EMULATOR_URL = "http://10.0.2.2:8080/api/" 
     
     // For Physical Device - Use your computer's actual IP address from ipconfig
-    private const val PHYSICAL_DEVICE_URL = "http://192.168.254.103:8080/api/"
+    private const val PHYSICAL_DEVICE_URL = "http://172.20.10.2:8080/api/"
     
     // SWITCH BETWEEN CONNECTION TYPES:
     // Uncomment the one you need and comment out the other

@@ -25,12 +25,9 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.imageview.ShapeableImageView
 import java.io.File
 import java.io.FileOutputStream
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.bumptech.glide.request.RequestOptions
 
 class ProfileFragment : Fragment() {
-    private val TAG = "ProfileFragment"
+    private val tag = "ProfileFragment"
 
     private lateinit var etUsername: EditText
     private lateinit var etEmail: EditText
@@ -42,24 +39,51 @@ class ProfileFragment : Fragment() {
     private lateinit var tvErrorMessage: TextView
     private lateinit var profileImageView: ShapeableImageView
     private lateinit var fabCamera: FloatingActionButton
-    
+
     private lateinit var userApiClient: UserApiClient
     private var token: String = ""
     private var userId: Long = 0
     private var selectedImageUri: Uri? = null
-    
+
     // Activity result launcher for image picker
     private val imagePickerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
             selectedImageUri = result.data?.data
-            
-            // Display the selected image
-            profileImageView.setImageURI(selectedImageUri)
-            
-            // Hide the "No Image" text if it exists
-            view?.findViewById<TextView>(R.id.tvNoImage)?.visibility = View.GONE
+
+            try {
+                // Create a local copy of the image to avoid permission issues
+                val localImageFile = createLocalCopyOfImage(selectedImageUri)
+                if (localImageFile != null) {
+                    // Save the local file path to preferences
+                    val prefs = requireActivity().getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
+                    prefs.edit().putString("profile_image_${userId}", localImageFile.absolutePath).apply()
+                    
+                    // Display the selected image
+                    profileImageView.setImageURI(Uri.fromFile(localImageFile))
+                    selectedImageUri = Uri.fromFile(localImageFile)
+                    
+                    // Hide the "No Image" text if it exists
+                    view?.findViewById<TextView>(R.id.tvNoImage)?.visibility = View.GONE
+                } else {
+                    // If local copy fails, still try to show the original URI
+                    profileImageView.setImageURI(selectedImageUri)
+                    
+                    // Save the image URI to local storage for persistence
+                    if (selectedImageUri != null) {
+                        val prefs = requireActivity().getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
+                        prefs.edit().putString("profile_image_${userId}", selectedImageUri.toString()).apply()
+                    }
+                    
+                    // Hide the "No Image" text if it exists
+                    view?.findViewById<TextView>(R.id.tvNoImage)?.visibility = View.GONE
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "Error setting selected image", e)
+                // Set default image if there's an error
+                profileImageView.setImageResource(R.drawable.default_profile)
+            }
         }
     }
 
@@ -69,16 +93,16 @@ class ProfileFragment : Fragment() {
     ): View? {
         // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_profile, container, false)
-        
+
         // Get arguments
         arguments?.let {
             userId = it.getLong("userId", 0)
             token = it.getString("token", "") ?: ""
         }
-        
+
         // Initialize the API client
         userApiClient = UserApiClient(requireContext())
-        
+
         // Initialize views
         etUsername = view.findViewById(R.id.etUsername)
         etEmail = view.findViewById(R.id.etEmail)
@@ -88,64 +112,55 @@ class ProfileFragment : Fragment() {
         btnUpdateProfile = view.findViewById(R.id.btnUpdateProfile)
         progressBar = view.findViewById(R.id.progressBar)
         tvErrorMessage = view.findViewById(R.id.tvErrorMessage)
-        
+
         // Initialize profile image views
         profileImageView = view.findViewById(R.id.profileImage)
         fabCamera = view.findViewById(R.id.fabCamera)
-        
+
         // Enable editing of username and email fields
         etUsername.isEnabled = true
         etEmail.isEnabled = true
-        
+
         // Set click listener for camera button
         fabCamera.setOnClickListener {
             openImagePicker()
         }
-        
+
         // Load user profile
         loadUserProfile()
-        
+
         // Set update button click listener
         btnUpdateProfile.setOnClickListener {
             if (validateInputs()) {
                 updateProfile()
             }
         }
-        
+
         return view
     }
-    
+
     private fun openImagePicker() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         imagePickerLauncher.launch(intent)
     }
-    
+
     private fun loadUserProfile() {
         progressBar.visibility = View.VISIBLE
         tvErrorMessage.visibility = View.GONE
         
-        // Load profile image from shared preferences if available
-        val prefs = requireActivity().getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
-        val savedImageUri = prefs.getString("profile_image_${userId}", null)
-        if (savedImageUri != null) {
-            try {
-                val uri = Uri.parse(savedImageUri)
-                profileImageView.setImageURI(uri)
-                selectedImageUri = uri
-                // Hide the "No Image" text if it exists
-                view?.findViewById<TextView>(R.id.tvNoImage)?.visibility = View.GONE
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading saved profile image", e)
-            }
-        }
+        // Set default image first
+        profileImageView.setImageResource(R.drawable.default_profile)
         
-        userApiClient.getCustomerProfile(userId, token) { customer, error ->
+        // Try to load profile image from shared preferences if available
+        loadProfileImageFromPrefs()
+        
+        userApiClient.getCustomerProfile(userId, token) { customer, error -> 
             requireActivity().runOnUiThread {
                 progressBar.visibility = View.GONE
                 
                 if (error != null) {
-                    Log.e(TAG, "Error loading profile", error)
-                    tvErrorMessage.text = "Customer profile not found. Please contact support."
+                    Log.e(tag, "Error loading profile", error)
+                    tvErrorMessage.setText(R.string.profile_not_found)
                     tvErrorMessage.visibility = View.VISIBLE
                     return@runOnUiThread
                 }
@@ -159,84 +174,142 @@ class ProfileFragment : Fragment() {
                     etPhoneNumber.setText(customer.phoneNumber)
                     
                     // If the customer has a profile image URL from the server
-                    if (customer.profileImage != null && customer.profileImage.isNotEmpty()) {
-                        // Use Glide to load the image from the URL
-                        Log.d(TAG, "Loading profile image URL: ${customer.profileImage}")
-                        try {
-                            context?.let { ctx ->
-                                Glide.with(ctx)
-                                    .load(customer.profileImage)
-                                    .apply(RequestOptions()
-                                        .placeholder(R.drawable.service_provider_image)
-                                        .error(R.drawable.service_provider_image)
-                                        .diskCacheStrategy(DiskCacheStrategy.ALL))
-                                    .into(profileImageView)
-                                
-                                // Hide the "No Image" text
-                                view?.findViewById<TextView>(R.id.tvNoImage)?.visibility = View.GONE
-                            }
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Error loading profile image with Glide", e)
-                        }
+                    if (!customer.profileImage.isNullOrEmpty()) {
+                        Log.d(tag, "Server provided profile image URL: ${customer.profileImage}")
+                        // We already set a default image, so we don't need to do anything else here
+                        // The locally saved image (if any) already has priority
                     }
                 } else {
-                    tvErrorMessage.text = "Customer profile not found. Please contact support."
+                    tvErrorMessage.setText(R.string.profile_not_found)
                     tvErrorMessage.visibility = View.VISIBLE
                 }
             }
         }
     }
     
+    private fun loadProfileImageFromPrefs() {
+        try {
+            val prefs = requireActivity().getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
+            val savedImagePath = prefs.getString("profile_image_${userId}", null)
+            
+            if (savedImagePath != null) {
+                try {
+                    // Check if this is a file path or content URI
+                    if (savedImagePath.startsWith("/")) {
+                        // It's a file path, use File directly
+                        val file = File(savedImagePath)
+                        if (file.exists()) {
+                            profileImageView.setImageURI(Uri.fromFile(file))
+                            selectedImageUri = Uri.fromFile(file)
+                            
+                            // Hide the "No Image" text if it exists
+                            view?.findViewById<TextView>(R.id.tvNoImage)?.visibility = View.GONE
+                            return
+                        }
+                    }
+                    
+                    // If not a file or file doesn't exist, try as content URI
+                    val uri = Uri.parse(savedImagePath)
+                    
+                    // Instead of trying to access the original URI (which may cause permission errors),
+                    // make a local copy of the image
+                    val localImageFile = createLocalCopyOfImage(uri)
+                    if (localImageFile != null) {
+                        // Update the saved path to the local copy
+                        prefs.edit().putString("profile_image_${userId}", localImageFile.absolutePath).apply()
+                        
+                        // Display the image from the local file
+                        profileImageView.setImageURI(Uri.fromFile(localImageFile))
+                        selectedImageUri = Uri.fromFile(localImageFile)
+                        
+                        // Hide the "No Image" text if it exists
+                        view?.findViewById<TextView>(R.id.tvNoImage)?.visibility = View.GONE
+                    } else {
+                        // Direct URI access as fallback - may cause permission errors
+                        try {
+                            // Check if we can access this URI before trying to load it
+                            val inputStream = requireContext().contentResolver.openInputStream(uri)
+                            inputStream?.close()
+                            
+                            // If we get here, we can access the URI
+                            profileImageView.setImageURI(uri)
+                            selectedImageUri = uri
+                            
+                            // Hide the "No Image" text if it exists
+                            view?.findViewById<TextView>(R.id.tvNoImage)?.visibility = View.GONE
+                        } catch (e: Exception) {
+                            // Failed to load the image, use default
+                            Log.e(tag, "Error loading saved profile image, using default", e)
+                            profileImageView.setImageResource(R.drawable.default_profile)
+                            
+                            // Since this URI is problematic, remove it from preferences
+                            prefs.edit().remove("profile_image_${userId}").apply()
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Failed to load the image, use default
+                    Log.e(tag, "Error loading saved profile image, using default", e)
+                    profileImageView.setImageResource(R.drawable.default_profile)
+                    
+                    // Since this path is problematic, remove it from preferences
+                    prefs.edit().remove("profile_image_${userId}").apply()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Error in loadProfileImageFromPrefs", e)
+        }
+    }
+
     private fun validateInputs(): Boolean {
         var isValid = true
-        
+
         if (etUsername.text.toString().trim().isEmpty()) {
-            etUsername.error = "Username cannot be empty"
+            etUsername.error = getString(R.string.error_username_empty)
             isValid = false
         }
-        
+
         if (etEmail.text.toString().trim().isEmpty()) {
-            etEmail.error = "Email cannot be empty"
+            etEmail.error = getString(R.string.error_email_empty)
             isValid = false
         } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(etEmail.text.toString().trim()).matches()) {
-            etEmail.error = "Please enter a valid email address"
+            etEmail.error = getString(R.string.error_email_invalid)
             isValid = false
         }
-        
+
         if (etFirstName.text.toString().trim().isEmpty()) {
-            etFirstName.error = "First name cannot be empty"
+            etFirstName.error = getString(R.string.error_firstname_empty)
             isValid = false
         }
-        
+
         if (etLastName.text.toString().trim().isEmpty()) {
-            etLastName.error = "Last name cannot be empty"
+            etLastName.error = getString(R.string.error_lastname_empty)
             isValid = false
         }
-        
+
         if (etPhoneNumber.text.toString().trim().isEmpty()) {
-            etPhoneNumber.error = "Phone number cannot be empty"
+            etPhoneNumber.error = getString(R.string.error_phone_empty)
             isValid = false
         }
-        
+
         return isValid
     }
-    
+
     private fun updateProfile() {
         progressBar.visibility = View.VISIBLE
-        
+
         val username = etUsername.text.toString().trim()
         val email = etEmail.text.toString().trim()
         val firstName = etFirstName.text.toString().trim()
         val lastName = etLastName.text.toString().trim()
         val phoneNumber = etPhoneNumber.text.toString().trim()
-        
+
         // Create a User object for the userAuth field
         val userAuth = User(
             userId = userId,
             userName = username,
             email = email
         )
-        
+
         val updatedCustomer = Customer(
             customerId = userId,
             firstName = firstName,
@@ -247,84 +320,109 @@ class ProfileFragment : Fragment() {
             userAuth = userAuth,
             profileImage = if (selectedImageUri != null) selectedImageUri.toString() else null
         )
-        
+
         userApiClient.updateCustomerProfile(updatedCustomer, token) { success, error ->
             requireActivity().runOnUiThread {
                 progressBar.visibility = View.GONE
-                
+
                 if (error != null) {
-                    Toast.makeText(context, "Error updating profile: ${error.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, getString(R.string.error_image_upload, error.message), Toast.LENGTH_SHORT).show()
                     return@runOnUiThread
                 }
-                
+
                 if (success) {
                     // If image was selected, upload it
                     if (selectedImageUri != null) {
                         uploadProfileImage(selectedImageUri!!)
                     } else {
-                        Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, R.string.profile_update_success, Toast.LENGTH_SHORT).show()
                     }
                 } else {
-                    Toast.makeText(context, "Failed to update profile", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, R.string.profile_update_failed, Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
-    
+
     private fun uploadProfileImage(imageUri: Uri) {
         try {
-            // Create a temporary file in the cache directory
-            val inputStream = requireContext().contentResolver.openInputStream(imageUri)
-            if (inputStream == null) {
-                Toast.makeText(context, "Could not access the selected image", Toast.LENGTH_SHORT).show()
+            // Create a local copy of the image
+            val localImageFile = createLocalCopyOfImage(imageUri) ?: run {
+                Toast.makeText(context, getString(R.string.error_image_access), Toast.LENGTH_SHORT).show()
                 return
             }
             
-            val file = File(requireContext().cacheDir, "profile_image_${userId}.jpg")
-            val outputStream = FileOutputStream(file)
-            inputStream.copyTo(outputStream)
-            inputStream.close()
-            outputStream.close()
-            
             // Show a loading message
-            Toast.makeText(context, "Uploading profile image...", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, getString(R.string.uploading_profile_image), Toast.LENGTH_SHORT).show()
+            
+            // Display the selected image directly
+            profileImageView.setImageURI(Uri.fromFile(localImageFile))
             
             // Upload the image to the server
-            userApiClient.uploadProfileImage(userId, file, token) { success, error ->
+            userApiClient.uploadProfileImage(userId, localImageFile, token) { success, error ->
                 requireActivity().runOnUiThread {
                     if (success) {
-                        Toast.makeText(context, "Profile updated successfully with new image", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, getString(R.string.profile_update_with_image), Toast.LENGTH_SHORT).show()
                         
-                        // Save the image URI to shared preferences for persistence
+                        // Save the image file path to shared preferences for persistence
                         val prefs = requireActivity().getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
-                        prefs.edit().putString("profile_image_${userId}", imageUri.toString()).apply()
+                        prefs.edit().putString("profile_image_${userId}", localImageFile.absolutePath).apply()
                         
                     } else {
                         // Handle specific error cases
                         val errorMessage = when {
                             error?.message?.contains("too large") == true -> 
-                                "Image is too large to upload. Please choose a smaller image."
+                                getString(R.string.error_image_too_large)
                             error?.message?.contains("Authentication") == true -> 
-                                "Authentication error. Please log in again."
+                                getString(R.string.error_auth)
                             error?.message?.contains("permission") == true ->
-                                "You don't have permission to upload images."
+                                getString(R.string.error_permission)
                             else -> 
-                                "Profile updated successfully but image could not be uploaded to server: ${error?.message}"
+                                getString(R.string.error_image_upload, error?.message)
                         }
                         
                         Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
-                        Log.e(TAG, "Error uploading profile image", error)
+                        Log.e(tag, "Error uploading profile image", error)
                         
-                        // Still save the image URI to shared preferences so we can show it on app restart
+                        // Still save the image file path to shared preferences
                         // This lets users see their selected image even if server upload failed
                         val prefs = requireActivity().getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
-                        prefs.edit().putString("profile_image_${userId}", imageUri.toString()).apply()
+                        prefs.edit().putString("profile_image_${userId}", localImageFile.absolutePath).apply()
                     }
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error preparing image for upload", e)
-            Toast.makeText(context, "Error preparing image: ${e.message}", Toast.LENGTH_SHORT).show()
+            Log.e(tag, "Error preparing image for upload", e)
+            Toast.makeText(context, getString(R.string.error_image_prep, e.message), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun createLocalCopyOfImage(uri: Uri?): File? {
+        if (uri == null) return null
+        
+        try {
+            val inputStream = requireContext().contentResolver.openInputStream(uri) ?: return null
+            val timestamp = System.currentTimeMillis()
+            val filename = "profile_image_${userId}_$timestamp.jpg"
+            val file = File(requireContext().cacheDir, filename)
+            
+            file.outputStream().use { outputStream ->
+                inputStream.use { input ->
+                    input.copyTo(outputStream)
+                }
+            }
+            
+            // Verify the file was created successfully and has content
+            if (file.exists() && file.length() > 0) {
+                Log.d(tag, "Local image copy created successfully at ${file.absolutePath} with size ${file.length()} bytes")
+                return file
+            } else {
+                Log.e(tag, "Created file is empty or doesn't exist: ${file.absolutePath}")
+                return null
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to create local copy of image", e)
+            return null
         }
     }
 
@@ -332,26 +430,6 @@ class ProfileFragment : Fragment() {
         super.onResume()
         
         // Reload the profile image from shared preferences when the fragment is resumed
-        val prefs = requireActivity().getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
-        val savedImageUri = prefs.getString("profile_image_${userId}", null)
-        if (savedImageUri != null) {
-            try {
-                val uri = Uri.parse(savedImageUri)
-                // Use Glide to load the local URI
-                context?.let { ctx ->
-                    Glide.with(ctx)
-                        .load(uri)
-                        .apply(RequestOptions()
-                            .placeholder(R.drawable.service_provider_image)
-                            .error(R.drawable.service_provider_image))
-                        .into(profileImageView)
-                }
-                selectedImageUri = uri
-                // Hide the "No Image" text if it exists
-                view?.findViewById<TextView>(R.id.tvNoImage)?.visibility = View.GONE
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading saved profile image in onResume", e)
-            }
-        }
+        loadProfileImageFromPrefs()
     }
-} 
+}
