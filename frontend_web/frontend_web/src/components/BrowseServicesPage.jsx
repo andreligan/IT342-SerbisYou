@@ -22,6 +22,7 @@ const BrowseServicesPage = () => {
   });
   const [serviceRatings, setServiceRatings] = useState({});
   const [clickPosition, setClickPosition] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -115,6 +116,19 @@ const BrowseServicesPage = () => {
     if (!services) return [];
     
     let result = services.filter(service => {
+      // Search filter (by service name, description, or provider name)
+      if (searchTerm.trim() !== "") {
+        const searchLower = searchTerm.toLowerCase();
+        const nameMatch = service.serviceName?.toLowerCase().includes(searchLower);
+        const descMatch = service.serviceDescription?.toLowerCase().includes(searchLower);
+        const providerMatch = 
+          `${service.provider?.firstName || ''} ${service.provider?.lastName || ''}`.toLowerCase().includes(searchLower);
+        
+        if (!nameMatch && !descMatch && !providerMatch) {
+          return false;
+        }
+      }
+      
       if (filters.categories.length > 0 && !filters.categories.includes(service.categoryName)) {
         return false;
       }
@@ -167,7 +181,7 @@ const BrowseServicesPage = () => {
     }
     
     return result;
-  }, [serviceRatings]);
+  }, [serviceRatings, searchTerm]);
   
   useEffect(() => {
     setFilteredServices(applyFilters(services, activeFilters));
@@ -176,6 +190,15 @@ const BrowseServicesPage = () => {
   const handleFilterChange = useCallback((newFilters) => {
     setActiveFilters(newFilters);
   }, []);
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    setFilteredServices(applyFilters(services, activeFilters));
+  };
 
   const handleOpenModal = useCallback((service, event) => {
     console.log("Selected Service:", service);
@@ -292,7 +315,7 @@ const BrowseServicesPage = () => {
                 <img 
                   src={`${BASE_URL}${service.provider.profileImage}`} 
                   alt="Provider"
-                  className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                  className="w-10 h-10 rounded-full object-cover border border-gray-200"
                 />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-[#495E57]/10 flex items-center justify-center text-[#495E57]">
@@ -301,17 +324,18 @@ const BrowseServicesPage = () => {
                   </svg>
                 </div>
               )}
-              <span className="ml-2 text-sm font-medium text-[#495E57]">
-                {service.provider?.firstName && service.provider?.lastName
-                  ? `${service.provider?.firstName} ${service.provider?.lastName}`
-                  : "Unknown"}
-              </span>
-              
-              {service.provider?.yearsOfExperience > 0 && (
-                <span className="ml-auto text-xs text-gray-500">
-                  {service.provider.yearsOfExperience} {service.provider.yearsOfExperience === 1 ? 'year' : 'years'} exp.
+              <div className="ml-2">
+                <span className="text-s font-medium text-[#495E57] leading-tight block">
+                  {service.provider?.firstName && service.provider?.lastName
+                    ? `${service.provider?.firstName} ${service.provider?.lastName}`
+                    : "Unknown"}
                 </span>
-              )}
+                {service.provider?.yearsOfExperience > 0 && (
+                  <span className="text-xs text-gray-500 -mt-0.5">
+                    {service.provider.yearsOfExperience} {service.provider.yearsOfExperience === 1 ? 'year' : 'years'} experience
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -321,10 +345,74 @@ const BrowseServicesPage = () => {
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      <div className="bg-gradient-to-r from-[#495E57] to-[#3A4A45] text-white py-12">
-        <div className="container mx-auto px-4">
-          <h1 className="text-4xl font-bold text-center mb-2">Browse Services</h1>
-          <p className="text-center text-gray-200 max-w-xl mx-auto">Find skilled professionals and quality services to meet all your household and personal needs</p>
+      <div className="relative bg-gradient-to-r from-[#495E57] to-[#3A4A45] overflow-hidden">
+        {/* Decorative Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-4 -right-4 w-40 h-40 rounded-full bg-[#F4CE14]/10 blur-2xl"></div>
+          <div className="absolute top-1/2 left-1/4 w-64 h-64 rounded-full bg-[#F4CE14]/5 blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/3 w-32 h-32 rounded-full bg-white/5 blur-xl"></div>
+          <svg className="absolute left-0 bottom-0 opacity-10" width="200" height="200" viewBox="0 0 200 200">
+            <path d="M20,70 Q40,20 80,30 T140,50 T180,30" stroke="#F4CE14" strokeWidth="3" fill="none" />
+            <path d="M0,100 Q65,55 95,85 T160,80 T190,55 T200,70" stroke="#F4CE14" strokeWidth="2" fill="none" />
+          </svg>
+        </div>
+        
+        <div className="container mx-auto px-4 py-16 relative z-10">
+          <div className="flex flex-col items-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full mb-4 text-[#F4CE14] shadow-inner">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <span className="text-sm font-medium tracking-wide">Verified Professional Services</span>
+            </div>
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 text-center leading-tight">
+              Find the Perfect <span className="text-[#F4CE14]">Service</span> <br className="hidden md:block" />for Your Needs
+            </h1>
+            <p className="text-center text-gray-200 max-w-xl mx-auto mb-8 text-lg">
+              Connect with skilled professionals offering quality services for all your household and personal requirements.
+            </p>
+            
+            {/* Search functionality - Updated with working search */}
+            <form onSubmit={handleSearchSubmit} className="w-full max-w-2xl mx-auto">
+              <div className="flex items-center bg-white/95 backdrop-blur-md p-2 rounded-full shadow-lg">
+                <div className="flex-1 px-4">
+                  <input 
+                    type="text" 
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    placeholder="What service are you looking for?" 
+                    className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-gray-700 placeholder-gray-400"
+                  />
+                </div>
+                <button 
+                  type="submit"
+                  className="flex items-center gap-2 bg-[#F4CE14] text-[#495E57] font-semibold py-2 px-6 rounded-full hover:bg-[#f8dc5a] transition duration-200 shadow-md"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <span>Search</span>
+                </button>
+              </div>
+            </form>
+            
+            {/* Popular services tags - Updated to apply search filter on click */}
+            <div className="flex flex-wrap justify-center mt-6 gap-2">
+              <span className="text-sm text-gray-300 self-center">Popular:</span>
+              {['Plumbing', 'Cleaning', 'Electrical', 'Carpentry', 'Delivery'].map((tag) => (
+                <span 
+                  key={tag} 
+                  onClick={() => {
+                    setSearchTerm(tag);
+                    setFilteredServices(applyFilters(services, activeFilters));
+                  }}
+                  className="px-3 py-1 bg-white/10 hover:bg-white/20 cursor-pointer text-white text-xs rounded-full transition-colors"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
       
