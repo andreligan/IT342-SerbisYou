@@ -63,6 +63,7 @@ function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSignupPopupVisible, setIsSignupPopupVisible] = useState(false); // Add state for signup popup visibility
   const [profileImage, setProfileImage] = useState(null); // Add new state for profile image
+  const [userFirstName, setUserFirstName] = useState(""); // Add state for user's first name
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -78,7 +79,7 @@ function App() {
     console.log("Authentication check. isAuthenticated:", !!token, "Role:", role);
   }, [location]);
 
-  // Fetch user's profile image - updated to match the approach used in profile components
+  // Fetch user's profile image - updated to also fetch first name
   useEffect(() => {
     const fetchProfileImage = async () => {
       try {
@@ -103,6 +104,9 @@ function App() {
           
           if (!customer) return;
           entityId = customer.customerId;
+          
+          // Store the customer's first name
+          setUserFirstName(customer.firstName || "");
           
           // Now fetch image with the correct customer ID
           const imageResponse = await axios.get(`/api/customers/getProfileImage/${entityId}`, {
@@ -129,6 +133,9 @@ function App() {
           
           if (!provider) return;
           entityId = provider.providerId;
+          
+          // Store the provider's first name
+          setUserFirstName(provider.firstName || "");
           
           // Now fetch image with the correct provider ID
           const imageResponse = await axios.get(`/api/service-providers/getServiceProviderImage/${entityId}`, {
@@ -185,7 +192,8 @@ function App() {
       <div className="flex items-center gap-6 mr-6">
         <button
           onClick={() => navigate(userRole === "customer" ? "/customerHomePage" : "/serviceProviderHomePage")}
-          className="p-2 rounded-full hover:bg-gray-200"
+          className="p-2 rounded-full hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center"
+          aria-label="Home"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -199,14 +207,15 @@ function App() {
           </svg>
         </button>
 
-        {userRole !== "admin" && (
+        {/* {userRole !== "admin" && (
           <button
             onClick={() => navigate("/messages")}
-            className="p-2 rounded-full hover:bg-gray-200"
+            className="p-2 rounded-full hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center"
+            aria-label="Messages"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
+              className="h-7 w-7"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -214,12 +223,12 @@ function App() {
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={2}
+                strokeWidth={1.5}
                 d="M8 10h.01M12 10h.01M16 10h.01M21 16.5a2.5 2.5 0 01-2.5 2.5H5.5A2.5 2.5 0 013 16.5V5.5A2.5 2.5 0 015.5 3h13a2.5 2.5 0 012.5 2.5v11z"
               />
             </svg>
           </button>
-        )}
+        )} */}
 
         {/* Replace the notification button with our new NotificationIcon component */}
         <NotificationIcon />
@@ -233,67 +242,90 @@ function App() {
                 setDropdownOpen(false);
               }
             }, 100)}
-            className="rounded-full hover:bg-gray-200 overflow-hidden"
+            className={`rounded-full overflow-hidden hover:ring-2 hover:ring-[#F4CE14] transition-all duration-200 ${dropdownOpen ? 'ring-2 ring-[#F4CE14]' : ''}`}
+            aria-label="User menu"
           >
             {profileImage ? (
-              <img 
-                src={profileImage}
-                alt="Profile"
-                className="h-10 w-10 rounded-full object-cover"
-                onError={(e) => {
-                  // Fallback to default icon if image fails to load
-                  e.target.onerror = null;
-                  setProfileImage(null);
-                }}
-              />
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79-4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+              <div className="h-11 w-11 rounded-full border-2 border-[#F4CE14] overflow-hidden">
+                <img 
+                  src={profileImage}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    // Fallback to default icon if image fails to load
+                    e.target.onerror = null;
+                    setProfileImage(null);
+                  }}
                 />
-              </svg>
+              </div>
+            ) : (
+              <div className="h-11 w-11 rounded-full border-2 border-[#F4CE14] bg-gray-100 flex items-center justify-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-7 w-7 text-gray-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79-4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                  />
+                </svg>
+              </div>
             )}
           </button>
           {dropdownOpen && (
             <div 
-              className="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg z-50 dropdown-menu"
+              className="absolute right-0 mt-3 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-50 dropdown-menu transform transition-all duration-200 ease-in-out"
               onMouseEnter={() => setDropdownOpen(true)}
               onMouseLeave={() => setDropdownOpen(false)}
             >
-              <div className="p-4 border-b border-gray-200">
-                <p className="text-sm font-semibold text-gray-800">User Menu</p>
+              <div className="p-4 border-b border-gray-100">
+                {profileImage && (
+                  <div className="flex items-center space-x-4">
+                    <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-[#F4CE14]">
+                      <img src={profileImage} alt="Profile" className="h-full w-full object-cover" />
+                    </div>
+                    <div>
+                      {/* Display first name instead of role */}
+                      <p className="text-sm font-medium text-gray-900">{userFirstName || "User"}</p>
+                    </div>
+                  </div>
+                )}
               </div>
-              <button
-                onClick={() => {
-                  const normalizedRole = userRole?.toLowerCase();
-                  setDropdownOpen(false);
-                  if (normalizedRole === "customer") {
-                    navigate("/customerProfile");
-                  } else if (normalizedRole === "service provider") {
-                    navigate("/serviceProviderProfile");
-                  } else {
-                    console.error("Unknown user role:", userRole);
-                  }
-                }}
-                className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100"
-              >
-                Manage Profile
-              </button>
-              <button
-                onClick={() => setIsLogoutPopupVisible(true)}
-                className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100"
-              >
-                Logout
-              </button>
+              <div className="p-2">
+                <button
+                  onClick={() => {
+                    const normalizedRole = userRole?.toLowerCase();
+                    setDropdownOpen(false);
+                    if (normalizedRole === "customer") {
+                      navigate("/customerProfile");
+                    } else if (normalizedRole === "service provider") {
+                      navigate("/serviceProviderProfile");
+                    } else {
+                      console.error("Unknown user role:", userRole);
+                    }
+                  }}
+                  className="w-full flex items-center px-4 py-3 text-left text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-150"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Manage Profile
+                </button>
+                <button
+                  onClick={() => setIsLogoutPopupVisible(true)}
+                  className="w-full flex items-center px-4 py-3 text-left text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-150"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  Logout
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -305,22 +337,22 @@ function App() {
     <>
       {/* Only render header when not on booking page */}
       {!isBookingPage && (
-        <header className="flex justify-between items-center px-3 py-3 bg-white shadow-md">
+        <header className="flex justify-between items-center px-4 py-2 bg-white shadow-md sticky top-0 z-30">
           <div className="flex items-center">
-            <img src={serbisyoLogo} alt="SerbisYo Logo" className="h-20 ml-6 mr-4" />
+            <img src={serbisyoLogo} alt="SerbisYo Logo" className="h-16 ml-4 mr-2" />
           </div>
           <div>
             {!isAuthenticated ? (
               <div className="flex gap-4 mr-6">
                 <button
                   onClick={() => setIsSignupPopupVisible(true)}
-                  className="px-4 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500"
+                  className="px-5 py-2 bg-[#F4CE14] text-[#495E57] font-medium rounded-lg hover:bg-yellow-500 transition-colors duration-200 shadow-sm"
                 >
                   Sign Up
                 </button>
                 <button
                   onClick={() => setIsLoginPopupVisible(true)}
-                  className="px-4 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500"
+                  className="px-5 py-2 bg-[#495E57] text-white font-medium rounded-lg hover:bg-[#3a4a45] transition-colors duration-200 shadow-sm"
                 >
                   Sign In
                 </button>
