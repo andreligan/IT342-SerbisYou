@@ -65,6 +65,9 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Add this line to check if we're on the booking page
+  const isBookingPage = location.pathname === "/bookService";
+
   useEffect(() => {
     const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
     const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
@@ -212,32 +215,34 @@ function App() {
 
   return (
     <>
-      <header className="flex justify-between items-center px-3 py-3 bg-white shadow-md">
-        <div className="flex items-center">
-          <img src={serbisyoLogo} alt="SerbisYo Logo" className="h-20 ml-6 mr-4" />
-          {/* <h1 className="text-2xl font-bold text-gray-800">Serbisyo</h1> */}
-        </div>
-        <div>
-          {!isAuthenticated ? (
-            <div className="flex gap-4 mr-6">
-              <button
-                onClick={() => setIsSignupPopupVisible(true)}
-                className="px-4 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500"
-              >
-                Sign Up
-              </button>
-              <button
-                onClick={() => setIsLoginPopupVisible(true)}
-                className="px-4 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500"
-              >
-                Sign In
-              </button>
-            </div>
-          ) : (
-            renderNavigationLinks()
-          )}
-        </div>
-      </header>
+      {/* Only render header when not on booking page */}
+      {!isBookingPage && (
+        <header className="flex justify-between items-center px-3 py-3 bg-white shadow-md">
+          <div className="flex items-center">
+            <img src={serbisyoLogo} alt="SerbisYo Logo" className="h-20 ml-6 mr-4" />
+          </div>
+          <div>
+            {!isAuthenticated ? (
+              <div className="flex gap-4 mr-6">
+                <button
+                  onClick={() => setIsSignupPopupVisible(true)}
+                  className="px-4 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500"
+                >
+                  Sign Up
+                </button>
+                <button
+                  onClick={() => setIsLoginPopupVisible(true)}
+                  className="px-4 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500"
+                >
+                  Sign In
+                </button>
+              </div>
+            ) : (
+              renderNavigationLinks()
+            )}
+          </div>
+        </header>
+      )}
       <Routes>
         <Route 
           path="/" 
