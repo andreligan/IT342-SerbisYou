@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const CustomerBookingHistoryContent = () => {
   const [bookings, setBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchBookingHistory = async () => {
@@ -37,7 +39,7 @@ const CustomerBookingHistoryContent = () => {
 
   // Function to get appropriate status color
   const getStatusColor = (status) => {
-    switch(status?.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case "completed":
         return "bg-green-100 text-green-800 border-green-300";
       case "cancelled":
@@ -53,22 +55,93 @@ const CustomerBookingHistoryContent = () => {
     }
   };
 
+  // Function to get payment status badge
+  const getPaymentBadge = (booking) => {
+    if (!booking.paymentMethod) return null;
+
+    const isCash = booking.paymentMethod.toLowerCase() === "cash";
+    const isGCash = booking.paymentMethod.toLowerCase() === "gcash";
+    const isFullPayment = booking.fullPayment !== false;
+
+    if (isCash) {
+      return (
+        <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium border border-orange-200">
+          Cash Payment (Upon Completion)
+        </span>
+      );
+    } else if (isGCash && !isFullPayment) {
+      return (
+        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium border border-blue-200">
+          GCash (50% Downpayment)
+        </span>
+      );
+    } else if (isGCash && isFullPayment) {
+      return (
+        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium border border-green-200">
+          GCash (Full Payment)
+        </span>
+      );
+    }
+
+    return null;
+  };
+
+  // Function to calculate remaining balance
+  const getRemainingBalance = (booking) => {
+    if (!booking.totalCost) return 0;
+
+    const isGCashPartial = booking.paymentMethod?.toLowerCase() === "gcash" && booking.fullPayment === false;
+    const isCash = booking.paymentMethod?.toLowerCase() === "cash";
+
+    if (isGCashPartial) {
+      return booking.totalCost * 0.5; // 50% remaining
+    } else if (isCash) {
+      return booking.totalCost; // Full amount remaining
+    }
+
+    return 0; // No remaining balance
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const options = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
+    try {
+      return new Date(dateString).toLocaleDateString(undefined, options);
+    } catch (e) {
+      return "Invalid Date";
+    }
+  };
+
+  // Format time with AM/PM
+  const formatTime = (timeString) => {
+    if (!timeString) return "Not specified";
+
+    const timeParts = timeString.toString().split(":");
+    if (timeParts.length < 2) return timeString;
+
+    const hour = parseInt(timeParts[0], 10);
+    const minutes = timeParts[1];
+    const period = hour >= 12 ? "PM" : "AM";
+    const formattedHour = hour % 12 || 12;
+
+    return `${formattedHour}:${minutes} ${period}`;
+  };
+
   // Handle cancellation of booking
   const handleCancelBooking = async (bookingId) => {
     if (window.confirm("Are you sure you want to cancel this booking?")) {
       try {
         const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-        
+
         await axios.put(`/api/bookings/cancel/${bookingId}`, {}, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
-        
+
         // Update the booking status in the UI
-        setBookings(prevBookings => 
-          prevBookings.map(booking => 
-            booking.bookingId === bookingId 
-              ? {...booking, status: "Cancelled"} 
-              : booking
+        setBookings((prevBookings) =>
+          prevBookings.map((booking) =>
+            booking.bookingId === bookingId ? { ...booking, status: "Cancelled" } : booking
           )
         );
       } catch (err) {
@@ -78,14 +151,10 @@ const CustomerBookingHistoryContent = () => {
     }
   };
 
-  // Format date for display
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    try {
-      return new Date(dateString).toLocaleDateString(undefined, options);
-    } catch (e) {
-      return "Invalid Date";
+  // Handle payment for remaining balance
+  const handlePayRemainingBalance = (booking) => {
+    if (window.confirm("Would you like to pay the remaining balance now?")) {
+      alert("This would redirect to payment processing for the remaining amount.");
     }
   };
 
@@ -103,125 +172,302 @@ const CustomerBookingHistoryContent = () => {
       ) : bookings.length === 0 ? (
         <div className="text-center py-6 bg-gray-50 rounded-lg border border-gray-200">
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+            />
           </svg>
           <p className="mt-2 text-gray-600">No bookings found in your history.</p>
         </div>
       ) : (
         <div className="space-y-6">
-          {bookings.map((booking, index) => (
-            <div 
-              key={index} 
-              className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow"
-            >
-              <div className="p-4 sm:p-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-                  <h3 className="font-semibold text-lg text-[#495E57]">
-                    {booking.service?.serviceName || booking.serviceName || "Unnamed Service"}
-                  </h3>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium mt-2 sm:mt-0 ${getStatusColor(booking.status)}`}>
-                    {booking.status || "Unknown"}
-                  </span>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-start">
-                      <svg className="h-5 w-5 text-[#495E57] mt-0.5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      <div>
-                        <p className="text-sm text-gray-500">Service Provider</p>
-                        <p className="font-medium">
-                          {booking.service?.provider?.firstName
-                            ? `${booking.service.provider.firstName} ${booking.service.provider.lastName || ''}`
-                            : "Not specified"}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start">
-                      <svg className="h-5 w-5 text-[#495E57] mt-0.5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <div>
-                        <p className="text-sm text-gray-500">Date</p>
-                        <p className="font-medium">{formatDate(booking.bookingDate || booking.date)}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start">
-                      <svg className="h-5 w-5 text-[#495E57] mt-0.5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <div>
-                        <p className="text-sm text-gray-500">Time</p>
-                        <p className="font-medium">{booking.bookingTime || booking.time || "Not specified"}</p>
+          {bookings.map((booking, index) => {
+            const remainingBalance = getRemainingBalance(booking);
+
+            return (
+              <div
+                key={index}
+                className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow"
+              >
+                <div className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                    <div className="flex flex-col">
+                      <h3 className="font-semibold text-lg text-[#495E57]">
+                        {booking.service?.serviceName || booking.serviceName || "Unnamed Service"}
+                      </h3>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
+                          {booking.status || "Unknown"}
+                        </span>
+                        {getPaymentBadge(booking)}
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-start">
-                      <svg className="h-5 w-5 text-[#495E57] mt-0.5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                      </svg>
-                      <div>
-                        <p className="text-sm text-gray-500">Cost</p>
-                        <p className="font-medium">
-                          ₱{booking.totalCost?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || "Price not available"}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {booking.service?.category && (
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
                       <div className="flex items-start">
-                        <svg className="h-5 w-5 text-[#495E57] mt-0.5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        <svg
+                          className="h-5 w-5 text-[#495E57] mt-0.5 mr-2"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          />
                         </svg>
                         <div>
-                          <p className="text-sm text-gray-500">Category</p>
-                          <p className="font-medium">{booking.service.category.categoryName}</p>
+                          <p className="text-sm text-gray-500">Service Provider</p>
+                          <p className="font-medium">
+                            {booking.service?.provider?.firstName
+                              ? `${booking.service.provider.firstName} ${booking.service.provider.lastName || ""}`
+                              : "Not specified"}
+                          </p>
                         </div>
                       </div>
-                    )}
-                    
-                    <div className="flex items-start">
-                      <svg className="h-5 w-5 text-[#495E57] mt-0.5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                      <div>
-                        <p className="text-sm text-gray-500">Booking Reference</p>
-                        <p className="font-medium">{booking.bookingId || "ID not available"}</p>
+
+                      <div className="flex items-start">
+                        <svg
+                          className="h-5 w-5 text-[#495E57] mt-0.5 mr-2"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          />
+                        </svg>
+                        <div>
+                          <p className="text-sm text-gray-500">Date</p>
+                          <p className="font-medium">{formatDate(booking.bookingDate || booking.date)}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start">
+                        <svg
+                          className="h-5 w-5 text-[#495E57] mt-0.5 mr-2"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <div>
+                          <p className="text-sm text-gray-500">Time</p>
+                          <p className="font-medium">{formatTime(booking.bookingTime)}</p>
+                        </div>
+                      </div>
+
+                      {booking.paymentMethod?.toLowerCase() === "cash" &&
+                        booking.status?.toLowerCase() !== "cancelled" && (
+                          <div className="flex items-start">
+                            <svg
+                              className="h-5 w-5 text-[#495E57] mt-0.5 mr-2"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
+                              />
+                            </svg>
+                            <div>
+                              <p className="text-sm text-gray-500">Payment Reference</p>
+                              <p className="font-medium font-mono">
+                                SY-{booking.bookingId}-{Math.floor(Math.random() * 1000000)
+                                  .toString()
+                                  .padStart(6, "0")}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-start">
+                        <svg
+                          className="h-5 w-5 text-[#495E57] mt-0.5 mr-2"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+                          />
+                        </svg>
+                        <div>
+                          <p className="text-sm text-gray-500">Payment Method</p>
+                          <p className="font-medium capitalize">{booking.paymentMethod || "Not specified"}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start">
+                        <svg
+                          className="h-5 w-5 text-[#495E57] mt-0.5 mr-2"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
+                          />
+                        </svg>
+                        <div>
+                          <p className="text-sm text-gray-500">Total Cost</p>
+                          <p className="font-medium">
+                            ₱
+                            {booking.totalCost?.toLocaleString("en-PH", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            }) || "Price not available"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {remainingBalance > 0 && (
+                        <div className="flex items-start">
+                          <svg
+                            className="h-5 w-5 text-orange-500 mt-0.5 mr-2"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          <div>
+                            <p className="text-sm text-gray-500">Remaining Balance</p>
+                            <p className="font-medium text-orange-600">
+                              ₱
+                              {remainingBalance.toLocaleString("en-PH", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-start">
+                        <svg
+                          className="h-5 w-5 text-[#495E57] mt-0.5 mr-2"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                          />
+                        </svg>
+                        <div>
+                          <p className="text-sm text-gray-500">Booking Reference</p>
+                          <p className="font-medium">{booking.bookingId || "ID not available"}</p>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                
-                {/* Special notes section */}
-                {booking.note && (
-                  <div className="mt-4 p-3 bg-gray-50 rounded-md">
-                    <p className="text-sm font-medium text-gray-700">Notes:</p>
-                    <p className="text-sm text-gray-600 mt-1">{booking.note}</p>
-                  </div>
-                )}
-                
-                {/* Actions section */}
-                <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end">
-                  {booking.status?.toLowerCase() === "pending" && (
-                    <button
-                      onClick={() => handleCancelBooking(booking.bookingId)}
-                      className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors text-sm"
-                    >
-                      Cancel Booking
-                    </button>
+
+                  {booking.note && (
+                    <div className="mt-4 p-3 bg-gray-50 rounded-md">
+                      <p className="text-sm font-medium text-gray-700">Notes:</p>
+                      <p className="text-sm text-gray-600 mt-1">{booking.note}</p>
+                    </div>
                   )}
-                  
-                  {/* Additional action buttons can be added here */}
+
+                  <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end gap-2">
+                    {booking.status?.toLowerCase() === "pending" && (
+                      <button
+                        onClick={() => handleCancelBooking(booking.bookingId)}
+                        className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors text-sm"
+                      >
+                        Cancel Booking
+                      </button>
+                    )}
+
+                    {remainingBalance > 0 &&
+                      booking.status?.toLowerCase() !== "cancelled" &&
+                      booking.status?.toLowerCase() !== "completed" && (
+                        <button
+                          onClick={() => handlePayRemainingBalance(booking)}
+                          className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md transition-colors text-sm flex items-center"
+                        >
+                          <svg
+                            className="h-4 w-4 mr-1"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                            />
+                          </svg>
+                          Pay Remaining Balance
+                        </button>
+                      )}
+
+                    <button
+                      onClick={() => navigate(`/booking-details/${booking.bookingId}`)}
+                      className="px-4 py-2 bg-[#495E57]/10 hover:bg-[#495E57]/20 text-[#495E57] rounded-md transition-colors text-sm flex items-center"
+                    >
+                      <svg
+                        className="h-4 w-4 mr-1"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
+                      </svg>
+                      View Details
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
