@@ -26,6 +26,10 @@ public class AdminService {
         return adminRepository.findById(adminId);
     }
     
+    public Optional<AdminEntity> getAdminByUserId(Long userId) {
+        return adminRepository.findByUserAuthUserId(userId);
+    }
+    
     public AdminEntity createAdmin(AdminEntity admin) {
         return adminRepository.save(admin);
     }

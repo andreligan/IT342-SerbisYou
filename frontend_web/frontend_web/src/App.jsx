@@ -8,7 +8,10 @@ import CustomerHomePage from "./components/CustomerHomePage";
 import BrowseServicesPage from "./components/BrowseServicesPage";
 import BookServicePage from "./components/BookServicePage";
 import ServiceProviderHomePage from "./components/service_provider/ServiceProviderHomePage";
-import AdminHomePage from "./components/AdminHomePage"; // Import AdminHomePage
+import AdminHomePage from "./components/admin/AdminHomePage"; // Import AdminHomePage
+import UserManagement from "./components/admin/UserManagement"; // Import UserManagement
+import CategoryManagement from "./components/admin/CategoryManagement"; // Import CategoryManagement
+import ProviderVerification from "./components/admin/ProviderVerification"; // Import ProviderVerification
 import PlumbingServicesPage from "./components/PlumbingServicesPage";
 import AddServicePage from "./components/service_provider/AddServicePage";
 import LogoutConfirmationPopup from "./components/LogoutConfirmationPopup";
@@ -478,6 +481,18 @@ function App() {
         <Route
           path="/adminHomePage"
           element={<ProtectedRoute element={<AdminHomePage />} allowedRoles={["admin"]} />}
+        />
+        <Route
+          path="/admin/users"
+          element={<ProtectedRoute element={<UserManagement />} allowedRoles={["admin"]} />}
+        />
+        <Route
+          path="/admin/categories"
+          element={<ProtectedRoute element={<CategoryManagement />} allowedRoles={["admin"]} />}
+        />
+        <Route
+          path="/admin/verification"
+          element={<ProtectedRoute element={<ProviderVerification />} allowedRoles={["admin"]} />}
         />
       </Routes>
 

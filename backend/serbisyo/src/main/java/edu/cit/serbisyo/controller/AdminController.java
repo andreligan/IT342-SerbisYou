@@ -34,6 +34,13 @@ public class AdminController {
                 .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
     
+    @GetMapping("/getByUserId/{userId}")
+    public ResponseEntity<AdminEntity> getAdminByUserId(@PathVariable("userId") Long userId) {
+        Optional<AdminEntity> admin = adminService.getAdminByUserId(userId);
+        return admin.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
+                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
+    
     @PostMapping("/create")
     public ResponseEntity<AdminEntity> createAdmin(@RequestBody AdminEntity admin) {
         AdminEntity createdAdmin = adminService.createAdmin(admin);
