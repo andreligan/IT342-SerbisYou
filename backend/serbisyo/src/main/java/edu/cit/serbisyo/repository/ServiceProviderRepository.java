@@ -5,9 +5,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ServiceProviderRepository extends JpaRepository<ServiceProviderEntity, Long> {
     // Find by business category
     List<ServiceProviderEntity> findByVerifiedTrue();
+    Optional<ServiceProviderEntity> findByUserAuthUserName(String username);
 }

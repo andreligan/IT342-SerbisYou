@@ -17,6 +17,7 @@ import CustomerProfilePage from "./components/customer/CustomerProfilePage";
 import ServiceDetails from "./components/service_provider/ServiceDetails";
 import ServiceProviderDetails from "./components/customer/ServiceProviderDetails";
 import BookingDetailPage from "./components/customer/profile/BookingDetailPage"; // Import BookingDetailPage
+import ServiceProviderBookings from "./components/service_provider/ServiceProviderBookings"; // Import ServiceProviderBookings
 import serbisyoLogo from "./assets/Serbisyo_Logo_New.png";
 import API from "./utils/API";
 import axios from "axios";
@@ -457,6 +458,14 @@ function App() {
         <Route path="/payment-success" element={<PaymentSuccessPage />} />
         <Route path="/payment-cancel" element={<PaymentCancelPage />} />
         <Route path="/booking-details/:bookingId" element={<BookingDetailPage />} /> {/* Add BookingDetailPage route */}
+        <Route
+          path="/serviceProviderBookings"
+          element={<ProtectedRoute element={<ServiceProviderBookings />} allowedRoles={["service provider"]} />}
+        />
+        <Route
+          path="/provider-booking-details/:bookingId"
+          element={<ProtectedRoute element={<BookingDetailPage />} allowedRoles={["service provider"]} />}
+        />
       </Routes>
 
       <SignupOptionsPopup

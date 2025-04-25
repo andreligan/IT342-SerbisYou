@@ -15,6 +15,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 
 @Service
 public class BookingService {
@@ -119,6 +120,34 @@ public class BookingService {
         return bookingRepository.findByCustomerCustomerId(customerId);
     }
 
+    /**
+     * Get bookings for services offered by a specific provider - enhanced with better null checking
+     */
+    public List<BookingEntity> getBookingsByProviderId(Long providerId) {
+        if (providerId == null) {
+            throw new IllegalArgumentException("Provider ID cannot be null");
+        }
+        
+        List<BookingEntity> allBookings = bookingRepository.findAll();
+        
+        return allBookings.stream()
+            .filter(booking -> {
+                // Careful null checking for the entire object chain
+                if (booking == null) return false;
+                
+                ServiceEntity service = booking.getService();
+                if (service == null) return false;
+                
+                // Check if service has a provider
+                if (service.getProvider() == null) return false;
+                
+                // Check if provider ID matches
+                Long bookingProviderId = service.getProvider().getProviderId();
+                return bookingProviderId != null && bookingProviderId.equals(providerId);
+            })
+            .collect(Collectors.toList());
+    }
+
     // UPDATE an existing booking
     public BookingEntity updateBooking(Long bookingId, BookingEntity newBookingDetails) {
         BookingEntity existingBooking = bookingRepository.findById(bookingId)
@@ -138,6 +167,13 @@ public class BookingService {
         }
 
         return bookingRepository.save(existingBooking);
+    }
+
+    // Update booking status
+    public BookingEntity updateBookingStatus(Long bookingId, String status) {
+        BookingEntity booking = getBookingById(bookingId);
+        booking.setStatus(status);
+        return bookingRepository.save(booking);
     }
 
     // DELETE a booking

@@ -33,7 +33,7 @@ public class BookingEntity {
     private String paymentMethod;
     
     @Column(nullable = true)
-    private boolean fullPayment = true; // Default to true (full payment)
+    private Boolean fullPayment = true; // Changed from primitive boolean to wrapper Boolean
 
     @JsonIgnore
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
@@ -112,10 +112,10 @@ public class BookingEntity {
     }
     
     public boolean isFullPayment() {
-        return fullPayment;
+        return fullPayment == null ? true : fullPayment; // Add null check for safety
     }
 
-    public void setFullPayment(boolean fullPayment) {
+    public void setFullPayment(Boolean fullPayment) {
         this.fullPayment = fullPayment;
     }
 
