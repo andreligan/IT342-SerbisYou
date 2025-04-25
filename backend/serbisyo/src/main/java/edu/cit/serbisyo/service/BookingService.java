@@ -62,9 +62,13 @@ public class BookingService {
             scheduleRepository.save(schedule);
         }
 
-        // Create transaction record if payment method is GCash
-        if (booking.getPaymentMethod() != null && booking.getPaymentMethod().equalsIgnoreCase("gcash")) {
-            createTransactionForBooking(savedBooking, booking.isFullPayment());
+        // Create transaction record for any payment method
+        if (booking.getPaymentMethod() != null) {
+            if (booking.getPaymentMethod().equalsIgnoreCase("gcash")) {
+                createTransactionForBooking(savedBooking, booking.isFullPayment());
+            } else if (booking.getPaymentMethod().equalsIgnoreCase("cash")) {
+                createCashTransactionForBooking(savedBooking);
+            }
         }
 
         return savedBooking;
@@ -83,6 +87,18 @@ public class BookingService {
         // Set status based on payment type
         transaction.setStatus(isFullPayment ? "COMPLETED" : "PARTIAL");
         transaction.setTransactionDate(LocalDateTime.now());
+
+        return transactionRepository.save(transaction);
+    }
+
+    // Helper method to create a transaction record for cash payments
+    private TransactionEntity createCashTransactionForBooking(BookingEntity booking) {
+        TransactionEntity transaction = new TransactionEntity();
+        transaction.setBooking(booking);
+        transaction.setPaymentMethod("Cash");
+        transaction.setAmount(booking.getTotalCost());
+        transaction.setStatus("PENDING"); // Cash payments are pending until completed
+        transaction.setTransactionDate(null); // Will be set when payment is received
 
         return transactionRepository.save(transaction);
     }
