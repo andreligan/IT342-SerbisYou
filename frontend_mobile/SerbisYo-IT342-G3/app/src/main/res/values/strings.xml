@@ -19,4 +19,77 @@
     <string name="error_permission">You don\'t have permission to upload images.</string>
     <string name="error_image_upload">Profile updated successfully but image could not be uploaded to server: %1$s</string>
     <string name="error_image_prep">Error preparing image: %1$s</string>
+    
+    <!-- Service Provider Profile -->
+    <string name="profile_information">Profile Information</string>
+    <string name="username">Username</string>
+    <string name="email">Email</string>
+    <string name="first_name">First Name</string>
+    <string name="last_name">Last Name</string>
+    <string name="phone_number">Phone Number</string>
+    <string name="update_profile">Update Profile</string>
+    <string name="select_profile_image">Select Profile Image</string>
+    <string name="error_profile_update">Error updating profile: %1$s</string>
+    <string name="error_reading_image">Error reading image</string>
+    <string name="error_processing_image">Error processing image: %1$s</string>
+    
+    <!-- Service Provider Address -->
+    <string name="address_information">Address Information</string>
+    <string name="address_description">Enter your business address details</string>
+    <string name="address_not_found">Address not found</string>
+    <string name="provider_not_found">Service provider not found</string>
+    <string name="street">Street Address</string>
+    <string name="city">City</string>
+    <string name="province">Province</string>
+    <string name="postal_code">Postal Code</string>
+    <string name="update_address">Update Address</string>
+    <string name="address_update_success">Address updated successfully</string>
+    <string name="address_update_failed">Failed to update address</string>
+    <string name="error_address_update">Error updating address: %1$s</string>
+    <string name="error_street_empty">Street address cannot be empty</string>
+    <string name="error_city_empty">City cannot be empty</string>
+    <string name="error_province_empty">Province cannot be empty</string>
+    <string name="error_postal_empty">Postal code cannot be empty</string>
+    
+    <!-- Service Provider Business Details -->
+    <string name="business_information">Business Information</string>
+    <string name="business_description">Enter your business details</string>
+    <string name="business_details_not_found">Business details not found</string>
+    <string name="business_name">Business Name</string>
+    <string name="years_experience">Years of Experience</string>
+    <string name="availability_schedule">Availability Schedule</string>
+    <string name="payment_method">Payment Method</string>
+    <string name="update_business_details">Update Business Details</string>
+    <string name="business_update_success">Business details updated successfully</string>
+    <string name="business_update_failed">Failed to update business details</string>
+    <string name="error_business_update">Error updating business details: %1$s</string>
+    <string name="error_business_name_empty">Business name cannot be empty</string>
+    <string name="error_years_experience_empty">Years of experience cannot be empty</string>
+    <string name="error_years_experience_negative">Years of experience cannot be negative</string>
+    <string name="error_years_experience_invalid">Please enter a valid number for years of experience</string>
+    <string name="error_availability_empty">Availability schedule cannot be empty</string>
+    
+    <!-- Service Provider Services -->
+    <string name="my_services">My Services</string>
+    <string name="services_description">Manage your offered services</string>
+    <string name="add_new_service">Add New Service</string>
+    <string name="manage_services">Manage Services</string>
+    <string name="error_loading_services">Error loading services</string>
+    <string name="no_services_added">You haven\'t added any services yet</string>
+    <string name="provider_id_missing">Service provider ID not found</string>
+    
+    <!-- Service Provider Schedule -->
+    <string name="schedule_information">Schedule Information</string>
+    <string name="schedule_description">Set your availability schedule</string>
+    <string name="schedule_not_found">Schedule information not found</string>
+    <string name="availability_schedule_header">Availability Schedule</string>
+    <string name="availability_schedule_description">Enter the days and times you are available to provide services</string>
+    <string name="availability_schedule_hint">Example: Monday-Friday 9AM-5PM, Weekends 10AM-2PM</string>
+    <string name="preferred_working_hours">Preferred Working Hours</string>
+    <string name="preferred_working_hours_description">Specify your preferred working hours (optional)</string>
+    <string name="preferred_working_hours_hint">Example: 10AM-3PM</string>
+    <string name="update_schedule">Update Schedule</string>
+    <string name="schedule_update_success">Schedule updated successfully</string>
+    <string name="schedule_update_failed">Failed to update schedule</string>
+    <string name="error_schedule_update">Error updating schedule: %1$s</string>
 </resources>

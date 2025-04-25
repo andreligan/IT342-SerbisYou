@@ -340,8 +340,8 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
                     true
                 }
                 R.id.navigation_profile -> {
-                    // Launch ServiceProviderProfileActivity
-                    val intent = Intent(this, ServiceProviderProfileActivity::class.java)
+                    // Launch ServiceProviderProfileManagementActivity instead of ServiceProviderProfileActivity
+                    val intent = Intent(this, ServiceProviderProfileManagementActivity::class.java)
                     startActivity(intent)
                     true
                 }

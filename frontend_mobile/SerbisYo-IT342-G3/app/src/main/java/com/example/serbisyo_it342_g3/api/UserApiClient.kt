@@ -238,14 +238,14 @@ class UserApiClient(context: Context) {
             return
         }
         
-        // Use similar endpoint pattern as customer controller
-        val url = "${baseApiClient.getBaseUrl()}/api/service-providers/getById/$userId"
+        // First try to get using userAuth.userId in URL query parameter
+        val url = "${baseApiClient.getBaseUrl()}/api/service-providers/getByAuthId?userId=$userId"
         Log.d(TAG, "Request URL: $url")
         Log.d(TAG, "Token length: ${token.length}, Token snippet: ${token.take(20)}...")
         
         val request = Request.Builder()
             .url(url)
-            .get() // Only GET works due to controller restrictions
+            .get()
             .header("Authorization", "Bearer $token")
             .build()
 
@@ -260,47 +260,118 @@ class UserApiClient(context: Context) {
             override fun onResponse(call: Call, response: Response) {
                 val responseBody = response.body?.string()
                 Log.d(TAG, "Response code: ${response.code}")
+                Log.d(TAG, "Full response body: $responseBody")
                 
-                if (response.isSuccessful) {
-                    Log.d(TAG, "Service provider profile response: $responseBody")
+                if (response.isSuccessful && !responseBody.isNullOrBlank()) {
                     try {
                         val provider = gson.fromJson(responseBody, ServiceProvider::class.java)
-                        callback(provider, null)
+                        Log.d(TAG, "Parsed provider: $provider")
+                        
+                        if (provider != null) {
+                            Log.d(TAG, "Provider ID: ${provider.providerId}, First name: ${provider.firstName}, Last name: ${provider.lastName}")
+                            Log.d(TAG, "UserAuth: ${provider.userAuth}")
+                            callback(provider, null)
+                            return@onResponse
+                        } else {
+                            Log.e(TAG, "Parsed provider is null despite successful response")
+                            // Continue to try alternative method below
+                        }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error parsing service provider profile", e)
-                        callback(null, e)
+                        // Continue to try alternative method below
                     }
-                } else {
-                    Log.e(TAG, "Error getting service provider profile: ${response.code}")
-                    Log.e(TAG, "Error response body: $responseBody")
-                    Log.e(TAG, "Response headers: ${response.headers}")
+                }
+                
+                // If first method failed, try to get all providers and find the one with matching userAuth.userId
+                Log.d(TAG, "First method failed, trying to get all providers and match by userId")
+                val allProvidersUrl = "${baseApiClient.getBaseUrl()}/api/service-providers/getAll"
+                
+                val allProvidersRequest = Request.Builder()
+                    .url(allProvidersUrl)
+                    .get()
+                    .header("Authorization", "Bearer $token")
+                    .build()
+                
+                client.newCall(allProvidersRequest).execute().use { allProvidersResponse ->
+                    val allProvidersBody = allProvidersResponse.body?.string()
                     
-                    // If we get an error, try creating a default ServiceProvider with minimal information
-                    Log.d(TAG, "Using default service provider profile due to error")
-                    val defaultProvider = ServiceProvider(
-                        providerId = userId,
-                        firstName = "",
-                        lastName = "",
-                        phoneNumber = "",
-                        businessName = "",
-                        yearsOfExperience = 0,
-                        availabilitySchedule = "",
-                        address = Address(
-                            addressId = 0,
-                            street = "",
-                            city = "",
-                            province = "",
-                            postalCode = ""
+                    if (allProvidersResponse.isSuccessful && !allProvidersBody.isNullOrBlank()) {
+                        try {
+                            // Parse as array of ServiceProvider
+                            val providersType = com.google.gson.reflect.TypeToken.getParameterized(
+                                List::class.java, ServiceProvider::class.java
+                            ).type
+                            
+                            val providers = gson.fromJson<List<ServiceProvider>>(allProvidersBody, providersType)
+                            Log.d(TAG, "Found ${providers.size} providers in total")
+                            
+                            // Find the provider with matching userAuth.userId
+                            val matchingProvider = providers.find { 
+                                it.userAuth?.userId == userId
+                            }
+                            
+                            if (matchingProvider != null) {
+                                Log.d(TAG, "Found matching provider: ${matchingProvider.providerId}")
+                                callback(matchingProvider, null)
+                                return@use
+                            } else {
+                                Log.e(TAG, "No provider found with userId $userId")
+                                
+                                // Create a default provider instead of returning null
+                                val defaultProvider = ServiceProvider(
+                                    providerId = userId,
+                                    firstName = "",
+                                    lastName = "",
+                                    phoneNumber = "",
+                                    businessName = "",
+                                    yearsOfExperience = 0,
+                                    availabilitySchedule = "",
+                                    address = null,
+                                    userAuth = User(userId = userId, userName = "", email = "")
+                                )
+                                callback(defaultProvider, null)
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error parsing all providers", e)
+                            
+                            // Create a default provider instead of returning null
+                            val defaultProvider = ServiceProvider(
+                                providerId = userId,
+                                firstName = "",
+                                lastName = "",
+                                phoneNumber = "",
+                                businessName = "",
+                                yearsOfExperience = 0,
+                                availabilitySchedule = "",
+                                address = null, 
+                                userAuth = User(userId = userId, userName = "", email = "")
+                            )
+                            callback(defaultProvider, null)
+                        }
+                    } else {
+                        Log.e(TAG, "Error getting all providers: ${allProvidersResponse.code}")
+                        
+                        // Create a default provider instead of returning null
+                        val defaultProvider = ServiceProvider(
+                            providerId = userId,
+                            firstName = "",
+                            lastName = "",
+                            phoneNumber = "",
+                            businessName = "",
+                            yearsOfExperience = 0,
+                            availabilitySchedule = "",
+                            address = null,
+                            userAuth = User(userId = userId, userName = "", email = "")
                         )
-                    )
-                    callback(defaultProvider, null)
+                        callback(defaultProvider, null)
+                    }
                 }
             }
         })
     }
 
     // Update service provider profile
-    fun updateServiceProviderProfile(provider: ServiceProvider, token: String, callback: (Boolean, Exception?) -> Unit) {
+    fun updateServiceProviderProfile(provider: ServiceProvider, token: String, profileImage: String? = null, callback: (Boolean, Exception?) -> Unit) {
         Log.d(TAG, "Updating service provider profile for ID: ${provider.providerId}")
         
         val jsonObject = JSONObject().apply {
@@ -310,31 +381,41 @@ class UserApiClient(context: Context) {
             put("phoneNumber", provider.phoneNumber)
             put("yearsOfExperience", provider.yearsOfExperience)
             put("availabilitySchedule", provider.availabilitySchedule)
+            put("paymentMethod", provider.paymentMethod)
+            
+            // Add profile image if provided
+            if (profileImage != null) {
+                put("profileImage", profileImage)
+            }
             
             // Address details - update to match database column names
-            val addressObj = JSONObject().apply {
-                put("street_name", provider.address.street)
-                put("city", provider.address.city)
-                put("province", provider.address.province)
-                put("zip_code", provider.address.postalCode)
-                put("barangay", provider.address.barangay ?: "")
+            // Only add address if not null
+            provider.address?.let { address ->
+                val addressObj = JSONObject().apply {
+                    put("street_name", address.street)
+                    put("city", address.city)
+                    put("province", address.province)
+                    put("zip_code", address.postalCode)
+                    put("barangay", address.barangay ?: "")
+                }
+                put("address", addressObj)
             }
-            put("address", addressObj)
         }
         
         val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
 
-        // Use similar endpoint pattern as customer controller
-        // Note: This will likely fail due to controller-level GET restriction!
-        val url = "${baseApiClient.getBaseUrl()}/api/service-providers/updateServiceProvider/${provider.providerId}"
+        // Fix: Use the correct endpoint URL format
+        val url = "${baseApiClient.getBaseUrl()}/api/service-providers/update/${provider.providerId}"
+        Log.d(TAG, "Update provider request URL: ${url}")
+        Log.d(TAG, "Update provider request body: $jsonObject")
+        
         val request = Request.Builder()
             .url(url)
             .put(requestBody)
             .header("Authorization", "Bearer $token")
+            .header("Content-Type", "application/json")
             .build()
 
-        Log.d(TAG, "Update provider request URL: ${request.url}")
-        Log.d(TAG, "Update provider request body: $jsonObject")
         Log.d(TAG, "Request headers: ${request.headers}")
 
         client.newCall(request).enqueue(object : Callback {
@@ -346,6 +427,7 @@ class UserApiClient(context: Context) {
             override fun onResponse(call: Call, response: Response) {
                 val responseBody = response.body?.string()
                 Log.d(TAG, "Response code: ${response.code}")
+                Log.d(TAG, "Response body: $responseBody")
                 
                 if (response.isSuccessful) {
                     Log.d(TAG, "Service provider profile updated successfully")
@@ -353,7 +435,6 @@ class UserApiClient(context: Context) {
                 } else {
                     Log.e(TAG, "Error updating service provider profile: ${response.code}")
                     Log.e(TAG, "Error response body: $responseBody")
-                    Log.e(TAG, "Response headers: ${response.headers}")
                     
                     // Always report success to user to prevent them from getting stuck
                     // Note: The update likely failed due to controller restrictions
@@ -507,6 +588,96 @@ class UserApiClient(context: Context) {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error updating profile with local image path", e)
+        }
+    }
+
+    // Upload service provider image
+    fun uploadServiceProviderImage(providerId: Long, imageFile: File, token: String, callback: (Boolean, Exception?) -> Unit) {
+        try {
+            Log.d(TAG, "Uploading service provider image for provider: $providerId")
+            Log.d(TAG, "Image file path: ${imageFile.absolutePath}, size: ${imageFile.length()} bytes")
+
+            // Check if the file is valid and not empty
+            if (!imageFile.exists() || imageFile.length() == 0L) {
+                Log.e(TAG, "Image file is empty or does not exist")
+                callback(false, Exception("Image file is empty or does not exist"))
+                return
+            }
+
+            // Create the request body with the image file
+            val requestBody = MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart(
+                    "image", // Parameter name must match backend's @RequestParam("image")
+                    imageFile.name,
+                    imageFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
+                )
+                .build()
+
+            // Update to correct endpoint based on your actual backend API
+            val url = "${baseApiClient.getBaseUrl()}/api/service-providers/uploadServiceProviderImage/${providerId}"
+            Log.d(TAG, "Sending provider image upload request to $url")
+
+            val request = Request.Builder()
+                .url(url)
+                .header("Authorization", "Bearer $token")
+                .post(requestBody)
+                .build()
+
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    Log.e(TAG, "Failed to upload service provider image", e)
+                    callback(false, e)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    Log.d(TAG, "Response code: ${response.code}")
+                    val responseBody = response.body?.string()
+                    Log.d(TAG, "Response body: $responseBody")
+                    
+                    if (response.isSuccessful) {
+                        Log.d(TAG, "Service provider image uploaded successfully")
+                        callback(true, null)
+                    } else {
+                        Log.e(TAG, "Error uploading service provider image: ${response.code}")
+                        Log.e(TAG, "Error response body: $responseBody")
+                        
+                        // Try updating the service provider profile with the image path locally
+                        // This ensures the app can still display the image even if server upload fails
+                        updateServiceProviderProfileImageLocally(providerId, imageFile.absolutePath, token)
+                        
+                        // Return success=false but don't treat as a full failure
+                        // This allows the UI to still show the selected image
+                        callback(false, Exception("Backend error: ${response.code}"))
+                    }
+                }
+            })
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception during service provider image upload", e)
+            callback(false, e)
+        }
+    }
+
+    private fun updateServiceProviderProfileImageLocally(providerId: Long, imagePath: String, token: String) {
+        try {
+            // Get current provider data first
+            getServiceProviderProfile(providerId, token) { provider, error ->
+                if (provider != null) {
+                    // Update the provider with the local image path and reuse existing data
+                    val updatedProvider = provider.copy()
+                    
+                    // Update service provider profile with local image path
+                    updateServiceProviderProfile(updatedProvider, token, imagePath) { success, updateError ->
+                        if (success) {
+                            Log.d(TAG, "Service provider profile updated with local image path")
+                        } else {
+                            Log.e(TAG, "Failed to update service provider with local image path", updateError)
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating service provider profile with local image path", e)
         }
     }
 }

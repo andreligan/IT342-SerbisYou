@@ -42,7 +42,7 @@ class SerbisYoApplication : Application() {
             
             if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
                 // Based on the logs, the device's IP address is 192.168.1.30
-                return "172.20.10.2"
+                return "192.168.1.102"
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error getting WiFi IP address", e)

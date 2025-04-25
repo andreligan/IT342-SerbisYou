@@ -18,7 +18,7 @@ class BaseApiClient(private val context: Context) {
         private const val EMULATOR_URL = "http://10.0.2.2:8080"
         
         // For Physical Device - Use your computer's actual IP address
-        private const val PHYSICAL_DEVICE_URL = "http://172.20.10.2:8080"
+        private const val PHYSICAL_DEVICE_URL = "http://192.168.1.102:8080"
         
         // Local device loopback
         private const val LOCALHOST_URL = "http://localhost:8080"
