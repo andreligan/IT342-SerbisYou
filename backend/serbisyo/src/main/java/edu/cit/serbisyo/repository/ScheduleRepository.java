@@ -19,4 +19,8 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
     // Add new method to find schedule by provider, day of week and time range
     List<ScheduleEntity> findByServiceProviderProviderIdAndDayOfWeekAndStartTimeLessThanEqualAndEndTimeGreaterThanEqual(
         Long providerId, DayOfWeek dayOfWeek, LocalTime time, LocalTime time2);
+    
+    // Add method to find schedule by exact start time
+    List<ScheduleEntity> findByServiceProviderProviderIdAndDayOfWeekAndStartTime(
+        Long providerId, DayOfWeek dayOfWeek, LocalTime startTime);
 }

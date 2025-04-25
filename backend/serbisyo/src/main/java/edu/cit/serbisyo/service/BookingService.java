@@ -37,9 +37,15 @@ public class BookingService {
         // Get the day of week from the booking date
         DayOfWeek dayOfWeek = booking.getBookingDate().getDayOfWeek();
 
-        // Find the schedule slot that matches this booking
-        List<ScheduleEntity> schedules = scheduleRepository.findByServiceProviderProviderIdAndDayOfWeekAndStartTimeLessThanEqualAndEndTimeGreaterThanEqual(
-                providerId, dayOfWeek, booking.getBookingTime(), booking.getBookingTime());
+        // Find the schedule slot that exactly matches this booking time (using start time)
+        List<ScheduleEntity> schedules = scheduleRepository.findByServiceProviderProviderIdAndDayOfWeekAndStartTime(
+                providerId, dayOfWeek, booking.getBookingTime());
+
+        // If no exact match found, try the previous query as fallback
+        if (schedules.isEmpty()) {
+            schedules = scheduleRepository.findByServiceProviderProviderIdAndDayOfWeekAndStartTimeLessThanEqualAndEndTimeGreaterThanEqual(
+                    providerId, dayOfWeek, booking.getBookingTime(), booking.getBookingTime());
+        }
 
         // If a matching schedule is found, update it to not available
         if (!schedules.isEmpty()) {
@@ -108,9 +114,15 @@ public class BookingService {
         // Get the day of week from the booking date
         DayOfWeek dayOfWeek = booking.getBookingDate().getDayOfWeek();
 
-        // Find the schedule slot that matches this booking
-        List<ScheduleEntity> schedules = scheduleRepository.findByServiceProviderProviderIdAndDayOfWeekAndStartTimeLessThanEqualAndEndTimeGreaterThanEqual(
-                providerId, dayOfWeek, booking.getBookingTime(), booking.getBookingTime());
+        // Find the schedule slot that exactly matches this booking time (using start time)
+        List<ScheduleEntity> schedules = scheduleRepository.findByServiceProviderProviderIdAndDayOfWeekAndStartTime(
+                providerId, dayOfWeek, booking.getBookingTime());
+
+        // If no exact match found, try the previous query as fallback
+        if (schedules.isEmpty()) {
+            schedules = scheduleRepository.findByServiceProviderProviderIdAndDayOfWeekAndStartTimeLessThanEqualAndEndTimeGreaterThanEqual(
+                    providerId, dayOfWeek, booking.getBookingTime(), booking.getBookingTime());
+        }
 
         // If a matching schedule is found, update it to available
         if (!schedules.isEmpty()) {
