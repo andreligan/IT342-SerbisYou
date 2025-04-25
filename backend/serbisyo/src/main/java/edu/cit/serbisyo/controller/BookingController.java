@@ -79,4 +79,14 @@ public class BookingController {
                 .body("Error retrieving bookings: " + e.getMessage());
         }
     }
+
+    @PutMapping("/complete/{bookingId}")
+    public ResponseEntity<BookingEntity> completeBooking(@PathVariable Long bookingId) {
+        try {
+            BookingEntity completedBooking = bookingService.completeBookingAndReleaseSchedule(bookingId);
+            return ResponseEntity.ok(completedBooking);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
 }
