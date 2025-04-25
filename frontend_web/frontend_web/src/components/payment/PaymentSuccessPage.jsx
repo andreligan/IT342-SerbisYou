@@ -12,10 +12,46 @@ const PaymentSuccessPage = () => {
   const [bookingDetails, setBookingDetails] = useState(null);
   const confettiCanvasRef = useRef(null);
   
+  // Check if this is a cash payment
+  const isCashPayment = bookingDetails?.paymentMethod === 'cash';
+  
+  // Generate a payment code for cash payments
+  const [paymentCode, setPaymentCode] = useState('');
+  
+  // Set up payment code for cash payments
+  useEffect(() => {
+    if (isCashPayment && bookingDetails) {
+      // Generate a unique payment code based on booking ID and timestamp
+      const code = `SY-${bookingDetails.bookingId}-${Date.now().toString().slice(-6)}`;
+      setPaymentCode(code);
+    }
+  }, [isCashPayment, bookingDetails]);
+  
   // Calculate downpayment/remaining balance if applicable
   const isDownpayment = bookingDetails?.paymentMethod === 'gcash' && bookingDetails?.fullPayment === false;
-  const paidAmount = isDownpayment ? (bookingDetails?.totalCost * 0.5) : bookingDetails?.totalCost;
-  const remainingBalance = isDownpayment ? (bookingDetails?.totalCost * 0.5) : 0;
+  const paidAmount = isDownpayment ? (bookingDetails?.totalCost * 0.5) : 
+                    (isCashPayment ? 0 : bookingDetails?.totalCost);
+  const remainingBalance = isDownpayment ? (bookingDetails?.totalCost * 0.5) : 
+                          (isCashPayment ? bookingDetails?.totalCost : 0);
+
+  // Save receipt as image for cash payment
+  const receiptRef = useRef(null);
+  const saveReceipt = async () => {
+    if (!receiptRef.current) return;
+    
+    try {
+      // Use html-to-image library or other screenshot method
+      const dataUrl = await html2canvas(receiptRef.current).then(canvas => canvas.toDataURL('image/png'));
+      
+      // Create a download link
+      const link = document.createElement('a');
+      link.download = `payment-${bookingDetails?.bookingId || 'receipt'}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Error saving receipt:', err);
+    }
+  };
 
   // Launch confetti when payment success is confirmed
   useEffect(() => {
@@ -246,7 +282,7 @@ const PaymentSuccessPage = () => {
               </div>
             </div>
             
-            {/* Booking Details Section */}
+            {/* Booking Details Section - With updates for cash payment */}
             <div className="p-6 sm:p-8">
               {bookingDetails && (
                 <div className="mb-8">
@@ -257,6 +293,7 @@ const PaymentSuccessPage = () => {
                     Booking Details
                   </h2>
                   
+                  {/* Main booking details panel */}
                   <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
@@ -301,27 +338,55 @@ const PaymentSuccessPage = () => {
                         <div>
                           <p className="text-sm font-medium text-gray-500 mb-1">Payment Status</p>
                           <div className="flex flex-col">
-                            <p className="text-[#495E57] font-bold">
-                              {isDownpayment ? "Partial Payment" : "Full Payment"}
-                            </p>
-                            {isDownpayment && (
-                              <div className="mt-2 bg-blue-50 p-2 rounded-lg border border-blue-100">
-                                <p className="text-sm flex items-center text-blue-800">
+                            {isCashPayment ? (
+                              // Cash payment status display
+                              <div>
+                                <p className="text-orange-600 font-bold flex items-center">
                                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                                   </svg>
-                                  Downpayment completed: ₱{paidAmount.toLocaleString('en-PH', {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2
-                                  })}
+                                  Payment Pending (Cash)
                                 </p>
-                                <p className="text-sm mt-1 text-blue-700">
-                                  Remaining balance: ₱{remainingBalance.toLocaleString('en-PH', {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2
-                                  })} (to be paid upon service completion)
-                                </p>
+                                <div className="mt-2 bg-orange-50 p-2 rounded-lg border border-orange-100">
+                                  <p className="text-sm flex items-center text-orange-800">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                    </svg>
+                                    Payment will be collected after service completion
+                                  </p>
+                                  {!bookingDetails.fullPayment && bookingDetails.totalCost > 1000 && (
+                                    <p className="text-sm mt-1 text-orange-700">
+                                      ₱500 deposit payment required at the start of service.
+                                    </p>
+                                  )}
+                                </div>
                               </div>
+                            ) : (
+                              // GCash payment status display - existing code
+                              <React.Fragment>
+                                <p className="text-[#495E57] font-bold">
+                                  {isDownpayment ? "Partial Payment" : "Full Payment"}
+                                </p>
+                                {isDownpayment && (
+                                  <div className="mt-2 bg-blue-50 p-2 rounded-lg border border-blue-100">
+                                    <p className="text-sm flex items-center text-blue-800">
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                      </svg>
+                                      Downpayment completed: ₱{paidAmount.toLocaleString('en-PH', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                      })}
+                                    </p>
+                                    <p className="text-sm mt-1 text-blue-700">
+                                      Remaining balance: ₱{remainingBalance.toLocaleString('en-PH', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                      })} (to be paid upon service completion)
+                                    </p>
+                                  </div>
+                                )}
+                              </React.Fragment>
                             )}
                           </div>
                         </div>
@@ -341,7 +406,40 @@ const PaymentSuccessPage = () => {
                 </div>
               )}
               
-              {/* What's Next Section */}
+              {/* Cash Payment Reference Code - Only show for cash payments */}
+              {isCashPayment && bookingDetails && (
+                <div className="mb-8" ref={receiptRef}>
+                  <h2 className="text-xl font-semibold text-[#495E57] mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                    </svg>
+                    Payment Reference
+                  </h2>
+                  
+                  <div className="bg-white rounded-xl border border-gray-200 p-6 text-center">
+                    <div className="bg-[#495E57]/5 p-4 rounded-xl mb-4">
+                      <h3 className="text-[#495E57] font-medium mb-1">Payment Code</h3>
+                      <p className="text-2xl font-mono font-bold tracking-wider">{paymentCode}</p>
+                    </div>
+                    
+                    <p className="text-gray-600 mb-4">
+                      Show this code to your service provider when they arrive. This confirms your booking.
+                    </p>
+                    
+                    <button 
+                      onClick={saveReceipt}
+                      className="w-full bg-[#495E57] text-white py-3 rounded-lg flex items-center justify-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                      Save Payment Reference
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {/* What's Next Section - Modified for cash payments */}
               <div className="mb-8">
                 <h2 className="text-xl font-semibold text-[#495E57] mb-4 flex items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -371,15 +469,30 @@ const PaymentSuccessPage = () => {
                     </div>
                   </div>
                   
-                  <div className="flex">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-[#F4CE14]/20 flex items-center justify-center mr-4">
-                      <span className="text-[#495E57] font-bold">3</span>
+                  {isCashPayment ? (
+                    <div className="flex">
+                      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-[#F4CE14]/20 flex items-center justify-center mr-4">
+                        <span className="text-[#495E57] font-bold">3</span>
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-gray-800">Have Cash Ready</h3>
+                        <p className="text-gray-600 mt-1">
+                          Make sure to have the cash payment of ₱{bookingDetails?.totalCost?.toLocaleString('en-PH', {minimumFractionDigits: 2})} ready when the service is completed.
+                          {!bookingDetails?.fullPayment && bookingDetails?.totalCost > 1000 && " A ₱500 deposit is required at the start of service."}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-medium text-gray-800">Track Your Booking</h3>
-                      <p className="text-gray-600 mt-1">You can view your booking status in your Booking History.</p>
+                  ) : (
+                    <div className="flex">
+                      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-[#F4CE14]/20 flex items-center justify-center mr-4">
+                        <span className="text-[#495E57] font-bold">3</span>
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-gray-800">Track Your Booking</h3>
+                        <p className="text-gray-600 mt-1">You can view your booking status in your Booking History.</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
               
