@@ -9,6 +9,7 @@ data class ServiceProvider(
     val yearsOfExperience: Int? = 0,
     val availabilitySchedule: String? = null,
     val paymentMethod: String? = null,
+    val status: String? = null,
     val preferredWorkingHours: String? = null,
     val profileImage: String? = null,
     val address: Address? = null,

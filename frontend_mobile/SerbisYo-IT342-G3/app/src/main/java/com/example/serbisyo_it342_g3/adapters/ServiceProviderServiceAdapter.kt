@@ -34,7 +34,7 @@ class ServiceProviderServiceAdapter(
         
         holder.tvServiceName.text = currentService.serviceName
         holder.tvCategory.text = currentService.category?.categoryName ?: "Uncategorized"
-        holder.tvPrice.text = currentService.priceRange
+        holder.tvPrice.text = currentService.effectivePrice
         holder.tvDescription.text = currentService.serviceDescription
         
         // Set click listener for the entire card

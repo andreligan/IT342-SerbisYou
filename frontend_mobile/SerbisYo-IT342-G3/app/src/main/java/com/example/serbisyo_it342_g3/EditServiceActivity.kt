@@ -1,4 +1,3 @@
-
 package com.example.serbisyo_it342_g3
 
 import android.os.Bundle
@@ -185,6 +184,7 @@ class EditServiceActivity : AppCompatActivity() {
             serviceName = serviceName,
             serviceDescription = serviceDescription,
             priceRange = priceRange,
+            price = priceRange,
             durationEstimate = durationEstimate
         )
 
@@ -322,6 +322,7 @@ class EditServiceActivity : AppCompatActivity() {
             serviceName = serviceName,
             serviceDescription = serviceDescription,
             priceRange = priceRange,
+            price = priceRange,
             durationEstimate = durationEstimate
         )
 
@@ -438,15 +439,14 @@ class EditServiceActivity : AppCompatActivity() {
         if (imageUri == null) return null
 
         try {
-            val inputStream = contentResolver.openInputStream(imageUri)
-            val bytes = inputStream?.readBytes()
-            inputStream?.close()
-
-            if (bytes != null) {
-                val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.DEFAULT)
-                Log.d(TAG, "Converted image to base64 string (length: ${base64.length})")
-                return base64
-            }
+            // Use same image processing approach as other parts of the app
+            val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, imageUri)
+            
+            // Resize the image to reduce file size using our utility class
+            val resizedBitmap = com.example.serbisyo_it342_g3.utils.ImageUtils.resizeBitmap(bitmap, 800, 800)
+            
+            // Convert to Base64 using our utility class
+            return com.example.serbisyo_it342_g3.utils.ImageUtils.bitmapToBase64(resizedBitmap)
         } catch (e: Exception) {
             Log.e(TAG, "Error converting image to base64: ${e.message}", e)
         }

@@ -80,9 +80,17 @@ class ChatActivity : AppCompatActivity() {
         // Get current user data from SharedPreferences directly
         try {
             val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
-            val userIdStr = sharedPref.getString("userId", "0")
-            currentUserId = userIdStr?.toLongOrNull() ?: 0
             token = sharedPref.getString("token", "") ?: ""
+            
+            // Fix userId retrieval using try-catch
+            currentUserId = try {
+                // Try to get as Long first (new format)
+                sharedPref.getLong("userId", 0)
+            } catch (e: ClassCastException) {
+                // If that fails, try the String format (old format) and convert
+                val userIdStr = sharedPref.getString("userId", "0")
+                userIdStr?.toLongOrNull() ?: 0
+            }
             
             Log.d(TAG, "Current user ID: $currentUserId, Token length: ${token.length}")
             

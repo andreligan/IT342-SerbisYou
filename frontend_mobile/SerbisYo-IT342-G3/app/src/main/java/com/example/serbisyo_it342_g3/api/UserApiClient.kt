@@ -6,6 +6,7 @@ import com.example.serbisyo_it342_g3.data.Address
 import com.example.serbisyo_it342_g3.data.Customer
 import com.example.serbisyo_it342_g3.data.ServiceProvider
 import com.example.serbisyo_it342_g3.data.User
+import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -440,6 +441,7 @@ class UserApiClient(context: Context) {
             put("yearsOfExperience", provider.yearsOfExperience)
             put("availabilitySchedule", provider.availabilitySchedule)
             put("paymentMethod", provider.paymentMethod)
+            put("status", provider.status)
             
             // Add profile image if provided
             if (profileImage != null) {
@@ -737,5 +739,156 @@ class UserApiClient(context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Error updating service provider profile with local image path", e)
         }
+    }
+
+    // Get service provider by auth user ID
+    fun getServiceProviderByAuthId(userId: Long, token: String, callback: (ServiceProvider?, Exception?) -> Unit) {
+        if (token.isBlank()) {
+            Log.e(TAG, "Token is empty or blank")
+            callback(null, Exception("Authentication token is required"))
+            return
+        }
+
+        Log.d(TAG, "Getting service provider for user: $userId")
+        Log.d(TAG, "Token length: ${token.length}, Token snippet: ${token.take(20)}...")
+        Log.d(TAG, "Request headers: Authorization: Bearer ${token.take(20)}...")
+
+        // Try to get provider by auth ID
+        val request = Request.Builder()
+            .url("${baseApiClient.getBaseUrl()}/api/service-providers/getByAuthId?userId=$userId")
+            .get()
+            .header("Authorization", "Bearer $token")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to get service provider", e)
+                // Try to get all providers and find the one with matching userAuth.userId
+                fallbackToAllProviders(userId, token, callback)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                Log.d(TAG, "Response code: ${response.code}")
+                
+                if (response.isSuccessful && responseBody != null) {
+                    try {
+                        val serviceProvider = gson.fromJson(responseBody, ServiceProvider::class.java)
+                        callback(serviceProvider, null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing service provider", e)
+                        // Try fallback method
+                        fallbackToAllProviders(userId, token, callback)
+                    }
+                } else {
+                    Log.e(TAG, "Error getting service provider: ${response.code}")
+                    if (responseBody != null && responseBody.length > 100) {
+                        Log.d(TAG, "Full response body: ${responseBody.substring(0, 100)}...")
+                    } else {
+                        Log.d(TAG, "Full response body: $responseBody")
+                    }
+                    // If we get a 404, we'll try to get the provider through the getAllServiceProviders method
+                    fallbackToAllProviders(userId, token, callback)
+                }
+            }
+        })
+    }
+    
+    // Fallback method to get service provider by searching all providers
+    private fun fallbackToAllProviders(userId: Long, token: String, callback: (ServiceProvider?, Exception?) -> Unit) {
+        Log.d(TAG, "Falling back to getAllServiceProviders to find provider with user ID: $userId")
+        
+        getAllServiceProviders(token) { providers, error ->
+            if (error != null) {
+                Log.e(TAG, "Failed to get all providers for fallback", error)
+                callback(null, error)
+                return@getAllServiceProviders
+            }
+            
+            if (providers != null && providers.isNotEmpty()) {
+                // Find the provider with matching userAuth.userId
+                val matchingProvider = providers.find { 
+                    it.userAuth?.userId == userId 
+                }
+                
+                if (matchingProvider != null) {
+                    Log.d(TAG, "Found matching provider: ${matchingProvider.providerId}")
+                    callback(matchingProvider, null)
+                } else {
+                    Log.d(TAG, "No matching provider found, creating default provider with ID: $userId")
+                    // Create a default provider if no match found
+                    val defaultProvider = ServiceProvider(
+                        providerId = userId, // Use user ID as provider ID as fallback
+                        firstName = "",
+                        lastName = "",
+                        phoneNumber = "",
+                        businessName = "Service Provider",
+                        yearsOfExperience = 0,
+                        availabilitySchedule = "",
+                        address = null,
+                        userAuth = User(userId = userId, userName = "", email = "")
+                    )
+                    callback(defaultProvider, null)
+                }
+            } else {
+                Log.d(TAG, "No providers found in system, creating default provider with ID: $userId")
+                // Create a default provider if no providers exist
+                val defaultProvider = ServiceProvider(
+                    providerId = userId, // Use user ID as provider ID as fallback
+                    firstName = "",
+                    lastName = "",
+                    phoneNumber = "",
+                    businessName = "Service Provider",
+                    yearsOfExperience = 0,
+                    availabilitySchedule = "",
+                    address = null,
+                    userAuth = User(userId = userId, userName = "", email = "")
+                )
+                callback(defaultProvider, null)
+            }
+        }
+    }
+
+    // Get all service providers
+    fun getAllServiceProviders(token: String, callback: (List<ServiceProvider>?, Exception?) -> Unit) {
+        if (token.isBlank()) {
+            Log.e(TAG, "Token is empty or blank")
+            callback(null, Exception("Authentication token is required"))
+            return
+        }
+
+        val request = Request.Builder()
+            .url("${baseApiClient.getBaseUrl()}/api/service-providers/getAll")
+            .get()
+            .header("Authorization", "Bearer $token")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to get all providers", e)
+                callback(null, e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                Log.d(TAG, "Response code: ${response.code}")
+                
+                if (response.isSuccessful && responseBody != null) {
+                    try {
+                        val type = object : TypeToken<List<ServiceProvider>>() {}.type
+                        val providers = gson.fromJson<List<ServiceProvider>>(responseBody, type)
+                        Log.d(TAG, "Found ${providers.size} providers in total")
+                        callback(providers, null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing providers", e)
+                        callback(null, e)
+                    }
+                } else {
+                    Log.e(TAG, "Error getting all providers: ${response.code}")
+                    Log.e(TAG, "Error response body: $responseBody")
+                    callback(null, Exception("Failed to get all providers: ${response.code}"))
+                }
+            }
+        })
     }
 }

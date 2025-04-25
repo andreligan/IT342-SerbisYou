@@ -13,20 +13,9 @@ import java.io.IOException
 import java.net.SocketTimeoutException
 
 class AddressApiClient(private val context: Context) {
-    private val client = OkHttpClient()
-    private val gson = Gson()
-    
-    // CONFIGURATION FOR BACKEND CONNECTION
-    // For Android Emulator - Virtual Device (default)
-    private val EMULATOR_URL = "http://10.0.2.2:8080" 
-    
-    // For Physical Device - Use your computer's actual IP address from ipconfig
-    private val PHYSICAL_DEVICE_URL = "http://192.168.1.102:8080"
-    
-    // SWITCH BETWEEN CONNECTION TYPES:
-    // Uncomment the one you need and comment out the other
-    // private val BASE_URL = EMULATOR_URL     // For Android Emulator
-    private val BASE_URL = PHYSICAL_DEVICE_URL // For Physical Device
+    private val baseApiClient = BaseApiClient(context)
+    private val client = baseApiClient.client
+    private val gson = baseApiClient.gson
     
     private val TAG = "AddressApiClient"
 
@@ -42,7 +31,7 @@ class AddressApiClient(private val context: Context) {
         
         // Changed to use the getAll endpoint which exists in the backend
         val request = Request.Builder()
-            .url("$BASE_URL/api/addresses/getAll")
+            .url("${baseApiClient.getBaseUrl()}/api/addresses/getAll")
             .get()
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
@@ -150,13 +139,26 @@ class AddressApiClient(private val context: Context) {
 
         Log.d(TAG, "Adding address for user: $userId")
         
+        // Get ZIP code value, ensuring it's not null
+        val zipCodeValue = when {
+            !address.postalCode.isNullOrBlank() -> address.postalCode
+            !address.zipCode.isNullOrBlank() -> address.zipCode
+            else -> ""
+        }
+        
+        // Log detailed information about the address being added
+        Log.d(TAG, "Address details: street=${address.street}, barangay=${address.barangay}, " +
+                "city=${address.city}, province=${address.province}, " +
+                "postalCode=${address.postalCode}, zipCode=${address.zipCode}, " +
+                "using zipCodeValue=$zipCodeValue")
+        
         // Modified to match the structure used in the web version
         val jsonObject = JSONObject().apply {
             put("streetName", address.street) // Using the field name expected by the entity
             put("barangay", address.barangay)
             put("city", address.city)
             put("province", address.province)
-            put("zipCode", address.postalCode) // Using the field name expected by the entity
+            put("zipCode", zipCodeValue) // Using the field name expected by the entity with determined value
             put("main", false) // Set as non-main address by default
             
             // Create a customer object to properly associate with the address
@@ -174,7 +176,7 @@ class AddressApiClient(private val context: Context) {
         
         // Use the correct endpoint path that exists in the backend
         val request = Request.Builder()
-            .url("$BASE_URL/api/addresses/postAddress")
+            .url("${baseApiClient.getBaseUrl()}/api/addresses/postAddress")
             .post(requestBody)
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
@@ -247,7 +249,7 @@ class AddressApiClient(private val context: Context) {
         
         // Fixed URL to match the backend endpoint pattern
         val request = Request.Builder()
-            .url("$BASE_URL/api/addresses/delete/$addressId")
+            .url("${baseApiClient.getBaseUrl()}/api/addresses/delete/$addressId")
             .delete()
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
@@ -297,7 +299,7 @@ class AddressApiClient(private val context: Context) {
         
         // Fixed URL to match the backend endpoint pattern
         val request = Request.Builder()
-            .url("$BASE_URL/api/addresses/$addressId")
+            .url("${baseApiClient.getBaseUrl()}/api/addresses/$addressId")
             .get()
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
@@ -382,7 +384,7 @@ class AddressApiClient(private val context: Context) {
         
         // Fixing URL to match the backend endpoint pattern
         val request = Request.Builder()
-            .url("$BASE_URL/api/addresses/postAddress")
+            .url("${baseApiClient.getBaseUrl()}/api/addresses/postAddress")
             .post(requestBody)
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
@@ -432,32 +434,60 @@ class AddressApiClient(private val context: Context) {
         })
     }
     
-    // Update an address
-    fun updateAddress(addressId: Int, address: com.example.serbisyo_it342_g3.model.Address, token: String, callback: (Boolean, String?) -> Unit) {
+    // Update address (for data.Address compatibility with AddressFragment)
+    fun updateAddress(address: Address, token: String, callback: (Boolean, Exception?) -> Unit) {
         if (token.isBlank()) {
             Log.e(TAG, "Token is empty or blank")
-            callback(false, "Authentication token is required")
+            callback(false, Exception("Authentication token is required"))
+            return
+        }
+
+        val addressId = address.addressId?.toInt() ?: 0
+        if (addressId <= 0) {
+            Log.e(TAG, "Invalid address ID: $addressId")
+            callback(false, Exception("Invalid address ID"))
             return
         }
 
         Log.d(TAG, "Updating address: $addressId")
         
+        // Get ZIP code value, ensuring it's not null
+        val zipCodeValue = when {
+            !address.postalCode.isNullOrBlank() -> address.postalCode
+            !address.zipCode.isNullOrBlank() -> address.zipCode
+            else -> ""
+        }
+        
+        // Log detailed information about the address being updated
+        Log.d(TAG, "Address details: addressId=$addressId, street=${address.street}, barangay=${address.barangay}, " +
+                "city=${address.city}, province=${address.province}, " +
+                "postalCode=${address.postalCode}, zipCode=${address.zipCode}, " +
+                "using zipCodeValue=$zipCodeValue")
+        
         val jsonObject = JSONObject().apply {
-            put("streetName", address.street)  // Fixed: Using camelCase instead of snake_case
+            put("addressId", addressId)
+            put("streetName", address.street)
             put("barangay", address.barangay)
             put("city", address.city)
             put("province", address.province)
-            put("zipCode", address.zipCode)    // Fixed: Using camelCase instead of snake_case
+            put("zipCode", zipCodeValue)
+            put("main", address.main) // Preserve main status
+            
+            // Preserve customer association
+            if (address.customer != null) {
+                put("customer", JSONObject().apply {
+                    put("customerId", address.customer.customerId)
+                })
+            }
         }
         
-        // Log request body to debug
+        // Log request for debugging
         Log.d(TAG, "Request body: ${jsonObject.toString()}")
         
         val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
         
-        // Fixed URL to match the backend endpoint pattern
         val request = Request.Builder()
-            .url("$BASE_URL/api/addresses/updateAddress/$addressId")
+            .url("${baseApiClient.getBaseUrl()}/api/addresses/updateAddress/$addressId")
             .put(requestBody)
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
@@ -466,7 +496,7 @@ class AddressApiClient(private val context: Context) {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 Log.e(TAG, "Failed to update address", e)
-                callback(false, e.message)
+                callback(false, e)
             }
 
             override fun onResponse(call: Call, response: Response) {
@@ -482,14 +512,25 @@ class AddressApiClient(private val context: Context) {
                     Log.e(TAG, "Error response body: $responseBody")
                     
                     // Try to extract error message from response if available
-                    val errorMessage = try {
-                        val errorJson = JSONObject(responseBody ?: "{}")
-                        errorJson.optString("message", "Failed to update address: ${response.code}")
-                    } catch (e: Exception) {
-                        "Failed to update address: ${response.code}"
+                    val errorMessage = when (response.code) {
+                        403 -> "Permission denied: You don't have access to update this address"
+                        401 -> "Authentication failed: Please log in again"
+                        404 -> "Address not found"
+                        400 -> try {
+                            val errorJson = JSONObject(responseBody ?: "{}")
+                            errorJson.optString("message", "Invalid address data")
+                        } catch (e: Exception) {
+                            "Invalid address data"
+                        }
+                        else -> try {
+                            val errorJson = JSONObject(responseBody ?: "{}")
+                            errorJson.optString("message", "Failed to update address: ${response.code}")
+                        } catch (e: Exception) {
+                            "Failed to update address: ${response.code}"
+                        }
                     }
                     
-                    callback(false, errorMessage)
+                    callback(false, Exception(errorMessage))
                 }
             }
         })
@@ -507,7 +548,7 @@ class AddressApiClient(private val context: Context) {
         
         // First get the address to update
         val getRequest = Request.Builder()
-            .url("$BASE_URL/api/addresses/getAll")
+            .url("${baseApiClient.getBaseUrl()}/api/addresses/getAll")
             .get()
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
@@ -540,6 +581,8 @@ class AddressApiClient(private val context: Context) {
                         return
                     }
                     
+                    Log.d(TAG, "Found address to update: ${addressToUpdate.addressId}, zipCode: ${addressToUpdate.zipCode}, postalCode: ${addressToUpdate.postalCode}")
+                    
                     // Create an updated address with main=true
                     val jsonObject = JSONObject().apply {
                         // Preserve all existing fields
@@ -551,8 +594,9 @@ class AddressApiClient(private val context: Context) {
                         put("city", addressToUpdate.city)
                         put("province", addressToUpdate.province)
                         put("zipCode", when {
-                            addressToUpdate.zipCode != null && addressToUpdate.zipCode.isNotEmpty() -> addressToUpdate.zipCode
-                            else -> addressToUpdate.postalCode
+                            !addressToUpdate.zipCode.isNullOrEmpty() -> addressToUpdate.zipCode
+                            !addressToUpdate.postalCode.isNullOrEmpty() -> addressToUpdate.postalCode
+                            else -> ""
                         })
                         put("main", isMain)
                         
@@ -566,6 +610,9 @@ class AddressApiClient(private val context: Context) {
                         // Set serviceProvider to null for customer addresses
                         put("serviceProvider", JSONObject.NULL)
                     }
+                    
+                    // Log for debugging
+                    Log.d(TAG, "Updating address main status with payload: $jsonObject")
                     
                     // First, set all other addresses to non-main if setting this as main
                     if (isMain) {
@@ -594,7 +641,7 @@ class AddressApiClient(private val context: Context) {
         val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
         
         val updateRequest = Request.Builder()
-            .url("$BASE_URL/api/addresses/updateAddress/$addressId")
+            .url("${baseApiClient.getBaseUrl()}/api/addresses/updateAddress/$addressId")
             .put(requestBody)
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
@@ -651,8 +698,9 @@ class AddressApiClient(private val context: Context) {
                 put("city", address.city)
                 put("province", address.province)
                 put("zipCode", when {
-                    address.zipCode != null && address.zipCode.isNotEmpty() -> address.zipCode
-                    else -> address.postalCode
+                    !address.zipCode.isNullOrEmpty() -> address.zipCode
+                    !address.postalCode.isNullOrEmpty() -> address.postalCode
+                    else -> ""
                 })
                 put("main", false) // Set to not main
                 
@@ -670,47 +718,31 @@ class AddressApiClient(private val context: Context) {
             val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
             
             val updateRequest = Request.Builder()
-                .url("$BASE_URL/api/addresses/updateAddress/$addressId")
+                .url("${baseApiClient.getBaseUrl()}/api/addresses/updateAddress/$addressId")
                 .put(requestBody)
                 .header("Authorization", "Bearer $token")
                 .header("Content-Type", "application/json")
                 .build()
                 
-            client.newCall(updateRequest).enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    Log.e(TAG, "Failed to update other address $addressId to non-main", e)
-                    synchronized(this@AddressApiClient) {
-                        failCount++
-                        checkAllDone(successCount, failCount, totalToUpdate, callback)
-                    }
+            client.newCall(updateRequest).execute().use { response ->
+                if (response.isSuccessful) {
+                    successCount++
+                } else {
+                    failCount++
+                    Log.e(TAG, "Failed to update address ${addressId} to non-main: ${response.code}")
                 }
                 
-                override fun onResponse(call: Call, response: Response) {
-                    synchronized(this@AddressApiClient) {
-                        if (response.isSuccessful) {
-                            Log.d(TAG, "Successfully updated address $addressId to non-main")
-                            successCount++
-                        } else {
-                            Log.e(TAG, "Error updating address $addressId to non-main: ${response.code}")
-                            failCount++
-                        }
-                        checkAllDone(successCount, failCount, totalToUpdate, callback)
+                // Check if we've processed all addresses
+                if (successCount + failCount == totalToUpdate) {
+                    if (failCount > 0) {
+                        Log.w(TAG, "Some addresses could not be updated: $failCount failures out of $totalToUpdate")
                     }
+                    callback(true, null) // Consider the operation successful as long as the main address was updated
                 }
-            })
-        }
-    }
-    
-    private fun checkAllDone(successCount: Int, failCount: Int, total: Int, callback: (Boolean, String?) -> Unit) {
-        if (successCount + failCount >= total) {
-            if (failCount > 0) {
-                callback(false, "$failCount out of $total addresses failed to update")
-            } else {
-                callback(true, null)
             }
         }
     }
-
+    
     // Add a new address for service provider
     fun addServiceProviderAddress(providerId: Long, address: Address, token: String, callback: (Boolean, Exception?) -> Unit) {
         if (token.isBlank()) {
@@ -721,13 +753,26 @@ class AddressApiClient(private val context: Context) {
 
         Log.d(TAG, "Adding address for service provider: $providerId")
         
+        // Get ZIP code value, ensuring it's not null
+        val zipCodeValue = when {
+            !address.postalCode.isNullOrBlank() -> address.postalCode
+            !address.zipCode.isNullOrBlank() -> address.zipCode
+            else -> ""
+        }
+        
+        // Log detailed information about the address being added
+        Log.d(TAG, "Address details: street=${address.street}, barangay=${address.barangay}, " +
+                "city=${address.city}, province=${address.province}, " +
+                "postalCode=${address.postalCode}, zipCode=${address.zipCode}, " +
+                "using zipCodeValue=$zipCodeValue")
+        
         // Create payload matching backend expectations
         val jsonObject = JSONObject().apply {
             put("streetName", address.street) // Using the field name expected by the entity
             put("barangay", address.barangay)
             put("city", address.city)
             put("province", address.province)
-            put("zipCode", address.postalCode) // Using the field name expected by the entity
+            put("zipCode", zipCodeValue) // Using the field name expected by the entity with the determined value
             put("main", false) // Set as non-main address by default
             
             // Create a service provider object to properly associate with the address
@@ -745,7 +790,7 @@ class AddressApiClient(private val context: Context) {
         
         // Use the correct endpoint path that exists in the backend
         val request = Request.Builder()
-            .url("$BASE_URL/api/addresses/postAddress")
+            .url("${baseApiClient.getBaseUrl()}/api/addresses/postAddress")
             .post(requestBody)
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
@@ -782,7 +827,7 @@ class AddressApiClient(private val context: Context) {
         Log.d(TAG, "Deleting address: $addressId")
         
         val request = Request.Builder()
-            .url("$BASE_URL/api/addresses/deleteAddress/$addressId")
+            .url("${baseApiClient.getBaseUrl()}/api/addresses/delete/$addressId")
             .delete()
             .header("Authorization", "Bearer $token")
             .build()
@@ -801,7 +846,43 @@ class AddressApiClient(private val context: Context) {
                 if (response.isSuccessful) {
                     callback(true, null)
                 } else {
-                    callback(false, Exception("Failed to delete address: ${response.code}, ${responseBody ?: "No response body"}"))
+                    Log.e(TAG, "Error deleting address: ${response.code}, ${responseBody ?: "No response body"}")
+                    
+                    // If we get a 404, try the alternate endpoint format
+                    if (response.code == 404) {
+                        Log.d(TAG, "Trying alternate endpoint format for delete")
+                        tryAlternateDeleteEndpoint(addressId, token, callback)
+                    } else {
+                        callback(false, Exception("Failed to delete address: ${response.code}, ${responseBody ?: "No response body"}"))
+                    }
+                }
+            }
+        })
+    }
+    
+    // Try alternate endpoint format for deleting an address
+    private fun tryAlternateDeleteEndpoint(addressId: Long, token: String, callback: (Boolean, Exception?) -> Unit) {
+        val alternateRequest = Request.Builder()
+            .url("${baseApiClient.getBaseUrl()}/api/addresses/deleteAddress/$addressId")
+            .delete()
+            .header("Authorization", "Bearer $token")
+            .build()
+            
+        client.newCall(alternateRequest).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to delete address with alternate endpoint", e)
+                callback(false, e)
+            }
+            
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                Log.d(TAG, "Alternate delete response code: ${response.code}")
+                Log.d(TAG, "Alternate delete response body: $responseBody")
+                
+                if (response.isSuccessful) {
+                    callback(true, null)
+                } else {
+                    callback(false, Exception("Failed to delete address with alternate endpoint: ${response.code}, ${responseBody ?: "No response body"}"))
                 }
             }
         })
@@ -817,8 +898,8 @@ class AddressApiClient(private val context: Context) {
         
         Log.d(TAG, "Setting address $addressId as main for provider $providerId")
         
-        // First get all provider addresses to find the one to update
-        val url = "$BASE_URL/api/addresses/getAll"
+        // First get the specific address to update
+        val url = "${baseApiClient.getBaseUrl()}/api/addresses/getAll"
         
         val request = Request.Builder()
             .url(url)
@@ -845,106 +926,41 @@ class AddressApiClient(private val context: Context) {
                     val type = object : TypeToken<List<Address>>() {}.type
                     val addresses = gson.fromJson<List<Address>>(responseBody, type)
                     
-                    // Filter addresses by providerId
-                    val providerAddresses = addresses.filter { address ->
-                        // Access serviceProvider safely without generating a reference error
-                        val serviceProviderObject = address.serviceProvider as? Map<*, *>
-                        val spId = serviceProviderObject?.get("providerId") as? Number
-                        spId?.toLong() == providerId
-                    }
-                    
                     // Find the address to update
-                    val addressToUpdate = providerAddresses.find { it.addressId == addressId }
+                    val addressToUpdate = addresses.find { it.addressId == addressId }
                     
                     if (addressToUpdate == null) {
+                        Log.e(TAG, "Address not found with ID: $addressId")
                         callback(false, Exception("Address not found"))
                         return
                     }
                     
-                    // Update the address to be main
-                    updateAddressMain(addressId, true, providerId, token) { success, error ->
-                        if (success) {
-                            // Now update all other addresses to not be main
-                            val otherAddresses = providerAddresses.filter { it.addressId != addressId }
-                            if (otherAddresses.isEmpty()) {
-                                callback(true, null)
-                                return@updateAddressMain
-                            }
-                            
-                            var updatedCount = 0
-                            var errorOccurred = false
-                            
-                            otherAddresses.forEach { address ->
-                                updateAddressMain(address.addressId!!, false, providerId, token) { innerSuccess, innerError ->
-                                    updatedCount++
-                                    
-                                    if (!innerSuccess) {
-                                        errorOccurred = true
-                                    }
-                                    
-                                    // If all addresses have been processed
-                                    if (updatedCount == otherAddresses.size) {
-                                        callback(!errorOccurred, if (errorOccurred) Exception("Some addresses could not be updated") else null)
-                                    }
-                                }
-                            }
-                        } else {
-                            callback(false, error)
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error processing addresses", e)
-                    callback(false, e)
-                }
-            }
-        })
-    }
-    
-    // Helper method to update the main status of an address
-    private fun updateAddressMain(addressId: Long, isMain: Boolean, providerId: Long, token: String, callback: (Boolean, Exception?) -> Unit) {
-        // Fetch the specific address first to get all its details
-        val getUrl = "$BASE_URL/api/addresses/getById/$addressId"
-        
-        val getRequest = Request.Builder()
-            .url(getUrl)
-            .get()
-            .header("Authorization", "Bearer $token")
-            .build()
-            
-        client.newCall(getRequest).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.e(TAG, "Failed to fetch address details", e)
-                callback(false, e)
-            }
-            
-            override fun onResponse(call: Call, response: Response) {
-                val responseBody = response.body?.string()
-                
-                if (!response.isSuccessful || responseBody == null) {
-                    Log.e(TAG, "Failed to fetch address: ${response.code}")
-                    callback(false, Exception("Failed to fetch address: ${response.code}"))
-                    return
-                }
-                
-                try {
-                    val address = gson.fromJson(responseBody, Address::class.java)
+                    // Log the full address details for debugging
+                    Log.d(TAG, "Found address to update: ID=${addressToUpdate.addressId}, streetName=${addressToUpdate.streetName}, street=${addressToUpdate.street}")
+                    Log.d(TAG, "Address data: city=${addressToUpdate.city}, province=${addressToUpdate.province}")
+                    Log.d(TAG, "ZIP code data: postalCode='${addressToUpdate.postalCode}', zipCode='${addressToUpdate.zipCode}'")
                     
-                    // Create JSON object with updated main status
+                    // Get ZIP code, ensuring it's not null
+                    val zipCodeValue = when {
+                        !addressToUpdate.postalCode.isNullOrBlank() -> addressToUpdate.postalCode
+                        !addressToUpdate.zipCode.isNullOrBlank() -> addressToUpdate.zipCode
+                        else -> ""
+                    }
+                    
+                    // Create updated address JSON with main=true and correct provider reference
                     val jsonObject = JSONObject().apply {
+                        // Preserve all existing fields
                         put("streetName", when {
-                            !address.streetName.isNullOrEmpty() -> address.streetName
-                            else -> address.street
+                            !addressToUpdate.streetName.isNullOrEmpty() -> addressToUpdate.streetName
+                            else -> addressToUpdate.street
                         })
-                        put("barangay", address.barangay ?: "")
-                        put("city", address.city)
-                        put("province", address.province)
-                        put("zipCode", when {
-                            address.zipCode != null && address.zipCode.isNotEmpty() -> address.zipCode
-                            else -> address.postalCode
-                        })
-                        put("main", isMain) // Set main status
+                        put("barangay", addressToUpdate.barangay ?: "")
+                        put("city", addressToUpdate.city)
+                        put("province", addressToUpdate.province)
+                        put("zipCode", zipCodeValue)  // Use the determined ZIP code value
+                        put("main", true) // Set as main address
                         
-                        // Set service provider
+                        // Important: Include service provider relationship
                         put("serviceProvider", JSONObject().apply {
                             put("providerId", providerId)
                         })
@@ -953,38 +969,126 @@ class AddressApiClient(private val context: Context) {
                         put("customer", JSONObject.NULL)
                     }
                     
+                    // Log the request for debugging
+                    Log.d(TAG, "Updating address with payload: $jsonObject")
+                    
                     val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
                     
+                    // Use the correct endpoint for updating addresses
                     val updateRequest = Request.Builder()
-                        .url("$BASE_URL/api/addresses/updateAddress/$addressId")
+                        .url("${baseApiClient.getBaseUrl()}/api/addresses/updateAddress/${addressId}")
                         .put(requestBody)
                         .header("Authorization", "Bearer $token")
                         .header("Content-Type", "application/json")
                         .build()
-                        
+                    
+                    // Execute the update request
                     client.newCall(updateRequest).enqueue(object : Callback {
                         override fun onFailure(call: Call, e: IOException) {
-                            Log.e(TAG, "Failed to update address", e)
+                            Log.e(TAG, "Failed to update address as main", e)
                             callback(false, e)
                         }
                         
                         override fun onResponse(call: Call, response: Response) {
                             val updateResponseBody = response.body?.string()
+                            Log.d(TAG, "Update response code: ${response.code}")
+                            Log.d(TAG, "Update response body: $updateResponseBody")
                             
                             if (response.isSuccessful) {
-                                Log.d(TAG, "Successfully updated address $addressId, main=$isMain")
-                                callback(true, null)
+                                // Now update all other addresses to non-main
+                                updateOtherAddressesToNonMain(addresses, providerId, addressId, token, callback)
                             } else {
-                                Log.e(TAG, "Failed to update address: ${response.code}, $updateResponseBody")
-                                callback(false, Exception("Failed to update address: ${response.code}"))
+                                Log.e(TAG, "Failed to update address as main: ${response.code}")
+                                callback(false, Exception("Failed to update address as main: ${response.code}"))
                             }
                         }
                     })
+                    
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error processing address", e)
+                    Log.e(TAG, "Error processing address data", e)
                     callback(false, e)
                 }
             }
         })
+    }
+    
+    // Update all other addresses to non-main
+    private fun updateOtherAddressesToNonMain(addresses: List<Address>, providerId: Long, currentAddressId: Long, token: String, callback: (Boolean, Exception?) -> Unit) {
+        // Get all other addresses that are currently marked as main
+        val otherMainAddresses = addresses.filter { 
+            it.main && it.addressId != currentAddressId 
+        }
+        
+        if (otherMainAddresses.isEmpty()) {
+            // No other main addresses to update
+            Log.d(TAG, "No other main addresses to update")
+            callback(true, null)
+            return
+        }
+        
+        Log.d(TAG, "Found ${otherMainAddresses.size} other main addresses to update")
+        
+        var successCount = 0
+        var failCount = 0
+        val totalToUpdate = otherMainAddresses.size
+        
+        for (address in otherMainAddresses) {
+            val addressId = address.addressId ?: continue
+            
+            // Get ZIP code, ensuring it's not null
+            val zipCodeValue = when {
+                !address.postalCode.isNullOrBlank() -> address.postalCode
+                !address.zipCode.isNullOrBlank() -> address.zipCode
+                else -> ""
+            }
+            
+            val jsonObject = JSONObject().apply {
+                // Preserve all existing fields
+                put("streetName", when {
+                    !address.streetName.isNullOrEmpty() -> address.streetName
+                    else -> address.street
+                })
+                put("barangay", address.barangay ?: "")
+                put("city", address.city)
+                put("province", address.province)
+                put("zipCode", zipCodeValue)  // Use the determined ZIP code value
+                put("main", false) // Set to not main
+                
+                // Include service provider relationship
+                put("serviceProvider", JSONObject().apply {
+                    put("providerId", providerId)
+                })
+                
+                // Set customer to null
+                put("customer", JSONObject.NULL)
+            }
+            
+            val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
+            
+            // Use the correct endpoint for updating addresses
+            val updateRequest = Request.Builder()
+                .url("${baseApiClient.getBaseUrl()}/api/addresses/updateAddress/${addressId}")
+                .put(requestBody)
+                .header("Authorization", "Bearer $token")
+                .header("Content-Type", "application/json")
+                .build()
+            
+            client.newCall(updateRequest).execute().use { response ->
+                if (response.isSuccessful) {
+                    successCount++
+                } else {
+                    failCount++
+                    Log.e(TAG, "Failed to update address ${addressId} to non-main: ${response.code}")
+                }
+                
+                // Check if we've processed all addresses
+                if (successCount + failCount == totalToUpdate) {
+                    if (failCount > 0) {
+                        Log.w(TAG, "Some addresses could not be updated: $failCount failures out of $totalToUpdate")
+                    }
+                    callback(true, null) // Consider the operation successful as long as the main address was updated
+                }
+            }
+        }
     }
 }

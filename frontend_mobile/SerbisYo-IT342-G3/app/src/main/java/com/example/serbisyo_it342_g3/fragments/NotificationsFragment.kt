@@ -41,7 +41,14 @@ class NotificationsFragment : Fragment() {
         
         // Get shared preferences
         val sharedPref = requireActivity().getSharedPreferences("UserPrefs", android.content.Context.MODE_PRIVATE)
-        userId = sharedPref.getString("userId", "0")?.toLongOrNull() ?: 0
+        userId = try {
+            // Try to get as Long first (new format)
+            sharedPref.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            // If that fails, try the String format (old format) and convert
+            val userIdStr = sharedPref.getString("userId", "0")
+            userIdStr?.toLongOrNull() ?: 0
+        }
         token = sharedPref.getString("token", "") ?: ""
         
         // Initialize the API client

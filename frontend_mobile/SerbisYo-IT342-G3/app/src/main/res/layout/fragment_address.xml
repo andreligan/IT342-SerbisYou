@@ -155,15 +155,35 @@
                 android:layout_marginBottom="16dp" />
 
             <!-- Save Button -->
-            <Button
-                android:id="@+id/btnSaveAddress"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Save Address"
-                android:textAllCaps="false"
-                android:background="@drawable/yellow_button_background"
-                android:textColor="@color/primary_green"
-                android:padding="12dp" />
+                android:orientation="horizontal">
+                
+                <Button
+                    android:id="@+id/btnSaveAddress"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="Save Address"
+                    android:textAllCaps="false"
+                    android:background="@drawable/yellow_button_background"
+                    android:textColor="@color/primary_green"
+                    android:padding="12dp" />
+                    
+                <Button
+                    android:id="@+id/btnCancelEdit"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="Cancel"
+                    android:textAllCaps="false"
+                    android:background="@drawable/button_outline_background"
+                    android:textColor="@color/primary_green"
+                    android:padding="12dp"
+                    android:layout_marginStart="8dp"
+                    android:visibility="gone" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- Saved Addresses Section -->

@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -19,6 +20,7 @@ import com.example.serbisyo_it342_g3.data.Barangay
 import com.example.serbisyo_it342_g3.data.Municipality
 import com.example.serbisyo_it342_g3.data.Province
 import com.example.serbisyo_it342_g3.data.ServiceProvider
+import org.json.JSONObject
 
 class ServiceProviderAddressFragment : Fragment() {
     private val TAG = "SPAddressFragment"
@@ -30,6 +32,7 @@ class ServiceProviderAddressFragment : Fragment() {
     private lateinit var spinnerBarangay: Spinner
     private lateinit var etZipCode: EditText
     private lateinit var btnSaveAddress: Button
+    private lateinit var btnCancelEdit: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var rvAddresses: RecyclerView
     private lateinit var tvNoAddresses: TextView
@@ -44,6 +47,10 @@ class ServiceProviderAddressFragment : Fragment() {
     private var token: String = ""
     private var userId: Long = 0
     private var providerId: Long = 0
+    
+    // Edit mode variables
+    private var isEditMode = false
+    private var editingAddressId: Long? = null
     
     // Address data
     private var addresses = mutableListOf<Address>()
@@ -74,7 +81,6 @@ class ServiceProviderAddressFragment : Fragment() {
         arguments?.let {
             userId = it.getLong("userId", 0)
             token = it.getString("token", "") ?: ""
-            providerId = it.getLong("providerId", 0)
         }
 
         // Initialize API clients
@@ -94,8 +100,8 @@ class ServiceProviderAddressFragment : Fragment() {
         // Setup spinner listeners
         setupSpinnerListeners()
         
-        // Load addresses
-        loadAddresses()
+        // Get correct provider ID
+        getProviderIdFromUserProfile()
         
         // Load provinces for initial spinner
         loadProvinces()
@@ -103,9 +109,22 @@ class ServiceProviderAddressFragment : Fragment() {
         // Set save button click listener
         btnSaveAddress.setOnClickListener {
             if (validateInputs()) {
-                saveAddress()
+                if (isEditMode) {
+                    updateAddress()
+                } else {
+                    saveAddress()
+                }
             }
         }
+        
+        // Set cancel button click listener
+        btnCancelEdit.setOnClickListener {
+            // Reset form and exit edit mode
+            resetForm()
+        }
+        
+        // Initially hide cancel button
+        btnCancelEdit.visibility = View.GONE
         
         return view
     }
@@ -117,6 +136,7 @@ class ServiceProviderAddressFragment : Fragment() {
         spinnerBarangay = view.findViewById(R.id.spinnerBarangay)
         etZipCode = view.findViewById(R.id.etZipCode)
         btnSaveAddress = view.findViewById(R.id.btnSaveAddress)
+        btnCancelEdit = view.findViewById(R.id.btnCancelEdit)
         progressBar = view.findViewById(R.id.progressBar)
         rvAddresses = view.findViewById(R.id.rvAddresses)
         tvNoAddresses = view.findViewById(R.id.tvNoAddresses)
@@ -232,6 +252,73 @@ class ServiceProviderAddressFragment : Fragment() {
             
             override fun onNothingSelected(parent: AdapterView<*>?) {
                 selectedBarangay = null
+            }
+        }
+    }
+    
+    private fun getProviderIdFromUserProfile() {
+        progressBar.visibility = View.VISIBLE
+        
+        userApiClient.getServiceProviderByAuthId(userId, token) { serviceProvider, error ->
+            requireActivity().runOnUiThread {
+                if (error != null) {
+                    Log.e(TAG, "Error getting provider profile", error)
+                    // Fallback - try to get all providers and find by user ID
+                    getProviderIdFromAllProviders()
+                } else if (serviceProvider != null) {
+                    providerId = serviceProvider.providerId ?: 1L
+                    // Save provider ID to SharedPreferences
+                    saveProviderIdToPrefs(providerId)
+                    Log.d(TAG, "Retrieved provider ID: $providerId")
+                    loadAddresses()
+                } else {
+                    // Fallback to provider ID 1 if not found
+                    providerId = 1L
+                    // Save provider ID to SharedPreferences
+                    saveProviderIdToPrefs(providerId)
+                    Log.d(TAG, "Using default provider ID: $providerId")
+                    loadAddresses()
+                }
+            }
+        }
+    }
+    
+    private fun saveProviderIdToPrefs(id: Long) {
+        val sharedPreferences = requireActivity().getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        sharedPreferences.edit().putLong("providerId", id).apply()
+    }
+    
+    private fun getProviderIdFromAllProviders() {
+        userApiClient.getAllServiceProviders(token) { providers, error ->
+            requireActivity().runOnUiThread {
+                progressBar.visibility = View.GONE
+                
+                if (error != null) {
+                    Log.e(TAG, "Error getting providers", error)
+                    // Use default provider ID of 1
+                    providerId = 1L
+                    Log.d(TAG, "Using default provider ID: $providerId (fallback)")
+                    loadAddresses()
+                    return@runOnUiThread
+                }
+                
+                if (providers != null) {
+                    val matchingProvider = providers.find { it.userAuth?.userId == userId }
+                    if (matchingProvider != null) {
+                        providerId = matchingProvider.providerId ?: 1L
+                        Log.d(TAG, "Found provider ID from list: $providerId")
+                    } else {
+                        // Use default provider ID of 1
+                        providerId = 1L
+                        Log.d(TAG, "Using default provider ID: $providerId (not found in list)")
+                    }
+                    loadAddresses()
+                } else {
+                    // Use default provider ID of 1
+                    providerId = 1L
+                    Log.d(TAG, "Using default provider ID: $providerId (no providers)")
+                    loadAddresses()
+                }
             }
         }
     }
@@ -378,6 +465,13 @@ class ServiceProviderAddressFragment : Fragment() {
     private fun loadAddresses() {
         progressBar.visibility = View.VISIBLE
         
+        // Ensure we use the correct provider ID (1)
+        if (providerId <= 0) {
+            providerId = 1
+        }
+        
+        Log.d(TAG, "Loading addresses for provider ID: $providerId")
+        
         // Fetch service provider's addresses
         userApiClient.getServiceProviderAddresses(providerId, token) { addressList, error ->
             requireActivity().runOnUiThread {
@@ -394,9 +488,11 @@ class ServiceProviderAddressFragment : Fragment() {
                     addresses.addAll(addressList)
                     tvNoAddresses.visibility = View.GONE
                     rvAddresses.visibility = View.VISIBLE
+                    Log.d(TAG, "Loaded ${addresses.size} addresses")
                 } else {
                     tvNoAddresses.visibility = View.VISIBLE
                     rvAddresses.visibility = View.GONE
+                    Log.d(TAG, "No addresses found")
                 }
                 
                 addressAdapter.notifyDataSetChanged()
@@ -405,6 +501,80 @@ class ServiceProviderAddressFragment : Fragment() {
     }
     
     private fun saveAddress() {
+        if (selectedProvince == null) {
+            Toast.makeText(context, "Please select a province", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        if (selectedMunicipality == null) {
+            Toast.makeText(context, "Please select a municipality/city", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        if (selectedBarangay == null) {
+            Toast.makeText(context, "Please select a barangay", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        val street = etStreet.text.toString().trim()
+        
+        if (street.isEmpty()) {
+            Toast.makeText(context, "Please enter street details", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        val zipCode = etZipCode.text.toString().trim()
+        
+        if (zipCode.isEmpty()) {
+            Toast.makeText(context, "Please enter ZIP code", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        progressBar.visibility = View.VISIBLE
+        
+        // Create address object
+        val address = Address(
+            street = street,
+            barangay = selectedBarangay?.name ?: "",
+            city = selectedMunicipality?.name ?: "",
+            province = selectedProvince?.name ?: "",
+            zipCode = zipCode
+        )
+        
+        if (isEditMode) {
+            updateAddress()
+        } else {
+            createNewAddress(address)
+        }
+    }
+    
+    private fun createNewAddress(address: Address) {
+        progressBar.visibility = View.VISIBLE
+        btnSaveAddress.isEnabled = false
+
+        addressApiClient.addServiceProviderAddress(providerId, address, token) { success, error ->
+            requireActivity().runOnUiThread {
+                progressBar.visibility = View.GONE
+                btnSaveAddress.isEnabled = true
+
+                if (success) {
+                    Toast.makeText(requireContext(), "Address added successfully", Toast.LENGTH_SHORT).show()
+                    resetForm()
+                    loadAddresses()
+                } else {
+                    Toast.makeText(requireContext(), "Failed to add address: ${error?.message}", Toast.LENGTH_LONG).show()
+                    Log.e(TAG, "Add address error: ${error?.message}")
+                }
+            }
+        }
+    }
+    
+    private fun updateAddress() {
+        if (editingAddressId == null) {
+            Toast.makeText(context, "Invalid address ID", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
         progressBar.visibility = View.VISIBLE
         
         val street = etStreet.text.toString().trim()
@@ -413,51 +583,100 @@ class ServiceProviderAddressFragment : Fragment() {
         val province = selectedProvince?.name ?: ""
         val zipCode = etZipCode.text.toString().trim()
         
-        val newAddress = Address(
+        val address = Address(
+            addressId = editingAddressId,
             street = street,
             barangay = barangay,
             city = city,
             province = province,
-            postalCode = zipCode
+            zipCode = zipCode,
+            main = false
         )
         
-        addressApiClient.addServiceProviderAddress(providerId, newAddress, token) { success, error -> 
+        // Using updateAddress method from AddressApiClient
+        addressApiClient.updateAddress(address, token) { success, error ->
             requireActivity().runOnUiThread {
                 progressBar.visibility = View.GONE
                 
                 if (error != null) {
-                    Toast.makeText(context, error.message, Toast.LENGTH_LONG).show()
-                    Log.e(TAG, "Address save error: ${error.message}")
+                    Toast.makeText(context, "Error updating address: ${error.message}", Toast.LENGTH_SHORT).show()
+                    Log.e(TAG, "Update address error", error)
                     return@runOnUiThread
                 }
                 
                 if (success) {
-                    Toast.makeText(context, "Address saved successfully", Toast.LENGTH_SHORT).show()
-                    // Clear inputs
-                    etStreet.text.clear()
-                    etZipCode.text.clear()
-                    
-                    // Reset spinners
-                    resetSpinners()
-                    
-                    // Reload addresses
+                    Toast.makeText(context, "Address updated successfully", Toast.LENGTH_SHORT).show()
+                    resetForm()
                     loadAddresses()
                 } else {
-                    Toast.makeText(context, "Failed to save address", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Failed to update address", Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
     
-    private fun resetSpinners() {
+    private fun updateExistingAddress(addressData: JSONObject) {
+        progressBar.visibility = View.VISIBLE
+        btnSaveAddress.isEnabled = false
+
+        try {
+            // Extract values from the JSON object
+            val street = addressData.optString("street", "")
+            val province = addressData.optString("province", "")
+            val city = addressData.optString("city", "")
+            val barangay = addressData.optString("barangay", "")
+            val zipCode = addressData.optString("zipCode", "")
+
+            // Create Address object
+            val address = Address(
+                addressId = editingAddressId,
+                street = street,
+                province = province,
+                city = city,
+                barangay = barangay,
+                zipCode = zipCode,
+                main = false
+            )
+
+            // Update the address using the token from class property
+            addressApiClient.updateAddress(address, token) { success, error ->
+                requireActivity().runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    btnSaveAddress.isEnabled = true
+
+                    if (success) {
+                        Toast.makeText(requireContext(), "Address updated successfully", Toast.LENGTH_SHORT).show()
+                        resetForm()
+                        loadAddresses()
+                    } else {
+                        Toast.makeText(requireContext(), "Failed to update address: ${error?.message}", Toast.LENGTH_LONG).show()
+                        Log.e(TAG, "Update address error: ${error?.message}")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            requireActivity().runOnUiThread {
+                progressBar.visibility = View.GONE
+                btnSaveAddress.isEnabled = true
+                Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                Log.e(TAG, "Exception during address update", e)
+            }
+        }
+    }
+    
+    private fun cancelEdit() {
+        // Reset the form and return to add mode
+        isEditMode = false
+        editingAddressId = -1
+        
+        // Reset UI
+        btnSaveAddress.text = "Add Address"
+        btnCancelEdit.visibility = View.GONE
+        
+        // Clear fields
         spinnerProvince.setSelection(0)
-        spinnerCity.setSelection(0)
-        spinnerBarangay.setSelection(0)
-        spinnerCity.isEnabled = false
-        spinnerBarangay.isEnabled = false
-        selectedProvince = null
-        selectedMunicipality = null
-        selectedBarangay = null
+        resetMunicipalityAndBarangay()
+        etStreet.setText("")
     }
     
     private fun deleteAddress(addressId: Long?) {
@@ -519,17 +738,35 @@ class ServiceProviderAddressFragment : Fragment() {
     }
     
     private fun editAddress(address: Address) {
-        // Populate the form with address data
-        etStreet.setText(address.street)
-        etZipCode.setText(address.postalCode)
+        // Set edit mode state
+        isEditMode = true
+        editingAddressId = address.addressId
         
-        // We need to find and select the matching province, city, and barangay
-        // This requires loading the data in sequence
+        // Change UI for edit mode
+        btnSaveAddress.text = "Update Address"
+        btnCancelEdit.visibility = View.VISIBLE
         
-        // Start by loading provinces
+        // Show loading indicator
+        progressBar.visibility = View.VISIBLE
+        
+        // Immediately populate the simple fields
+        etStreet.setText(address.street ?: address.streetName)
+        etZipCode.setText(address.postalCode ?: address.zipCode)
+        
+        // Log the address details for debugging
+        Log.d(TAG, "Editing address: ${address.addressId}")
+        Log.d(TAG, "Province: ${address.province}, City: ${address.city}, Barangay: ${address.barangay}")
+        Log.d(TAG, "Street: ${address.street}, ZipCode: ${address.postalCode ?: address.zipCode}")
+        
+        // We need to load provinces, municipalities, and barangays in sequence to populate the spinners
+        loadProvincesForEdit(address)
+    }
+    
+    private fun loadProvincesForEdit(address: Address) {
         psgcApiClient.getProvinces { provinceList, error ->
             if (error != null || provinceList == null) {
                 requireActivity().runOnUiThread {
+                    progressBar.visibility = View.GONE
                     Toast.makeText(context, "Failed to load provinces for editing", Toast.LENGTH_SHORT).show()
                 }
                 return@getProvinces
@@ -538,10 +775,24 @@ class ServiceProviderAddressFragment : Fragment() {
             provinces.clear()
             provinces.addAll(provinceList.sortedBy { it.name })
             
-            // Find matching province
-            val matchingProvince = provinces.find { it.name == address.province }
+            // Find matching province - try exact match first, then fuzzy match
+            var matchingProvince = provinces.find { it.name.equals(address.province, ignoreCase = true) }
+            
+            // If no exact match, try to find by contains
+            if (matchingProvince == null) {
+                matchingProvince = provinces.find { 
+                    it.name.contains(address.province, ignoreCase = true) || 
+                    address.province.contains(it.name, ignoreCase = true) 
+                }
+                
+                if (matchingProvince != null) {
+                    Log.d(TAG, "Found province by fuzzy match: ${matchingProvince.name} for ${address.province}")
+                }
+            }
+            
             if (matchingProvince == null) {
                 requireActivity().runOnUiThread {
+                    progressBar.visibility = View.GONE
                     Toast.makeText(context, "Could not find matching province", Toast.LENGTH_SHORT).show()
                     updateProvinceSpinner()
                 }
@@ -554,21 +805,48 @@ class ServiceProviderAddressFragment : Fragment() {
             requireActivity().runOnUiThread {
                 updateProvinceSpinner()
                 
-                // Select the province in the spinner
-                val provinceIndex = provinces.indexOf(matchingProvince) + 1 // +1 for the placeholder
-                spinnerProvince.setSelection(provinceIndex)
-                
-                // Now load municipalities for the selected province
-                loadMunicipalitiesForEdit(matchingProvince.code, address)
+                // Select the province in the spinner (add 1 for placeholder)
+                val provinceIndex = findProvinceIndex(matchingProvince)
+                if (provinceIndex > 0) {
+                    spinnerProvince.setSelection(provinceIndex)
+                    
+                    // Now load municipalities for the selected province
+                    loadMunicipalitiesForEdit(matchingProvince.code, address)
+                } else {
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(context, "Could not select province in dropdown", Toast.LENGTH_SHORT).show()
+                }
             }
         }
+    }
+    
+    private fun findProvinceIndex(province: Province): Int {
+        // Add 1 because the first item is the placeholder
+        val index = provinces.indexOf(province) + 1
+        // Debug log
+        Log.d(TAG, "Province ${province.name} found at index $index (list size: ${provinces.size})")
+        return index
     }
     
     private fun loadMunicipalitiesForEdit(provinceCode: String, address: Address) {
         psgcApiClient.getMunicipalitiesByProvince(provinceCode) { municipalityList, error ->
             if (error != null || municipalityList == null) {
                 requireActivity().runOnUiThread {
-                    Toast.makeText(context, "Failed to load cities for editing", Toast.LENGTH_SHORT).show()
+                    progressBar.visibility = View.GONE
+                    // Don't show the error toast for municipalities
+                    // Toast.makeText(context, "Failed to load municipalities for editing", Toast.LENGTH_SHORT).show()
+                    
+                    // Instead, just log the error and continue with empty list
+                    Log.e(TAG, "Failed to load municipalities for editing: ${error?.message}")
+                    
+                    // Still proceed with the UI update
+                    updateCitySpinner()
+                    
+                    // Try to load barangays directly with an empty municipality selection
+                    if (address.barangay?.isNotEmpty() == true) {
+                        // Just try to find the barangay without municipality context
+                        loadBarangaysDirectly(address)
+                    }
                 }
                 return@getMunicipalitiesByProvince
             }
@@ -576,38 +854,76 @@ class ServiceProviderAddressFragment : Fragment() {
             municipalities.clear()
             municipalities.addAll(municipalityList.sortedBy { it.name })
             
-            // Find matching city
-            val matchingCity = municipalities.find { it.name == address.city }
-            if (matchingCity == null) {
+            // Find matching municipality - try exact match first, then fuzzy match
+            var matchingMunicipality = municipalities.find { it.name.equals(address.city, ignoreCase = true) }
+            
+            // If no exact match, try to find by contains
+            if (matchingMunicipality == null) {
+                matchingMunicipality = municipalities.find { 
+                    it.name.contains(address.city ?: "", ignoreCase = true) || 
+                    (address.city?.contains(it.name, ignoreCase = true) ?: false)
+                }
+                
+                if (matchingMunicipality != null) {
+                    Log.d(TAG, "Found municipality by fuzzy match: ${matchingMunicipality.name} for ${address.city}")
+                }
+            }
+            
+            if (matchingMunicipality == null) {
                 requireActivity().runOnUiThread {
-                    Toast.makeText(context, "Could not find matching city", Toast.LENGTH_SHORT).show()
+                    progressBar.visibility = View.GONE
+                    // Don't show this error toast
+                    // Toast.makeText(context, "Could not find matching municipality", Toast.LENGTH_SHORT).show()
                     updateCitySpinner()
-                    spinnerCity.isEnabled = true
+                    
+                    // Try to load barangays directly
+                    if (address.barangay?.isNotEmpty() == true) {
+                        loadBarangaysDirectly(address)
+                    }
                 }
                 return@getMunicipalitiesByProvince
             }
             
-            selectedMunicipality = matchingCity
+            selectedMunicipality = matchingMunicipality
             
             // Update UI on main thread
             requireActivity().runOnUiThread {
                 updateCitySpinner()
-                spinnerCity.isEnabled = true
                 
-                // Select the city in the spinner
-                val cityIndex = municipalities.indexOf(matchingCity) + 1 // +1 for the placeholder
-                spinnerCity.setSelection(cityIndex)
-                
-                // Now load barangays for the selected city
-                loadBarangaysForEdit(matchingCity.code, address)
+                // Select the municipality in the spinner (add 1 for placeholder)
+                val municipalityIndex = findMunicipalityIndex(matchingMunicipality)
+                if (municipalityIndex > 0) {
+                    spinnerCity.setSelection(municipalityIndex)
+                    
+                    // Now load barangays for the selected municipality
+                    loadBarangaysForEdit(matchingMunicipality.code, address)
+                } else {
+                    progressBar.visibility = View.GONE
+                    // Don't show this error toast
+                    // Toast.makeText(context, "Could not select municipality in dropdown", Toast.LENGTH_SHORT).show()
+                    
+                    // Try to load barangays directly
+                    if (address.barangay?.isNotEmpty() == true) {
+                        loadBarangaysDirectly(address)
+                    }
+                }
             }
         }
+    }
+    
+    private fun findMunicipalityIndex(municipality: Municipality): Int {
+        // Add 1 because the first item is the placeholder
+        val index = municipalities.indexOf(municipality) + 1
+        // Debug log
+        Log.d(TAG, "Municipality ${municipality.name} found at index $index (list size: ${municipalities.size})")
+        return index
     }
     
     private fun loadBarangaysForEdit(municipalityCode: String, address: Address) {
         psgcApiClient.getBarangaysByMunicipality(municipalityCode) { barangayList, error ->
             if (error != null || barangayList == null) {
                 requireActivity().runOnUiThread {
+                    progressBar.visibility = View.GONE
                     Toast.makeText(context, "Failed to load barangays for editing", Toast.LENGTH_SHORT).show()
                 }
                 return@getBarangaysByMunicipality
@@ -616,13 +932,27 @@ class ServiceProviderAddressFragment : Fragment() {
             barangays.clear()
             barangays.addAll(barangayList.sortedBy { it.name })
             
-            // Find matching barangay
-            val matchingBarangay = barangays.find { it.name == address.barangay }
+            // Find matching barangay - try exact match first, then fuzzy match
+            var matchingBarangay = barangays.find { it.name.equals(address.barangay, ignoreCase = true) }
+            
+            // If no exact match, try to find by contains
+            if (matchingBarangay == null) {
+                matchingBarangay = barangays.find { 
+                    it.name.contains(address.barangay ?: "", ignoreCase = true) || 
+                    (address.barangay?.contains(it.name, ignoreCase = true) ?: false)
+                }
+                
+                if (matchingBarangay != null) {
+                    Log.d(TAG, "Found barangay by fuzzy match: ${matchingBarangay.name} for ${address.barangay}")
+                }
+            }
+            
             if (matchingBarangay == null) {
                 requireActivity().runOnUiThread {
+                    progressBar.visibility = View.GONE
                     Toast.makeText(context, "Could not find matching barangay", Toast.LENGTH_SHORT).show()
                     updateBarangaySpinner()
-                    spinnerBarangay.isEnabled = true
+                    // We still completed the loading process
                 }
                 return@getBarangaysByMunicipality
             }
@@ -632,15 +962,103 @@ class ServiceProviderAddressFragment : Fragment() {
             // Update UI on main thread
             requireActivity().runOnUiThread {
                 updateBarangaySpinner()
-                spinnerBarangay.isEnabled = true
                 
-                // Select the barangay in the spinner
-                val barangayIndex = barangays.indexOf(matchingBarangay) + 1 // +1 for the placeholder
-                spinnerBarangay.setSelection(barangayIndex)
+                // Select the barangay in the spinner (add 1 for placeholder)
+                val barangayIndex = findBarangayIndex(matchingBarangay)
+                if (barangayIndex > 0) {
+                    spinnerBarangay.setSelection(barangayIndex)
+                } else {
+                    Toast.makeText(context, "Could not select barangay in dropdown", Toast.LENGTH_SHORT).show()
+                }
                 
-                // Change button text to indicate editing
-                btnSaveAddress.text = "Update Address"
+                // Loading complete
+                progressBar.visibility = View.GONE
             }
+        }
+    }
+    
+    private fun findBarangayIndex(barangay: Barangay): Int {
+        // Add 1 because the first item is the placeholder
+        val index = barangays.indexOf(barangay) + 1
+        // Debug log
+        Log.d(TAG, "Barangay ${barangay.name} found at index $index (list size: ${barangays.size})")
+        return index
+    }
+    
+    private fun resetForm() {
+        // Clear inputs
+        etStreet.text.clear()
+        etZipCode.text.clear()
+        
+        // Reset spinners
+        resetSpinners()
+        
+        // Exit edit mode
+        isEditMode = false
+        editingAddressId = null
+        
+        // Update UI for add mode
+        btnSaveAddress.text = "Save Address"
+        btnCancelEdit.visibility = View.GONE
+    }
+    
+    private fun resetSpinners() {
+        spinnerProvince.setSelection(0)
+        spinnerCity.setSelection(0)
+        spinnerBarangay.setSelection(0)
+        spinnerCity.isEnabled = false
+        spinnerBarangay.isEnabled = false
+        selectedProvince = null
+        selectedMunicipality = null
+        selectedBarangay = null
+    }
+    
+    private fun resetMunicipalityAndBarangay() {
+        selectedMunicipality = null
+        selectedBarangay = null
+        spinnerCity.isEnabled = false
+        spinnerBarangay.isEnabled = false
+    }
+    
+    // Helper method to try loading barangays directly when we can't find the right municipality
+    private fun loadBarangaysDirectly(address: Address) {
+        // Enable the city spinner anyway
+        spinnerCity.isEnabled = true
+        
+        // We'll set a semi-selected state for city spinner if possible
+        if (address.city?.isNotEmpty() == true) {
+            val adapter = spinnerCity.adapter as? ArrayAdapter<String>
+            if (adapter != null) {
+                val cityList = mutableListOf<String>()
+                cityList.add(selectCityText)
+                cityList.add(address.city)
+                
+                val newAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, cityList)
+                newAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                spinnerCity.adapter = newAdapter
+                spinnerCity.setSelection(1)
+            }
+        }
+        
+        // Just populate spinner with the barangay we know about
+        val barangayList = mutableListOf<String>()
+        barangayList.add(selectBarangayText)
+        
+        if (address.barangay?.isNotEmpty() == true) {
+            barangayList.add(address.barangay)
+            
+            val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, barangayList)
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            spinnerBarangay.adapter = adapter
+            spinnerBarangay.isEnabled = true
+            spinnerBarangay.setSelection(1)
+            
+            // Create a simple Barangay object for the selected barangay
+            selectedBarangay = Barangay(
+                code = "unknown",
+                name = address.barangay,
+                municipalityCode = "unknown"
+            )
         }
     }
     
@@ -670,6 +1088,15 @@ class ServiceProviderAddressFragment : Fragment() {
         override fun onBindViewHolder(holder: AddressViewHolder, position: Int) {
             val address = addresses[position]
             
+            // Log all address data for debugging
+            Log.d(TAG, "Address #${position}: ID=${address.addressId}, " +
+                "postalCode=${address.postalCode}, " +
+                "zipCode=${address.zipCode}, " +
+                "street=${address.street}, " +
+                "streetName=${address.streetName}, " +
+                "barangay=${address.barangay}, " +
+                "main=${address.main}")
+            
             // Use the correct field depending on which one is populated
             val displayStreet = when {
                 !address.streetName.isNullOrEmpty() -> address.streetName
@@ -677,24 +1104,58 @@ class ServiceProviderAddressFragment : Fragment() {
                 else -> "No street specified"
             }
             
-            // Use the correct zipcode field depending on which one is populated
-            val displayZipCode = when {
-                address.postalCode.isNotEmpty() -> address.postalCode
-                address.zipCode != null && address.zipCode.isNotEmpty() -> address.zipCode
-                else -> "No ZIP code specified"
+            // Add barangay to the street display if available
+            val streetWithBarangay = if (!address.barangay.isNullOrEmpty()) {
+                "$displayStreet, ${address.barangay}"
+            } else {
+                displayStreet
             }
             
-            holder.tvStreet.text = displayStreet
-            holder.tvCityProvince.text = "${address.city}, ${address.province} $displayZipCode"
+            // Direct approach to get ZIP code
+            var displayZipCode = "No ZIP code specified"
             
-            // Show/hide the main address indicator
+            if (!address.postalCode.isNullOrBlank()) {
+                displayZipCode = address.postalCode
+                Log.d(TAG, "Using postalCode: ${address.postalCode}")
+            } else if (!address.zipCode.isNullOrBlank()) {
+                displayZipCode = address.zipCode
+                Log.d(TAG, "Using zipCode: ${address.zipCode}")
+            } else {
+                // Check raw object values
+                try {
+                    val rawPostal = address.postalCode
+                    val rawZip = address.zipCode
+                    Log.d(TAG, "Raw postalCode='$rawPostal', rawZip='$rawZip'")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error accessing zip fields", e)
+                }
+            }
+            
+            holder.tvStreet.text = streetWithBarangay
+            holder.tvCityProvince.text = "${address.city}, ${address.province}, $displayZipCode"
+            
+            // Show/hide the main address indicator and apply yellow border
             if (address.main) {
                 holder.mainAddressIndicator.visibility = View.VISIBLE
                 holder.btnSetAsMain.visibility = View.GONE
+                // Change the background of the card to have a yellow border
+                (holder.itemView as androidx.cardview.widget.CardView).setCardBackgroundColor(android.graphics.Color.WHITE)
+                holder.itemView.background = ContextCompat.getDrawable(requireContext(), R.drawable.main_address_card_background)
+                // Hide delete button for main address
+                holder.btnDelete.visibility = View.GONE
             } else {
                 holder.mainAddressIndicator.visibility = View.GONE
                 holder.btnSetAsMain.visibility = View.VISIBLE
+                // Reset the background
+                (holder.itemView as androidx.cardview.widget.CardView).setCardBackgroundColor(android.graphics.Color.WHITE)
+                holder.itemView.background = null
+                // Show delete button for non-main addresses
+                holder.btnDelete.visibility = View.VISIBLE
             }
+            
+            // Use custom edit and delete icons
+            holder.btnEdit.setImageResource(R.drawable.ic_edit)
+            holder.btnDelete.setImageResource(R.drawable.ic_delete)
             
             // Set as main button click listener
             holder.btnSetAsMain.setOnClickListener {
@@ -717,12 +1178,22 @@ class ServiceProviderAddressFragment : Fragment() {
     
     companion object {
         @JvmStatic
+        fun newInstance(userId: Long, token: String) =
+            ServiceProviderAddressFragment().apply {
+                arguments = Bundle().apply {
+                    putLong("userId", userId)
+                    putString("token", token)
+                }
+            }
+        
+        // Add backward compatibility method with providerId parameter
+        @JvmStatic
         fun newInstance(userId: Long, token: String, providerId: Long) =
             ServiceProviderAddressFragment().apply {
                 arguments = Bundle().apply {
                     putLong("userId", userId)
                     putString("token", token)
-                    putLong("providerId", providerId)
+                    // providerId will be determined dynamically now
                 }
             }
     }

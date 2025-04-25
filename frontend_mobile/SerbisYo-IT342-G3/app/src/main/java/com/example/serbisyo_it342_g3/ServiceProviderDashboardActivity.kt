@@ -3,6 +3,7 @@ package com.example.serbisyo_it342_g3
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -28,6 +29,7 @@ import com.example.serbisyo_it342_g3.fragments.NotificationsFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.example.serbisyo_it342_g3.api.NotificationApiClient
+import com.example.serbisyo_it342_g3.api.UserApiClient
 
 class ServiceProviderDashboardActivity : AppCompatActivity() {
     private lateinit var tvProviderName: TextView
@@ -58,46 +60,82 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
     private val services = mutableListOf<Service>()
     private lateinit var serviceApiClient: ServiceApiClient
     private lateinit var notificationApiClient: NotificationApiClient
+    private lateinit var userApiClient: UserApiClient
     private var providerId: Long = 0
     private var token: String = ""
     private val TAG = "ProviderDashboard"
     private var unreadNotificationsCount = 0
+    private var userId: Long = 0
+    private var username: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_service_provider_dashboard)
 
-        // Initialize ServiceApiClient with context
+        // Initialize UI elements
+        initViews()
+        
+        // Setup RecyclerView
+        rvServices.layoutManager = LinearLayoutManager(this)
+        
+        // Initialize ServiceApiClient
         serviceApiClient = ServiceApiClient(this)
-
+        
         // Initialize NotificationApiClient
         notificationApiClient = NotificationApiClient(this)
-
-        // Get SharedPreferences
-        sharedPreferences = getSharedPreferences("UserPrefs", MODE_PRIVATE)
-        token = sharedPreferences.getString("token", "") ?: ""
-
-        Log.d(TAG, "Retrieved token: $token")
-
-        // Initialize views
-        initViews()
-
+        
+        // Initialize UserApiClient with context
+        userApiClient = UserApiClient(this)
+        
         // Set up toolbar
         setSupportActionBar(findViewById(R.id.toolbar))
         supportActionBar?.title = "Service Provider Dashboard"
-
-        // Get user data from shared preferences
-        val username = sharedPreferences.getString("username", "Provider")
-        val userIdStr = sharedPreferences.getString("userId", "0")
-
-        providerId = userIdStr?.toLongOrNull() ?: 0
-
+        
+        // Get SharedPreferences
+        sharedPreferences = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+        val userPrefs = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        
+        // Get user data from SharedPreferences
+        userId = try {
+            sharedPreferences.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            val userIdStr = sharedPreferences.getString("userId", "0")
+            userIdStr?.toLongOrNull() ?: 0
+        }
+        
+        username = sharedPreferences.getString("username", "") ?: ""
+        token = sharedPreferences.getString("token", "") ?: ""
+        
+        Log.d(TAG, "Retrieved token: $token")
+        
+        // Check both SharedPreferences for provider ID
+        providerId = try {
+            val id1 = sharedPreferences.getLong("providerId", 0)
+            val id2 = userPrefs.getLong("providerId", 0)
+            
+            if (id1 > 0) id1 else if (id2 > 0) id2 else 0
+        } catch (e: ClassCastException) {
+            try {
+                val idStr1 = sharedPreferences.getString("providerId", "0") ?: "0"
+                val idStr2 = userPrefs.getString("providerId", "0") ?: "0"
+                
+                val id1 = idStr1.toLongOrNull() ?: 0
+                val id2 = idStr2.toLongOrNull() ?: 0
+                
+                if (id1 > 0) id1 else if (id2 > 0) id2 else 0
+            } catch (e: Exception) {
+                0
+            }
+        }
+        
         if (providerId == 0L) {
-            Toast.makeText(this, "Error: Provider ID not found", Toast.LENGTH_LONG).show()
+            // Don't show a Toast yet - we'll try to fetch it in checkProviderId
+            // We're just setting a temporary value until we resolve it
+            providerId = userId
         }
 
         // Set welcome message
-        tvProviderName.text = username ?: "Provider"
+        tvProviderName.text = username
 
         // Hide the vertical RecyclerView - we'll only use the horizontal layout
         rvServices.visibility = View.GONE
@@ -133,6 +171,9 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
             intent.putExtra("PROVIDER_ID", providerId)
             startActivity(intent)
         }
+
+        // Check for notifications
+        checkForNotifications()
     }
     
     private fun initViews() {
@@ -358,9 +399,20 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        loadServices() // Refresh services list when returning to this activity
-        checkForNotifications() // Check for new notifications
-        startSlideshow() // Resume slideshow animation
+        
+        // Check provider ID again when resuming the activity
+        // This ensures we pick up any provider ID set by fragments
+        checkProviderId()
+        
+        // Also check for notifications
+        checkForNotifications()
+        
+        // If the user returned from adding/editing a service, refresh the list
+        loadServices()
+        
+        // Resume slideshow animation
+        startSlideshow()
+        
         // Ensure home tab is selected when returning to this activity
         bottomNavigation.selectedItemId = R.id.navigation_home
     }
@@ -383,7 +435,7 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
             if (error != null) {
                 Log.e(TAG, "Error loading services", error)
                 runOnUiThread {
-                    Toast.makeText(this, "Error loading services: ${error.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Error loading services: ${error.message ?: "Unknown error"}", Toast.LENGTH_SHORT).show()
                 }
                 return@getServicesByProviderId
             }
@@ -444,23 +496,61 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         // Find views in card
         val serviceImage = cardView.findViewById<ImageView>(R.id.ivServiceImage)
         val serviceName = cardView.findViewById<TextView>(R.id.tvServiceName)
-        val serviceCategory = cardView.findViewById<TextView>(R.id.tvServiceCategory)
-        val servicePrice = cardView.findViewById<TextView>(R.id.tvServicePrice)
+        val serviceCategory = cardView.findViewById<TextView>(R.id.tvCategory)
+        val servicePrice = cardView.findViewById<TextView>(R.id.tvPrice)
         val btnEdit = cardView.findViewById<ImageButton>(R.id.btnEdit)
         val btnDelete = cardView.findViewById<ImageButton>(R.id.btnDelete)
-        val categoryColor = cardView.findViewById<View>(R.id.categoryColorIndicator)
         
         // Set service data
         serviceName.text = service.serviceName
         serviceCategory.text = service.category?.categoryName ?: "Uncategorized"
-        servicePrice.text = service.priceRange
+        
+        // Format price to have a currency symbol and show it more prominently
+        val formattedPrice = if (service.effectivePrice.isNotEmpty()) {
+            if (service.effectivePrice.contains("-")) {
+                // For price ranges
+                "₱${service.effectivePrice}"
+            } else {
+                // For single prices
+                "₱${service.effectivePrice}"
+            }
+        } else {
+            "₱0"
+        }
+        servicePrice.text = formattedPrice
+        // Set price text color to a green color like in the frontend_web
+        servicePrice.setTextColor(ContextCompat.getColor(this, R.color.primary_green))
+        
+        // Set the duration estimate
+        val tvDuration = cardView.findViewById<TextView>(R.id.tvDuration)
+        val formattedDuration = if (service.durationEstimate.isNotEmpty()) {
+            if (service.durationEstimate.endsWith("hrs") || service.durationEstimate.endsWith("hours") || 
+                service.durationEstimate.contains("hour") || service.durationEstimate.contains("hr")) {
+                service.durationEstimate
+            } else {
+                "${service.durationEstimate} hours"
+            }
+        } else {
+            "1 hour"
+        }
+        tvDuration.text = formattedDuration
+        
+        // Set the service description
+        val tvDescription = cardView.findViewById<TextView>(R.id.tvDescription)
+        tvDescription.text = service.serviceDescription
         
         // Set service image based on category
         val imageResource = getCategoryImage(service.category?.categoryName)
         serviceImage.setImageResource(imageResource)
         
-        // Set category color
-        categoryColor.setBackgroundColor(getCategoryColor(service.category?.categoryName))
+        // Hide the "No Image" text since we're showing an image
+        cardView.findViewById<TextView>(R.id.tvNoImage).visibility = View.GONE
+        
+        // Set category color (applying to the category TextView background color)
+        // Instead of replacing the background drawable, we're just tinting the existing background
+        val drawable = serviceCategory.background.mutate()
+        drawable.setTint(getCategoryColor(service.category?.categoryName))
+        serviceCategory.background = drawable
         
         // Set click listeners for edit and delete
         btnEdit.setOnClickListener {
@@ -512,7 +602,7 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         intent.putExtra("CATEGORY_ID", service.category?.categoryId)
         intent.putExtra("SERVICE_NAME", service.serviceName)
         intent.putExtra("SERVICE_DESCRIPTION", service.serviceDescription)
-        intent.putExtra("PRICE_RANGE", service.priceRange)
+        intent.putExtra("PRICE_RANGE", service.effectivePrice)
         intent.putExtra("DURATION_ESTIMATE", service.durationEstimate)
         startActivity(intent)
     }
@@ -522,7 +612,7 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
             if (error != null) {
                 Log.e(TAG, "Error deleting service", error)
                 runOnUiThread {
-                    Toast.makeText(this, "Error deleting service: ${error.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Error deleting service: ${error.message ?: "Unknown error"}", Toast.LENGTH_SHORT).show()
                 }
                 return@deleteService
             }
@@ -554,7 +644,7 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
             return // Skip if we don't have a valid user ID
         }
         
-        if (token.isBlank()) {
+        if (token.isEmpty()) {
             Log.e(TAG, "Auth token is blank. Cannot check for notifications.")
             return // Skip if we don't have a valid token
         }
@@ -563,7 +653,7 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         
         notificationApiClient.getNotificationsByUserId(userId, token) { notifications, error -> 
             if (error != null) {
-                Log.e(TAG, "Error checking notifications: ${error.message}", error)
+                Log.e(TAG, "Error checking notifications: ${error.message ?: ""}", error)
                 return@getNotificationsByUserId
             }
             
@@ -594,10 +684,15 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         }
     }
 
-    // Add a helper method to get the user ID (not provider ID)
     private fun getUserId(): Long {
         val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
-        val userId = sharedPref.getString("userId", "0")?.toLongOrNull() ?: 0
+        val userId = try {
+            // Try to get as Long first (new format)
+            sharedPref.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            // If that fails, try the String format (old format) and convert
+            sharedPref.getString("userId", "0")?.toLongOrNull() ?: 0
+        }
         Log.d(TAG, "Retrieving user ID: $userId")
         return userId
     }
@@ -641,17 +736,137 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
 
     private fun checkProviderId() {
         val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
-        val userId = sharedPref.getString("userId", "0")?.toLongOrNull() ?: 0
-        val username = sharedPref.getString("username", "")
-        val role = sharedPref.getString("role", "")
-        val providerId = sharedPref.getString("providerId", "0")?.toLongOrNull() ?: 0
+        val userPref = getSharedPreferences("user_prefs", MODE_PRIVATE)
+        
+        // Fix the type mismatch by using getLong instead of getString for userId
+        val userId = try {
+            // Try to get as Long first (new format)
+            sharedPref.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            // If that fails, try the String format (old format) and convert
+            sharedPref.getString("userId", "0")?.toLongOrNull() ?: 0
+        }
+        
+        val username = sharedPref.getString("username", "") ?: ""
+        val role = sharedPref.getString("role", "") ?: ""
+        
+        // First check providerId in both SharedPreferences
+        val providerId = try {
+            val id1 = sharedPref.getLong("providerId", 0)
+            val id2 = userPref.getLong("providerId", 0)
+            
+            // Use the non-zero value if available
+            if (id1 > 0) id1 else id2
+        } catch (e: ClassCastException) {
+            try {
+                val idStr1 = sharedPref.getString("providerId", "0") ?: "0"
+                val idStr2 = userPref.getString("providerId", "0") ?: "0"
+                
+                // Use the non-zero value if available
+                val id1 = idStr1.toLongOrNull() ?: 0
+                val id2 = idStr2.toLongOrNull() ?: 0
+                
+                if (id1 > 0) id1 else id2
+            } catch (e: Exception) {
+                0
+            }
+        }
         
         Log.d(TAG, "User details - UserId: $userId, Username: $username, Role: $role, ProviderId: $providerId")
         
         // Make sure the providerId is stored in SharedPreferences for later use
-        if (providerId == 0L && userId > 0) {
+        if (providerId > 0) {
+            // Save to both SharedPreferences to ensure consistency
+            with(sharedPref.edit()) {
+                putLong("providerId", providerId)
+                apply()
+            }
+            
+            with(userPref.edit()) {
+                putLong("providerId", providerId)
+                apply()
+            }
+            
+            // Update the class-level providerId variable
+            this.providerId = providerId
+        } else if (userId > 0) {
             Log.w(TAG, "Provider ID is not set. Attempting to retrieve it from user profile.")
-            // Here you could make an API call to get the provider profile if needed
+            
+            // Attempt to get provider profile from API using userId
+            userApiClient.getServiceProviderByAuthId(userId, token) { provider, error -> 
+                if (error != null) {
+                    Log.e(TAG, "Error getting provider profile", error)
+                    // Try fallback method
+                    getProviderIdFromAllProviders(userId)
+                    return@getServiceProviderByAuthId
+                }
+                
+                if (provider != null && provider.providerId != null) {
+                    val newProviderId = provider.providerId
+                    Log.d(TAG, "Retrieved provider ID from API: $newProviderId")
+                    
+                    // Save to both SharedPreferences
+                    with(sharedPref.edit()) {
+                        putLong("providerId", newProviderId)
+                        apply()
+                    }
+                    
+                    with(userPref.edit()) {
+                        putLong("providerId", newProviderId)
+                        apply()
+                    }
+                    
+                    // Update the class-level providerId variable
+                    runOnUiThread {
+                        this.providerId = newProviderId
+                        
+                        // Reload services with the correct provider ID
+                        loadServices()
+                    }
+                } else {
+                    Log.w(TAG, "Could not retrieve provider ID from user profile API call")
+                    getProviderIdFromAllProviders(userId)
+                }
+            }
+        }
+    }
+
+    private fun getProviderIdFromAllProviders(userId: Long) {
+        userApiClient.getAllServiceProviders(token) { providers, error ->
+            if (error != null) {
+                Log.e(TAG, "Error getting all providers", error)
+                return@getAllServiceProviders
+            }
+            
+            if (providers != null) {
+                val matchingProvider = providers.find { it.userAuth?.userId == userId }
+                if (matchingProvider != null && matchingProvider.providerId != null) {
+                    val newProviderId = matchingProvider.providerId
+                    Log.d(TAG, "Found provider ID from providers list: $newProviderId")
+                    
+                    // Save to both SharedPreferences
+                    val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
+                    val userPref = getSharedPreferences("user_prefs", MODE_PRIVATE)
+                    
+                    with(sharedPref.edit()) {
+                        putLong("providerId", newProviderId)
+                        apply()
+                    }
+                    
+                    with(userPref.edit()) {
+                        putLong("providerId", newProviderId)
+                        apply()
+                    }
+                    
+                    // Update the class-level providerId variable
+                    runOnUiThread {
+                        this.providerId = newProviderId
+                        
+                        // Reload services with the correct provider ID
+                        loadServices()
+                    }
+                }
+            }
         }
     }
 }

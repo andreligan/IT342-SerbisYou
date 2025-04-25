@@ -14,20 +14,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class NotificationApiClient(private val context: Context) {
-    private val client = OkHttpClient()
-    private val gson = Gson()
-    
-    // CONFIGURATION FOR BACKEND CONNECTION
-    // For Android Emulator - Virtual Device (default)
-    private val EMULATOR_URL = "http://10.0.2.2:8080" 
-    
-    // For Physical Device - Use your computer's actual IP address from ipconfig
-    private val PHYSICAL_DEVICE_URL = "http://192.168.1.102:8080"
-    
-    // SWITCH BETWEEN CONNECTION TYPES:
-    // Uncomment the one you need and comment out the other
-    // private val BASE_URL = EMULATOR_URL     // For Android Emulator
-    private val BASE_URL = PHYSICAL_DEVICE_URL // For Physical Device
+    private val baseApiClient = BaseApiClient(context)
+    private val client = baseApiClient.client
+    private val gson = baseApiClient.gson
     
     private val TAG = "NotificationApiClient"
 
@@ -43,7 +32,7 @@ class NotificationApiClient(private val context: Context) {
         
         // Try using getAll endpoint instead of user-specific endpoint since we're getting 403 errors
         val request = Request.Builder()
-            .url("$BASE_URL/api/notifications/getAll")
+            .url("${baseApiClient.getBaseUrl()}/api/notifications/getAll")
             .get()
             .header("Authorization", "Bearer $token")
             .build()
@@ -117,7 +106,7 @@ class NotificationApiClient(private val context: Context) {
         Log.d(TAG, "Request body: ${jsonObject.toString()}")
         
         val request = Request.Builder()
-            .url("$BASE_URL/api/notifications/create")
+            .url("${baseApiClient.getBaseUrl()}/api/notifications/create")
             .post(requestBody)
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
@@ -179,7 +168,7 @@ class NotificationApiClient(private val context: Context) {
         val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
         
         val request = Request.Builder()
-            .url("$BASE_URL/api/notifications/update/$notificationId")
+            .url("${baseApiClient.getBaseUrl()}/api/notifications/update/$notificationId")
             .put(requestBody)
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")

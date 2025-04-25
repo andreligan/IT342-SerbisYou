@@ -69,6 +69,20 @@
     <string name="error_years_experience_invalid">Please enter a valid number for years of experience</string>
     <string name="error_availability_empty">Availability schedule cannot be empty</string>
     
+    <!-- New strings for enhanced business details -->
+    <string name="business_details">Business Details</string>
+    <string name="basic_information">Basic Information</string>
+    <string name="additional_information">Additional Information</string>
+    <string name="business_description_field">Business Description</string>
+    <string name="business_category">Business Category</string>
+    <string name="year_established">Year Established</string>
+    <string name="status">Status</string>
+    <string name="save_changes">Save Changes</string>
+    <string name="error_business_desc_empty">Business description cannot be empty</string>
+    <string name="error_business_category_empty">Business category cannot be empty</string>
+    <string name="error_year_established_empty">Year established cannot be empty</string>
+    <string name="error_year_established_invalid">Please enter a valid year</string>
+    
     <!-- Service Provider Services -->
     <string name="my_services">My Services</string>
     <string name="services_description">Manage your offered services</string>

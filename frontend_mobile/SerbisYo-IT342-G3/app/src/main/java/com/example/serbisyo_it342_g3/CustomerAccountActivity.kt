@@ -40,8 +40,16 @@ class CustomerAccountActivity : AppCompatActivity() {
         // Get user data from SharedPreferences
         sharedPreferences = getSharedPreferences("UserPrefs", MODE_PRIVATE)
         token = sharedPreferences.getString("token", "") ?: ""
-        val userIdStr = sharedPreferences.getString("userId", "0") ?: "0"
-        userId = userIdStr.toLongOrNull() ?: 0
+        
+        // Fix userId retrieval using try-catch
+        userId = try {
+            // Try to get as Long first (new format)
+            sharedPreferences.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            // If that fails, try the String format (old format) and convert
+            val userIdStr = sharedPreferences.getString("userId", "0")
+            userIdStr?.toLongOrNull() ?: 0
+        }
         
         // Initialize views
         menuProfile = findViewById(R.id.menuProfile)

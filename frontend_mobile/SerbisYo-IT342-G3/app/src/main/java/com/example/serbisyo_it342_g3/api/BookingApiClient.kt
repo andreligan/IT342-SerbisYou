@@ -12,20 +12,9 @@ import org.json.JSONObject
 import java.io.IOException
 
 class BookingApiClient(private val context: Context) {
-    private val client = OkHttpClient()
-    private val gson = Gson()
-    
-    // CONFIGURATION FOR BACKEND CONNECTION
-    // For Android Emulator - Virtual Device (default)
-    private val EMULATOR_URL = "http://10.0.2.2:8080" 
-    
-    // For Physical Device - Use your computer's actual IP address from ipconfig
-    private val PHYSICAL_DEVICE_URL = "http://192.168.1.102:8080"
-    
-    // SWITCH BETWEEN CONNECTION TYPES:
-    // Uncomment the one you need and comment out the other
-    // private val BASE_URL = EMULATOR_URL     // For Android Emulator
-    private val BASE_URL = PHYSICAL_DEVICE_URL // For Physical Device
+    private val baseApiClient = BaseApiClient(context)
+    private val client = baseApiClient.client
+    private val gson = baseApiClient.gson
     
     private val TAG = "BookingApiClient"
 
@@ -40,7 +29,7 @@ class BookingApiClient(private val context: Context) {
         Log.d(TAG, "Getting bookings for customer: $customerId with token: $token")
         
         val request = Request.Builder()
-            .url("$BASE_URL/api/bookings/getAll")
+            .url("${baseApiClient.getBaseUrl()}/api/bookings/getAll")
             .get()
             .header("Authorization", "Bearer $token")
             .build()
@@ -112,7 +101,7 @@ class BookingApiClient(private val context: Context) {
         val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
         
         val request = Request.Builder()
-            .url("$BASE_URL/api/bookings/postBooking")
+            .url("${baseApiClient.getBaseUrl()}/api/bookings/postBooking")
             .post(requestBody)
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
@@ -167,7 +156,7 @@ class BookingApiClient(private val context: Context) {
         Log.d(TAG, "Cancelling booking: $bookingId")
         
         val request = Request.Builder()
-            .url("$BASE_URL/api/bookings/cancel/$bookingId")
+            .url("${baseApiClient.getBaseUrl()}/api/bookings/cancel/$bookingId")
             .put("".toRequestBody(null))
             .header("Authorization", "Bearer $token")
             .build()

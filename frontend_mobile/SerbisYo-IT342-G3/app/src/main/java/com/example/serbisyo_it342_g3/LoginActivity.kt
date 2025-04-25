@@ -118,7 +118,11 @@ class LoginActivity : AppCompatActivity() {
                             val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
                             with(sharedPref.edit()) {
                                 putString("token", token)
-                                putString("userId", userId)
+                                
+                                // Convert userId from String to Long before storing
+                                val userIdLong = userId?.toLongOrNull() ?: 0L
+                                putLong("userId", userIdLong)
+                                
                                 putString("username", username)
                                 putString("role", role)
                                 apply()

@@ -37,7 +37,7 @@ class ServiceAdapter(
 
         holder.tvServiceName.text = service.serviceName
         holder.tvServiceDescription.text = service.serviceDescription
-        holder.tvPriceRange.text = "Price: ${service.priceRange}"
+        holder.tvPriceRange.text = "Price: ${service.effectivePrice}"
         holder.tvDuration.text = "Duration: ${service.durationEstimate}"
         holder.tvCategory.text = "Category: ${service.category?.categoryName}"
 

@@ -1,35 +1,77 @@
 package com.example.serbisyo_it342_g3.fragments
 
+import android.app.TimePickerDialog
 import android.content.Context
+import android.content.SharedPreferences
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.ProgressBar
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.serbisyo_it342_g3.R
-import com.example.serbisyo_it342_g3.api.UserApiClient
-import com.example.serbisyo_it342_g3.data.ServiceProvider
+import com.example.serbisyo_it342_g3.adapter.ScheduleAdapter
+import com.example.serbisyo_it342_g3.api.ApiClient
+import com.example.serbisyo_it342_g3.api.ScheduleApiClient
+import com.example.serbisyo_it342_g3.data.Schedule
+import com.example.serbisyo_it342_g3.utils.Constants
+import com.google.gson.Gson
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
+import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 class ServiceProviderScheduleFragment : Fragment() {
     private val tag = "SPScheduleFragment"
     
-    private lateinit var etAvailabilitySchedule: EditText
-    private lateinit var etPreferredWorkingHours: EditText
-    private lateinit var btnUpdateSchedule: Button
+    // UI Components
+    private lateinit var spinnerDayOfWeek: Spinner
+    private lateinit var etStartTime: EditText
+    private lateinit var etEndTime: EditText
+    private lateinit var btnSelectStartTime: ImageButton
+    private lateinit var btnSelectEndTime: ImageButton
+    private lateinit var checkboxAvailable: CheckBox
+    private lateinit var btnAddSchedule: Button
+    private lateinit var recyclerViewSchedules: RecyclerView
+    private lateinit var tvNoSchedules: TextView
     private lateinit var progressBar: ProgressBar
     private lateinit var tvErrorMessage: TextView
+    private lateinit var tvSuccessMessage: TextView
     
-    private lateinit var userApiClient: UserApiClient
+    // Data
+    private lateinit var scheduleApiClient: ScheduleApiClient
     private var token: String = ""
     private var userId: Long = 0
     private var providerId: Long = 0
-
+    private val schedules = mutableListOf<Schedule>()
+    private lateinit var scheduleAdapter: ScheduleAdapter
+    
+    // Calendar for time pickers
+    private val calendar = Calendar.getInstance()
+    
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -43,61 +85,223 @@ class ServiceProviderScheduleFragment : Fragment() {
             providerId = it.getLong("providerId", 0)
         }
 
-        // Initialize API client
-        userApiClient = UserApiClient(requireContext())
-        
-        // Initialize views
-        etAvailabilitySchedule = view.findViewById(R.id.etAvailabilitySchedule)
-        etPreferredWorkingHours = view.findViewById(R.id.etPreferredWorkingHours)
-        btnUpdateSchedule = view.findViewById(R.id.btnUpdateSchedule)
-        progressBar = view.findViewById(R.id.progressBar)
-        tvErrorMessage = view.findViewById(R.id.tvErrorMessage)
-        
-        // Load schedule data
-        loadSchedule()
-        
-        // Set button click listener
-        btnUpdateSchedule.setOnClickListener {
-            if (validateInputs()) {
-                updateSchedule()
+        // If provider ID is not passed, try to get from SharedPreferences
+        if (providerId <= 0) {
+            val prefs = requireContext().getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+            providerId = prefs.getLong("provider_id", 0)
+            
+            // Also try to get the token if it's not passed
+            if (token.isEmpty()) {
+                token = prefs.getString("auth_token", "") ?: ""
             }
         }
+
+        Log.d(tag, "Using provider ID: $providerId, with token length: ${token.length}")
+
+        // Initialize API client
+        scheduleApiClient = ScheduleApiClient(requireContext())
+        
+        // Initialize views
+        spinnerDayOfWeek = view.findViewById(R.id.spinnerDayOfWeek)
+        etStartTime = view.findViewById(R.id.etStartTime)
+        etEndTime = view.findViewById(R.id.etEndTime)
+        btnSelectStartTime = view.findViewById(R.id.btnSelectStartTime)
+        btnSelectEndTime = view.findViewById(R.id.btnSelectEndTime)
+        checkboxAvailable = view.findViewById(R.id.checkboxAvailable)
+        btnAddSchedule = view.findViewById(R.id.btnAddSchedule)
+        recyclerViewSchedules = view.findViewById(R.id.recyclerViewSchedules)
+        tvNoSchedules = view.findViewById(R.id.tvNoSchedules)
+        progressBar = view.findViewById(R.id.progressBar)
+        tvErrorMessage = view.findViewById(R.id.tvErrorMessage)
+        tvSuccessMessage = view.findViewById(R.id.tvSuccessMessage)
+        
+        // Setup day of week spinner
+        setupDayOfWeekSpinner()
+        
+        // Setup time pickers
+        setupTimePickers()
+        
+        // Setup recycler view
+        setupRecyclerView()
+        
+        // Set button click listener
+        btnAddSchedule.setOnClickListener {
+            if (validateInputs()) {
+                addSchedule()
+            }
+        }
+        
+        // Load schedules
+        loadSchedules()
         
         return view
     }
     
-    private fun loadSchedule() {
+    private fun setupDayOfWeekSpinner() {
+        val days = arrayOf("MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY")
+        val daysDisplay = arrayOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+        
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, daysDisplay)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerDayOfWeek.adapter = adapter
+        
+        spinnerDayOfWeek.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                // Day selected - do nothing special here
+            }
+            
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                // Do nothing
+            }
+        }
+    }
+    
+    private fun setupTimePickers() {
+        // Set default times
+        etStartTime.setText("08:00")
+        etEndTime.setText("17:00")
+        
+        // Setup time picker dialogs
+        btnSelectStartTime.setOnClickListener {
+            showTimePickerDialog(true)
+        }
+        
+        btnSelectEndTime.setOnClickListener {
+            showTimePickerDialog(false)
+        }
+        
+        // Make edit texts not directly editable
+        etStartTime.setOnClickListener {
+            showTimePickerDialog(true)
+        }
+        
+        etEndTime.setOnClickListener {
+            showTimePickerDialog(false)
+        }
+    }
+    
+    private fun showTimePickerDialog(isStartTime: Boolean) {
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        val minute = calendar.get(Calendar.MINUTE)
+        
+        val timePickerDialog = TimePickerDialog(
+            requireContext(),
+            { _, hourOfDay, minuteOfHour ->
+                val formattedTime = String.format("%02d:%02d", hourOfDay, minuteOfHour)
+                if (isStartTime) {
+                    etStartTime.setText(formattedTime)
+                } else {
+                    etEndTime.setText(formattedTime)
+                }
+            },
+            hour,
+            minute,
+            true // 24-hour format
+        )
+        
+        timePickerDialog.show()
+    }
+    
+    private fun setupRecyclerView() {
+        scheduleAdapter = ScheduleAdapter(schedules) { schedule ->
+            deleteSchedule(schedule)
+        }
+        
+        recyclerViewSchedules.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = scheduleAdapter
+        }
+    }
+    
+    private fun loadSchedules() {
+        if (providerId <= 0) {
+            tvErrorMessage.text = "Provider ID not found. Please reload the page."
+            tvErrorMessage.visibility = View.VISIBLE
+            return
+        }
+        
         progressBar.visibility = View.VISIBLE
         tvErrorMessage.visibility = View.GONE
         
-        userApiClient.getServiceProviderProfile(userId, token) { provider, error ->
-            requireActivity().runOnUiThread {
-                progressBar.visibility = View.GONE
+        // Alternative approach: Use a direct OkHttp client call to match the web implementation
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                Log.d(tag, "Directly fetching schedules for provider: $providerId")
+                val client = OkHttpClient()
+                val url = "${Constants.BASE_URL}schedules/provider/$providerId"
                 
-                if (error != null) {
-                    Log.e(tag, "Error loading schedule", error)
-                    tvErrorMessage.setText(R.string.schedule_not_found)
+                val request = Request.Builder()
+                    .url(url)
+                    .addHeader("Authorization", "Bearer $token")
+                    .get()
+                    .build()
+                
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val responseBody = response.body?.string() ?: "[]"
+                        Log.d(tag, "Raw schedule response: $responseBody")
+                        
+                        val fetchedSchedules = mutableListOf<Schedule>()
+                        
+                        if (responseBody.trim().startsWith("[")) {
+                            val jsonArray = JSONArray(responseBody)
+                            for (i in 0 until jsonArray.length()) {
+                                val jsonObject = jsonArray.getJSONObject(i)
+                                
+                                try {
+                                    val schedule = Schedule(
+                                        scheduleId = jsonObject.optLong("scheduleId"),
+                                        providerId = jsonObject.optLong("providerId"),
+                                        dayOfWeek = jsonObject.optString("dayOfWeek", ""),
+                                        startTime = jsonObject.optString("startTime", ""),
+                                        endTime = jsonObject.optString("endTime", ""),
+                                        isAvailable = jsonObject.optBoolean("isAvailable", true)
+                                    )
+                                    fetchedSchedules.add(schedule)
+                                    Log.d(tag, "Parsed schedule: ${schedule.dayOfWeek} ${schedule.startTime}-${schedule.endTime}")
+                                } catch (e: Exception) {
+                                    Log.e(tag, "Error parsing schedule at position $i", e)
+                                }
+                            }
+                        }
+                        
+                        withContext(Dispatchers.Main) {
+                            if (!isAdded) return@withContext
+                            
+                            progressBar.visibility = View.GONE
+                            
+                            if (fetchedSchedules.isEmpty()) {
+                                tvNoSchedules.visibility = View.VISIBLE
+                                tvNoSchedules.text = "No schedules found. Add a schedule to get started."
+                            } else {
+                                tvNoSchedules.visibility = View.GONE
+                                schedules.clear()
+                                schedules.addAll(fetchedSchedules)
+                                scheduleAdapter.updateSchedules(fetchedSchedules)
+                                Log.d(tag, "Updated adapter with ${fetchedSchedules.size} schedules")
+                            }
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            if (!isAdded) return@withContext
+                            
+                            progressBar.visibility = View.GONE
+                            val errorMsg = "Failed to fetch schedules: HTTP ${response.code}"
+                            Log.e(tag, errorMsg)
+                            tvErrorMessage.text = errorMsg
+                            tvErrorMessage.visibility = View.VISIBLE
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "Exception when fetching schedules", e)
+                withContext(Dispatchers.Main) {
+                    if (!isAdded) return@withContext
+                    
+                    progressBar.visibility = View.GONE
+                    tvErrorMessage.text = "Error: ${e.message}"
                     tvErrorMessage.visibility = View.VISIBLE
-                    return@runOnUiThread
                 }
-                
-                if (provider == null) {
-                    tvErrorMessage.setText(R.string.provider_not_found)
-                    tvErrorMessage.visibility = View.VISIBLE
-                    return@runOnUiThread
-                }
-                
-                // Save providerId if it was not set before - Fixed null safety issue
-                val providerIdValue = provider.providerId ?: 0
-                if (providerId == 0L && providerIdValue > 0) {
-                    providerId = providerIdValue
-                    val prefs = requireActivity().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
-                    prefs.edit().putString("providerId", providerId.toString()).apply()
-                }
-                
-                // Fill form with schedule data
-                etAvailabilitySchedule.setText(provider.availabilitySchedule)
-                etPreferredWorkingHours.setText(provider.preferredWorkingHours ?: "")
             }
         }
     }
@@ -105,57 +309,150 @@ class ServiceProviderScheduleFragment : Fragment() {
     private fun validateInputs(): Boolean {
         var isValid = true
         
-        if (etAvailabilitySchedule.text.toString().trim().isEmpty()) {
-            etAvailabilitySchedule.error = getString(R.string.error_availability_empty)
+        val startTime = etStartTime.text.toString()
+        val endTime = etEndTime.text.toString()
+        
+        if (startTime.isEmpty()) {
+            Toast.makeText(context, "Please select a start time", Toast.LENGTH_SHORT).show()
+            isValid = false
+        }
+        
+        if (endTime.isEmpty()) {
+            Toast.makeText(context, "Please select an end time", Toast.LENGTH_SHORT).show()
+            isValid = false
+        }
+        
+        // Compare times as strings since they're in HH:MM format
+        if (startTime.isNotEmpty() && endTime.isNotEmpty() && startTime >= endTime) {
+            Toast.makeText(context, "End time must be after start time", Toast.LENGTH_SHORT).show()
             isValid = false
         }
         
         return isValid
     }
     
-    private fun updateSchedule() {
+    private fun addSchedule() {
         progressBar.visibility = View.VISIBLE
         
-        val availabilitySchedule = etAvailabilitySchedule.text.toString().trim()
-        val preferredWorkingHours = etPreferredWorkingHours.text.toString().trim()
+        val selectedDayPosition = spinnerDayOfWeek.selectedItemPosition
+        val days = arrayOf("MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY")
+        val dayOfWeek = days[selectedDayPosition]
         
-        userApiClient.getServiceProviderProfile(userId, token) { provider, error ->
-            if (error != null || provider == null) {
-                requireActivity().runOnUiThread {
-                    progressBar.visibility = View.GONE
-                    Toast.makeText(context, "Failed to get current provider details", Toast.LENGTH_SHORT).show()
+        val startTime = etStartTime.text.toString()
+        val endTime = etEndTime.text.toString()
+        val isAvailable = checkboxAvailable.isChecked
+        
+        Log.d(tag, "Adding schedule: day=$dayOfWeek, start=$startTime, end=$endTime, available=$isAvailable")
+        
+        // Create a JSON object directly to match the web application's approach
+        val scheduleData = JSONObject().apply {
+            put("dayOfWeek", dayOfWeek)
+            put("startTime", startTime)
+            put("endTime", endTime)
+            put("isAvailable", isAvailable)
+            put("available", isAvailable)  // Include both formats for compatibility
+        }
+        
+        // Use Coroutines and OkHttp for a more direct approach
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Create the schedule object for local use
+                val newSchedule = Schedule(
+                    providerId = providerId,
+                    dayOfWeek = dayOfWeek,
+                    startTime = startTime,
+                    endTime = endTime,
+                    isAvailable = isAvailable
+                )
+                
+                // Use OkHttp to match web implementation
+                val client = OkHttpClient()
+                val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                val requestBody = scheduleData.toString().toRequestBody(mediaType)
+                
+                val request = Request.Builder()
+                    .url("${Constants.BASE_URL}schedules/provider/$providerId")
+                    .addHeader("Authorization", "Bearer $token")
+                    .post(requestBody)
+                    .build()
+                
+                client.newCall(request).execute().use { response ->
+                    withContext(Dispatchers.Main) {
+                        if (!isAdded) return@withContext
+                        
+                        progressBar.visibility = View.GONE
+                        
+                        if (response.isSuccessful) {
+                            // Add to local list and update UI
+                            schedules.add(newSchedule)
+                            scheduleAdapter.updateSchedules(schedules)
+                            
+                            // Show success message
+                            tvSuccessMessage.text = "Schedule added successfully!"
+                            tvSuccessMessage.visibility = View.VISIBLE
+                            tvNoSchedules.visibility = View.GONE
+                            tvSuccessMessage.postDelayed({ 
+                                if (isAdded) tvSuccessMessage.visibility = View.GONE 
+                            }, 3000)
+                            
+                            // Reset form
+                            etStartTime.setText("08:00")
+                            etEndTime.setText("17:00")
+                            checkboxAvailable.isChecked = true
+                            
+                            // Reload schedules after a short delay to allow server to process
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                if (isAdded) loadSchedules()
+                            }, 1000)
+                        } else {
+                            val errorBody = response.body?.string() ?: "Unknown error"
+                            Log.e(tag, "Failed to add schedule: HTTP ${response.code}, $errorBody")
+                            Toast.makeText(context, "Failed to add schedule: ${response.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }
-                return@getServiceProviderProfile
-            }
-            
-            // Create updated provider with new schedule
-            val updatedProvider = ServiceProvider(
-                providerId = providerId,
-                firstName = provider.firstName,
-                lastName = provider.lastName,
-                phoneNumber = provider.phoneNumber,
-                businessName = provider.businessName,
-                yearsOfExperience = provider.yearsOfExperience,
-                availabilitySchedule = availabilitySchedule,
-                preferredWorkingHours = preferredWorkingHours.takeIf { it.isNotEmpty() },
-                address = provider.address,
-                userAuth = provider.userAuth
-            )
-            
-            userApiClient.updateServiceProviderProfile(updatedProvider, token) { success, updateError ->
-                requireActivity().runOnUiThread {
+            } catch (e: Exception) {
+                Log.e(tag, "Exception adding schedule", e)
+                withContext(Dispatchers.Main) {
+                    if (!isAdded) return@withContext
+                    
                     progressBar.visibility = View.GONE
+                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    
+    private fun deleteSchedule(schedule: Schedule) {
+        if (schedule.scheduleId == null) {
+            Toast.makeText(context, "Invalid schedule ID", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        val scheduleId = schedule.scheduleId
+        
+        progressBar.visibility = View.VISIBLE
+        
+        scheduleApiClient.deleteSchedule(scheduleId, token) { success, error ->
+            if (!isAdded) return@deleteSchedule
+            
+            requireActivity().runOnUiThread {
+                progressBar.visibility = View.GONE
+                
+                if (error != null) {
+                    Log.e(tag, "Error deleting schedule", error)
+                    Toast.makeText(context, "Failed to delete schedule: ${error.message}", Toast.LENGTH_SHORT).show()
+                    return@runOnUiThread
+                }
+                
+                if (success) {
+                    // Show success message
+                    Toast.makeText(context, "Schedule deleted successfully", Toast.LENGTH_SHORT).show()
                     
-                    if (updateError != null) {
-                        Toast.makeText(context, getString(R.string.error_schedule_update, updateError.message), Toast.LENGTH_SHORT).show()
-                        return@runOnUiThread
-                    }
-                    
-                    if (success) {
-                        Toast.makeText(context, R.string.schedule_update_success, Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(context, R.string.schedule_update_failed, Toast.LENGTH_SHORT).show()
-                    }
+                    // Reload schedules
+                    loadSchedules()
+                } else {
+                    Toast.makeText(context, "Failed to delete schedule", Toast.LENGTH_SHORT).show()
                 }
             }
         }

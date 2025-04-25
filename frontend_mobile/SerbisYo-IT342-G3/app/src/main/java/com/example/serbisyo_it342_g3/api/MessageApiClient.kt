@@ -27,7 +27,7 @@ class MessageApiClient(private val context: Context) {
     private val EMULATOR_URL = "http://10.0.2.2:8080"
 
     // For Physical Device - Use your computer's actual IP address from ipconfig
-    private val PHYSICAL_DEVICE_URL = "http://192.168.1.102:8080"
+    private val PHYSICAL_DEVICE_URL = "http://192.168.254.116:8080"
 
     // SWITCH BETWEEN CONNECTION TYPES:
     // Uncomment the one you need and comment out the other

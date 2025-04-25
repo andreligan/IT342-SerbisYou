@@ -49,12 +49,10 @@ class CustomerDashboardActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var spinnerCategories: Spinner
     private lateinit var categoriesContainer: LinearLayout
-    private lateinit var btnBookService: Button
     private lateinit var serviceAdapter: CustomerServiceAdapter
     private lateinit var bottomNavigation: BottomNavigationView
     private lateinit var dashboardContent: ScrollView
     private lateinit var fragmentContainer: FrameLayout
-    private lateinit var btnViewBookings: Button
     private lateinit var bookingApiClient: BookingApiClient
     private lateinit var ivProfileImage: ShapeableImageView
     
@@ -88,26 +86,6 @@ class CustomerDashboardActivity : AppCompatActivity() {
     
     // Special category for "All Categories"
     private val ALL_CATEGORIES = ServiceCategory(0, "All Categories")
-    
-    // Category icons - you'll need to add these drawables to your project
-    private val categoryIcons = mapOf(
-        "Cleaning" to R.drawable.ic_cleaning,
-        "Plumbing" to R.drawable.ic_plumbing,
-        "Electrical" to R.drawable.ic_electrical,
-        "Carpentry" to R.drawable.ic_carpentry,
-        "Gardening" to R.drawable.ic_gardening,
-        "Home Repair" to R.drawable.ic_home_repair,
-        "Painting" to R.drawable.ic_painting,
-        "Appliance Repair" to R.drawable.ic_appliance_repair,
-        "Computer Services" to R.drawable.ic_computer_services,
-        "Moving Services" to R.drawable.ic_moving_services,
-        "Beauty & Wellness" to R.drawable.ic_beauty_wellness,
-        "Tutoring" to R.drawable.ic_tutoring,
-        "Pet Care" to R.drawable.ic_pet_care,
-        "Event Planning" to R.drawable.ic_event_planning,
-        "Automotive" to R.drawable.ic_automotive
-        // Add more categories as needed
-    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -120,8 +98,16 @@ class CustomerDashboardActivity : AppCompatActivity() {
         // Get SharedPreferences
         val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
         token = sharedPref.getString("token", "") ?: ""
-        val userIdStr = sharedPref.getString("userId", "0") ?: "0"
-        userId = userIdStr.toLongOrNull() ?: 0
+        
+        // Fix userId retrieval using try-catch
+        userId = try {
+            // Try to get as Long first (new format)
+            sharedPref.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            // If that fails, try the String format (old format) and convert
+            val userIdStr = sharedPref.getString("userId", "0")
+            userIdStr?.toLongOrNull() ?: 0
+        }
         
         Log.d(TAG, "Retrieved token: $token")
         Log.d(TAG, "Retrieved user ID: $userId")
@@ -132,12 +118,9 @@ class CustomerDashboardActivity : AppCompatActivity() {
         rvServices = findViewById(R.id.rvServices)
         progressBar = findViewById(R.id.progressBar)
         spinnerCategories = findViewById(R.id.spinnerCategories)
-        categoriesContainer = findViewById(R.id.categoriesContainer)
-        btnBookService = findViewById(R.id.btnBookService)
         bottomNavigation = findViewById(R.id.bottomNavigation)
         dashboardContent = findViewById(R.id.dashboardContent)
         fragmentContainer = findViewById(R.id.fragmentContainer)
-        btnViewBookings = findViewById(R.id.btnViewBookings)
         ivProfileImage = findViewById(R.id.ivProfileImage)
 
         // Initialize hero section and slideshow views
@@ -162,32 +145,15 @@ class CustomerDashboardActivity : AppCompatActivity() {
         // Load profile image
         loadProfileImage()
 
-        // Setup Book Service buttons
+        // Setup Book Service button in hero section
         setupBookServiceButtons()
 
-        // Setup View Bookings button
-        btnViewBookings.setOnClickListener {
-            showBookingHistory()
-        }
-
-        // Hide search EditText if it exists
-
-
         // Setup RecyclerView
-        serviceAdapter = CustomerServiceAdapter(
-            filteredServices,
-            onServiceClick = { service -> viewServiceDetails(service) }
-        )
-        rvServices.layoutManager = LinearLayoutManager(this)
-        rvServices.adapter = serviceAdapter
+        setupRecyclerView()
         
         // Setup category spinner
         setupCategorySpinner()
 
-        // Load services and categories
-        loadCategories()
-        loadServices()
-        
         // Setup Bottom Navigation
         setupBottomNavigation()
 
@@ -196,6 +162,9 @@ class CustomerDashboardActivity : AppCompatActivity() {
 
         // Start slideshow
         startSlideshow()
+        
+        // Load data after views are set up
+        loadData()
     }
     
     private fun loadProfileImage() {
@@ -304,12 +273,32 @@ class CustomerDashboardActivity : AppCompatActivity() {
         // Add listener to spinner
         spinnerCategories.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                filterServicesByCategory(position)
+                Log.d(TAG, "Category spinner selection changed to position $position")
+                if (position == 0) {
+                    // All Categories selected
+                    showAllServices()
+                } else {
+                    filterServicesByCategory(position)
+                }
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {
-                // Do nothing
+                // Default to showing all services
+                showAllServices()
             }
+        }
+    }
+    
+    private fun applyServiceFilters() {
+        // Apply current filter (if any spinner item is selected)
+        val position = spinnerCategories.selectedItemPosition
+        Log.d(TAG, "Applying service filters - current spinner position: $position")
+        
+        if (position > 0) {
+            filterServicesByCategory(position)
+        } else {
+            // Otherwise show all services
+            showAllServices()
         }
     }
     
@@ -317,21 +306,22 @@ class CustomerDashboardActivity : AppCompatActivity() {
         progressBar.visibility = View.VISIBLE
         
         serviceApiClient.getServiceCategories(token) { categoryList, error -> 
-            if (error != null) {
-                Log.e(TAG, "Error loading categories", error)
-                return@getServiceCategories
-            }
-            
             runOnUiThread {
+                progressBar.visibility = View.GONE
+                
+                if (error != null) {
+                    Log.e(TAG, "Error loading categories", error)
+                    // Load services anyway even if categories fail
+                    loadServices()
+                    return@runOnUiThread
+                }
+                
                 categories.clear()
                 // Add "All Categories" as first option
                 categories.add(ALL_CATEGORIES)
                 
                 if (categoryList != null) {
                     categories.addAll(categoryList)
-                    
-                    // Set up the horizontal categories
-                    setupCategoryItems(categoryList)
                 }
                 
                 // Setup spinner with categories
@@ -339,41 +329,10 @@ class CustomerDashboardActivity : AppCompatActivity() {
                 val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, categoryNames)
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
                 spinnerCategories.adapter = adapter
+                
+                // Now load services after categories are loaded
+                loadServices()
             }
-        }
-    }
-    
-    private fun setupCategoryItems(categories: List<ServiceCategory>) {
-        // Clear existing views first
-        categoriesContainer.removeAllViews()
-        
-        // Create category items
-        for (category in categories) {
-            val categoryView = LayoutInflater.from(this).inflate(
-                R.layout.item_category, categoriesContainer, false
-            )
-            
-            val categoryIcon = categoryView.findViewById<ImageView>(R.id.categoryIcon)
-            val categoryName = categoryView.findViewById<TextView>(R.id.categoryName)
-            val categoryCard = categoryView.findViewById<MaterialCardView>(R.id.categoryCard)
-            
-            // Set category name
-            categoryName.text = category.categoryName
-            
-            // Set category icon
-            val iconResId = categoryIcons[category.categoryName] ?: R.drawable.ic_default_category
-            categoryIcon.setImageResource(iconResId)
-            
-            // Set click listener
-            categoryView.setOnClickListener {
-                // Find position in spinner
-                val position = categories.indexOf(category) + 1 // +1 because of ALL_CATEGORIES
-                if (position > 0 && position < spinnerCategories.adapter.count) {
-                    spinnerCategories.setSelection(position)
-                }
-            }
-            
-            categoriesContainer.addView(categoryView)
         }
     }
     
@@ -383,30 +342,45 @@ class CustomerDashboardActivity : AppCompatActivity() {
         loadProfileImage() // Refresh profile image when returning to this activity
     }
 
+    private fun loadData() {
+        // First load categories, then load services
+        loadCategories()
+    }
+
     private fun loadServices() {
         progressBar.visibility = View.VISIBLE
+        tvNoServices.visibility = View.GONE
         
         serviceApiClient.getAllServices(token) { servicesList, error -> 
             runOnUiThread {
                 progressBar.visibility = View.GONE
                 
                 if (error != null) {
-                    Log.e(TAG, "Error loading services", error)
+                    Log.e(TAG, "Error loading services: ${error.message}", error)
                     Toast.makeText(this, "Error loading services: ${error.message}", Toast.LENGTH_SHORT).show()
                     return@runOnUiThread
                 }
                 
-                if (servicesList != null) {
+                if (servicesList != null && servicesList.isNotEmpty()) {
                     // Store all services
                     allServices.clear()
                     allServices.addAll(servicesList)
                     
-                    // Apply category filter if selected
-                    applyServiceFilters()
+                    // Display all services
+                    filteredServices.clear()
+                    filteredServices.addAll(allServices)
+                    
+                    // Update the UI
+                    serviceAdapter.notifyDataSetChanged()
+                    rvServices.visibility = View.VISIBLE
+                    tvNoServices.visibility = View.GONE
+                    
+                    Toast.makeText(this, "Loaded ${servicesList.size} services", Toast.LENGTH_SHORT).show()
                 } else {
                     filteredServices.clear()
                     serviceAdapter.notifyDataSetChanged()
                     
+                    rvServices.visibility = View.GONE
                     tvNoServices.visibility = View.VISIBLE
                     tvNoServices.text = "No services available"
                 }
@@ -414,52 +388,64 @@ class CustomerDashboardActivity : AppCompatActivity() {
         }
     }
     
-    private fun applyServiceFilters() {
-        // Apply current filter (if any spinner item is selected)
-        if (spinnerCategories.selectedItemPosition > 0) {
-            filterServicesByCategory(spinnerCategories.selectedItemPosition)
-        } else {
-            // Otherwise show all services
-            showAllServices()
-        }
-    }
-    
     private fun showAllServices() {
         filteredServices.clear()
         filteredServices.addAll(allServices)
+        Log.d(TAG, "Showing ALL services: count = ${filteredServices.size}")
+        
+        // Log each service for debugging
+        filteredServices.forEachIndexed { index, service ->
+            Log.d(TAG, "Filtered service $index: ${service.serviceName} (ID: ${service.serviceId})")
+        }
+        
         serviceAdapter.notifyDataSetChanged()
         
         if (filteredServices.isEmpty()) {
             tvNoServices.visibility = View.VISIBLE
+            rvServices.visibility = View.GONE
             tvNoServices.text = "No services available"
         } else {
             tvNoServices.visibility = View.GONE
+            rvServices.visibility = View.VISIBLE
         }
     }
     
     private fun filterServicesByCategory(position: Int) {
         // Check if we have categories loaded
-        if (categories.isEmpty() || position <= 0 || position > categories.size) {
+        if (categories.isEmpty() || position < 0 || position >= categories.size) {
             showAllServices()
             return
         }
         
         // Get the selected category
-        val selectedCategory = categories[position - 1] // -1 because the first item is "All Categories"
+        val selectedCategory = categories[position]
+        Log.d(TAG, "Filtering by category: ${selectedCategory.categoryName}")
         
         // Filter services by category
         filteredServices.clear()
-        filteredServices.addAll(allServices.filter { service -> 
-            service.category?.categoryId == selectedCategory.categoryId
-        })
+        
+        if (selectedCategory.categoryId == 0L) {
+            // "All Categories" selected
+            filteredServices.addAll(allServices)
+            Log.d(TAG, "All categories selected, showing all ${allServices.size} services")
+        } else {
+            // Filter by specific category
+            val filtered = allServices.filter { service -> 
+                service.category?.categoryId == selectedCategory.categoryId
+            }
+            filteredServices.addAll(filtered)
+            Log.d(TAG, "Category filter applied: found ${filteredServices.size} services in ${selectedCategory.categoryName}")
+        }
         
         serviceAdapter.notifyDataSetChanged()
         
         if (filteredServices.isEmpty()) {
             tvNoServices.visibility = View.VISIBLE
+            rvServices.visibility = View.GONE
             tvNoServices.text = "No services found in category: ${selectedCategory.categoryName}"
         } else {
             tvNoServices.visibility = View.GONE
+            rvServices.visibility = View.VISIBLE
         }
     }
     
@@ -722,45 +708,16 @@ class CustomerDashboardActivity : AppCompatActivity() {
     }
     
     private fun showBookingHistory() {
-        val customerId = getUserId()
-        
-        if (customerId == 0L) {
-            Toast.makeText(this, "Error: Customer ID not found", Toast.LENGTH_LONG).show()
-            return
-        }
-        
-        progressBar.visibility = View.VISIBLE
-        
-        bookingApiClient.getBookingsByCustomerId(customerId, token) { bookings, error -> 
-            runOnUiThread {
-                progressBar.visibility = View.GONE
-                
-                if (error != null) {
-                    Log.e(TAG, "Error loading bookings", error)
-                    Toast.makeText(this, "Error loading bookings: ${error.message}", Toast.LENGTH_LONG).show()
-                    return@runOnUiThread
-                }
-                
-                if (bookings == null || bookings.isEmpty()) {
-                    Toast.makeText(this, "You don't have any bookings yet", Toast.LENGTH_LONG).show()
-                    return@runOnUiThread
-                }
-                
-                // Load the BookingHistoryFragment
-                val fragment = BookingHistoryFragment.newInstance()
-                loadFragment(fragment)
-                
-                // Uncheck all navigation items
-                for (i in 0 until bottomNavigation.menu.size()) {
-                    bottomNavigation.menu.getItem(i).isChecked = false
-                }
-                
-                // Hide dashboard and show fragments container
-                dashboardContent.visibility = View.GONE
-                fragmentContainer.visibility = View.VISIBLE
-                supportActionBar?.title = "My Bookings"
-            }
-        }
+        // Show booking history fragment
+        val fragment = BookingHistoryFragment()
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragmentContainer, fragment)
+            .addToBackStack(null)
+            .commit()
+            
+        // Hide dashboard content when showing fragment
+        dashboardContent.visibility = View.GONE
+        fragmentContainer.visibility = View.VISIBLE
     }
     
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -877,27 +834,20 @@ class CustomerDashboardActivity : AppCompatActivity() {
     }
 
     private fun setupBookServiceButtons() {
-        // Setup Hero Book Service button
-        btnHeroBookService = findViewById(R.id.btnHeroBookService)
+        // Setup only the hero button since we removed the others
         btnHeroBookService.setOnClickListener {
-            // Scroll to services section
-            dashboardContent.post {
-                dashboardContent.smoothScrollTo(0, categoriesContainer.top)
-            }
-            
-            // Show message
-            Toast.makeText(this, "Browse and select a service to book", Toast.LENGTH_SHORT).show()
+            // Navigate to BrowseServicesActivity
+            val intent = Intent(this, BrowseServicesActivity::class.java)
+            startActivity(intent)
         }
+    }
 
-        // Setup regular Book Service button
-        btnBookService.setOnClickListener {
-            // Scroll to services section
-            dashboardContent.post {
-                dashboardContent.smoothScrollTo(0, categoriesContainer.top)
-            }
-            
-            // Show message
-            Toast.makeText(this, "Browse and select a service to book", Toast.LENGTH_SHORT).show()
-        }
+    private fun setupRecyclerView() {
+        // Create and set the adapter with an empty list initially
+        serviceAdapter = CustomerServiceAdapter(
+            filteredServices,
+            onServiceClick = { service -> viewServiceDetails(service) }
+        )
+        rvServices.adapter = serviceAdapter
     }
 }

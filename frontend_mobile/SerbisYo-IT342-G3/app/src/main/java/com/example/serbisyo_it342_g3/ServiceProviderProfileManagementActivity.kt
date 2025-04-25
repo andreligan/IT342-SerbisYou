@@ -37,11 +37,26 @@ class ServiceProviderProfileManagementActivity : AppCompatActivity() {
         // Get user data from SharedPreferences
         val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
         token = sharedPref.getString("token", "") ?: ""
-        val userIdStr = sharedPref.getString("userId", "0") ?: "0"
-        userId = userIdStr.toLongOrNull() ?: 0
-        // Try to get providerId from SharedPreferences, will be updated if not found
-        val providerIdStr = sharedPref.getString("providerId", "0") ?: "0"
-        providerId = providerIdStr.toLongOrNull() ?: 0
+        
+        // Fix userId retrieval using try-catch
+        userId = try {
+            // Try to get as Long first (new format)
+            sharedPref.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            // If that fails, try the String format (old format) and convert
+            val userIdStr = sharedPref.getString("userId", "0")
+            userIdStr?.toLongOrNull() ?: 0
+        }
+        
+        // Fix providerId retrieval using try-catch
+        providerId = try {
+            // Try to get as Long first (new format)
+            sharedPref.getLong("providerId", 0)
+        } catch (e: ClassCastException) {
+            // If that fails, try the String format (old format) and convert
+            val providerIdStr = sharedPref.getString("providerId", "0")
+            providerIdStr?.toLongOrNull() ?: 0
+        }
         
         // Initialize views
         viewPager = findViewById(R.id.viewPager)

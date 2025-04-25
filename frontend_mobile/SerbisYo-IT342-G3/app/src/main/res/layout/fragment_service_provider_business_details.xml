@@ -9,20 +9,53 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="16dp">
+        android:layout_height="wrap_content">
 
+        <!-- Header Section with background color similar to web -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/headerSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/primary_green"
+            android:padding="16dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <TextView
+                android:id="@+id/tvBusinessTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/business_details"
+                android:textColor="@color/white"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/tvBusinessDescription"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/business_description"
+                android:textColor="#E0E0E0"
+                app:layout_constraintTop_toBottomOf="@id/tvBusinessTitle" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- Error and Progress -->
         <TextView
             android:id="@+id/tvErrorMessage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:background="#FFEBEE"
+            android:padding="16dp"
             android:text="@string/business_details_not_found"
-            android:textColor="#F44336"
+            android:textColor="#D32F2F"
             android:textSize="16sp"
             android:visibility="gone"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"/>
+            app:layout_constraintTop_toBottomOf="@id/headerSection" />
 
         <ProgressBar
             android:id="@+id/progressBar"
@@ -33,46 +66,46 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toBottomOf="@id/headerSection" />
 
+        <!-- Content Section -->
         <androidx.constraintlayout.widget.ConstraintLayout
-            android:id="@+id/businessContainer"
+            android:id="@+id/contentSection"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:padding="12dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent">
+            app:layout_constraintTop_toBottomOf="@id/headerSection">
 
+            <!-- Basic Information Section -->
             <TextView
-                android:id="@+id/tvBusinessTitle"
+                android:id="@+id/tvBasicInfoTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:gravity="center"
-                android:text="@string/business_information"
+                android:paddingBottom="4dp"
+                android:text="@string/basic_information"
                 android:textColor="@color/primary_green"
-                android:textSize="20sp"
+                android:textSize="16sp"
                 android:textStyle="bold"
                 app:layout_constraintTop_toTopOf="parent" />
 
-            <TextView
-                android:id="@+id/tvBusinessDescription"
+            <View
+                android:id="@+id/dividerBasic"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:gravity="center"
-                android:text="@string/business_description"
-                android:textColor="#757575"
-                app:layout_constraintTop_toBottomOf="@id/tvBusinessTitle" />
+                android:layout_height="1dp"
+                android:background="#E0E0E0"
+                app:layout_constraintTop_toBottomOf="@id/tvBasicInfoTitle" />
 
+            <!-- Business Name -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilBusinessName"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
+                android:layout_marginTop="16dp"
                 android:hint="@string/business_name"
-                app:layout_constraintTop_toBottomOf="@id/tvBusinessDescription">
+                app:layout_constraintTop_toBottomOf="@id/dividerBasic">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etBusinessName"
@@ -82,69 +115,211 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Business Description - New Field -->
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/tilYearsExperience"
+                android:id="@+id/tilBusinessDesc"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:hint="@string/years_experience"
+                android:hint="@string/business_description_field"
                 app:layout_constraintTop_toBottomOf="@id/tilBusinessName">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etBusinessDesc"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="top|start"
+                    android:inputType="textMultiLine"
+                    android:minLines="4" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Two Column Layout for Category and Year -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilBusinessCategory"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginEnd="4dp"
+                android:hint="@string/business_category"
+                app:layout_constraintEnd_toStartOf="@+id/tilYearEstablished"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tilBusinessDesc"
+                app:layout_constraintWidth_percent="0.48">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etBusinessCategory"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilYearEstablished"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_marginTop="8dp"
+                android:hint="@string/year_established"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/tilBusinessCategory"
+                app:layout_constraintTop_toBottomOf="@id/tilBusinessDesc"
+                app:layout_constraintWidth_percent="0.48">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etYearEstablished"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:maxLines="1"
+                    android:maxLength="4" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Additional Information Section -->
+            <TextView
+                android:id="@+id/tvAdditionalInfoTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:paddingBottom="4dp"
+                android:text="@string/additional_information"
+                android:textColor="@color/primary_green"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:layout_constraintTop_toBottomOf="@id/tilYearEstablished" />
+
+            <View
+                android:id="@+id/dividerAdditional"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#E0E0E0"
+                app:layout_constraintTop_toBottomOf="@id/tvAdditionalInfoTitle" />
+
+            <!-- Two Column Layout for Years and Schedule -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilYearsExperience"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:layout_marginEnd="4dp"
+                android:hint="@string/years_experience"
+                app:layout_constraintEnd_toStartOf="@+id/tilAvailabilitySchedule"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/dividerAdditional"
+                app:layout_constraintWidth_percent="0.48">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etYearsExperience"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="number" />
+                    android:inputType="number"
+                    android:maxLength="2" />
 
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilAvailabilitySchedule"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginStart="4dp"
+                android:layout_marginTop="12dp"
                 android:hint="@string/availability_schedule"
-                app:layout_constraintTop_toBottomOf="@id/tilYearsExperience">
+                app:endIconMode="custom"
+                app:endIconDrawable="@android:drawable/ic_menu_my_calendar"
+                app:endIconContentDescription="Select schedule"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/tilYearsExperience"
+                app:layout_constraintTop_toBottomOf="@id/dividerAdditional"
+                app:layout_constraintWidth_percent="0.48">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etAvailabilitySchedule"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textMultiLine"
-                    android:minLines="2"
-                    android:gravity="top|start" />
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
 
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Payment Method and Status -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilPaymentMethod"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                android:layout_marginEnd="4dp"
                 android:hint="@string/payment_method"
-                app:layout_constraintTop_toBottomOf="@id/tilAvailabilitySchedule">
+                app:layout_constraintEnd_toStartOf="@+id/tilStatus"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tilYearsExperience"
+                app:layout_constraintWidth_percent="0.48">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etPaymentMethod"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="text" />
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
 
             </com.google.android.material.textfield.TextInputLayout>
 
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilStatus"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_marginTop="8dp"
+                android:hint="@string/status"
+                app:endIconMode="dropdown_menu"
+                app:endIconTint="@color/primary_green"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/tilPaymentMethod"
+                app:layout_constraintTop_toBottomOf="@id/tilAvailabilitySchedule"
+                app:layout_constraintWidth_percent="0.48">
+
+                <AutoCompleteTextView
+                    android:id="@+id/dropdownStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:focusable="false"/>
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Update Button -->
             <Button
                 android:id="@+id/btnUpdateBusinessDetails"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:backgroundTint="@color/primary_yellow"
-                android:text="@string/update_business_details"
-                android:textColor="@color/white"
-                app:layout_constraintTop_toBottomOf="@id/tilPaymentMethod" />
+                android:padding="12dp"
+                android:text="@string/save_changes"
+                android:textColor="#000000"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tilStatus" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.core.widget.NestedScrollView>
