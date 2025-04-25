@@ -178,17 +178,28 @@ const CustomerBookingHistoryContent = () => {
     try {
       const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
 
-      const review = {
-        customer: { customerId: currentBookingForReview.customer.customerId },
-        provider: { providerId: currentBookingForReview.service.provider.providerId },
-        booking: { bookingId: currentBookingForReview.bookingId },
-        rating: reviewData.rating,
-        comment: reviewData.comment,
-        reviewDate: new Date().toISOString()
-      };
-
-      await axios.post("/api/reviews/create", review, {
-        headers: { Authorization: `Bearer ${token}` }
+      // Log the IDs to help with debugging
+      console.log("Review Submission - Detailed ID Logs:");
+      console.log("Customer ID:", currentBookingForReview.customer?.customerId);
+      console.log("Provider ID:", currentBookingForReview.service?.provider?.providerId);
+      console.log("Booking ID:", currentBookingForReview.bookingId);
+      
+      // Use the new endpoint with URL parameters instead of JSON body
+      const params = new URLSearchParams();
+      params.append('customerId', currentBookingForReview.customer.customerId);
+      params.append('providerId', currentBookingForReview.service.provider.providerId);
+      params.append('bookingId', currentBookingForReview.bookingId);
+      params.append('rating', reviewData.rating);
+      params.append('comment', reviewData.comment);
+      params.append('reviewDate', new Date().toISOString());
+      
+      console.log("Sending params:", params.toString());
+      
+      await axios.post("/api/reviews/createWithIDs", params, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
       });
 
       handleCloseReviewModal();
@@ -197,6 +208,7 @@ const CustomerBookingHistoryContent = () => {
       alert("Thank you for your review!");
     } catch (err) {
       console.error("Error submitting review:", err);
+      console.error("Error response data:", err.response?.data);
       alert("Failed to submit review. Please try again.");
     }
   };

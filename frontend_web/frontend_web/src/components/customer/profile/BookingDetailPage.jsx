@@ -24,31 +24,46 @@ const BookingDetailPage = () => {
     try {
       const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
       const userId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
+      
+      console.log("User ID from storage:", userId);
 
       const customersResponse = await axios.get("/api/customers/getAll", {
         headers: { Authorization: `Bearer ${token}` }
       });
 
+      console.log("All customers:", customersResponse.data);
+      
       const customer = customersResponse.data.find(c => c.userAuth && c.userAuth.userId == userId);
+      console.log("Found customer:", customer);
 
       if (!customer) {
+        console.error("No matching customer found for userId:", userId);
         alert("Could not identify customer for this review");
         return;
       }
 
-      const review = {
-        customerId: customer.customerId,
-        providerId: booking.service.provider.providerId,
-        bookingId: booking.bookingId,
-        rating: reviewData.rating,
-        comment: reviewData.comment,
-        reviewDate: new Date().toISOString()
-      };
-
-      console.log("Submitting review:", review); // For debugging
-
-      await axios.post("/api/reviews/create", review, {
-        headers: { Authorization: `Bearer ${token}` }
+      // Log the IDs to help with debugging
+      console.log("Review Submission - Detailed ID Logs:");
+      console.log("Customer ID:", customer.customerId);
+      console.log("Provider ID:", booking.service?.provider?.providerId);
+      console.log("Booking ID:", booking.bookingId);
+      
+      // Use the new endpoint with URL parameters instead of JSON body
+      const params = new URLSearchParams();
+      params.append('customerId', customer.customerId);
+      params.append('providerId', booking.service.provider.providerId);
+      params.append('bookingId', booking.bookingId);
+      params.append('rating', reviewData.rating);
+      params.append('comment', reviewData.comment);
+      params.append('reviewDate', new Date().toISOString());
+      
+      console.log("Sending params:", params.toString());
+      
+      await axios.post("/api/reviews/createWithIDs", params, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
       });
 
       handleCloseReviewModal();
@@ -56,6 +71,7 @@ const BookingDetailPage = () => {
       alert("Thank you for your review!");
     } catch (err) {
       console.error("Error submitting review:", err);
+      console.error("Error response data:", err.response?.data);
       alert("Failed to submit review. Please try again.");
     }
   };
@@ -449,7 +465,7 @@ const BookingDetailPage = () => {
                   className="px-4 py-2 bg-[#495E57] hover:bg-[#364945] text-white rounded-md transition-colors flex items-center"
                 >
                   <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2-2h-5l-5 5v-5z" />
                   </svg>
                   Contact Support
                 </button>
