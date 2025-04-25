@@ -143,10 +143,18 @@ const ServiceProviderBookings = () => {
     try {
       const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
       
-      await axios.put(`/api/bookings/updateStatus/${bookingId}`, 
-        { status: newStatus },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      if (newStatus === 'COMPLETED') {
+        // Use the complete endpoint which also releases the schedule slot
+        await axios.put(`/api/bookings/complete/${bookingId}`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } else {
+        // For other statuses, use the updateStatus endpoint
+        await axios.put(`/api/bookings/updateStatus/${bookingId}`, 
+          { status: newStatus },
+          { headers: { Authorization: `Bearer ${token}` }
+        });
+      }
       
       // Update the local state to reflect the change
       setBookings(bookings.map(booking => 
@@ -154,6 +162,11 @@ const ServiceProviderBookings = () => {
           ? {...booking, status: newStatus} 
           : booking
       ));
+      
+      // Show success message when completing a service
+      if (newStatus === 'COMPLETED') {
+        alert("Service completed successfully! The schedule slot is now available again.");
+      }
       
     } catch (err) {
       console.error("Error updating booking status:", err);

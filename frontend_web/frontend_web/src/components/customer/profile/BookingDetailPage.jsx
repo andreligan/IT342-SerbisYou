@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import ReviewModal from "./ReviewModal";
+import { Link } from "react-router-dom";
 
 const BookingDetailPage = () => {
   const { bookingId } = useParams();
@@ -8,6 +10,55 @@ const BookingDetailPage = () => {
   const [booking, setBooking] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+
+  const handleOpenReviewModal = () => {
+    setIsReviewModalOpen(true);
+  };
+
+  const handleCloseReviewModal = () => {
+    setIsReviewModalOpen(false);
+  };
+
+  const handleSubmitReview = async (reviewData) => {
+    try {
+      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      const userId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
+
+      const customersResponse = await axios.get("/api/customers/getAll", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const customer = customersResponse.data.find(c => c.userAuth && c.userAuth.userId == userId);
+
+      if (!customer) {
+        alert("Could not identify customer for this review");
+        return;
+      }
+
+      const review = {
+        customerId: customer.customerId,
+        providerId: booking.service.provider.providerId,
+        bookingId: booking.bookingId,
+        rating: reviewData.rating,
+        comment: reviewData.comment,
+        reviewDate: new Date().toISOString()
+      };
+
+      console.log("Submitting review:", review); // For debugging
+
+      await axios.post("/api/reviews/create", review, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      handleCloseReviewModal();
+
+      alert("Thank you for your review!");
+    } catch (err) {
+      console.error("Error submitting review:", err);
+      alert("Failed to submit review. Please try again.");
+    }
+  };
 
   useEffect(() => {
     const fetchBookingDetails = async () => {
@@ -39,7 +90,6 @@ const BookingDetailPage = () => {
     }
   }, [bookingId]);
 
-  // Format date for display
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -50,7 +100,6 @@ const BookingDetailPage = () => {
     }
   };
 
-  // Format time with AM/PM
   const formatTime = (timeString) => {
     if (!timeString) return "Not specified";
     
@@ -65,7 +114,6 @@ const BookingDetailPage = () => {
     return `${formattedHour}:${minutes} ${period}`;
   };
 
-  // Calculate remaining balance
   const getRemainingBalance = () => {
     if (!booking || !booking.totalCost) return 0;
     
@@ -73,12 +121,12 @@ const BookingDetailPage = () => {
     const isCash = booking.paymentMethod?.toLowerCase() === 'cash';
     
     if (isGCashPartial) {
-      return booking.totalCost * 0.5; // 50% remaining
+      return booking.totalCost * 0.5;
     } else if (isCash) {
-      return booking.totalCost; // Full amount remaining
+      return booking.totalCost;
     }
     
-    return 0; // No remaining balance
+    return 0;
   };
 
   const getStatusColor = (status) => {
@@ -167,9 +215,7 @@ const BookingDetailPage = () => {
           </span>
         </div>
         
-        {/* Main Content */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          {/* Header Section */}
           <div className="bg-gradient-to-r from-[#495E57] to-[#364945] text-white p-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
               <div>
@@ -185,10 +231,8 @@ const BookingDetailPage = () => {
             </div>
           </div>
           
-          {/* Main Details */}
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Left Column */}
               <div>
                 <h2 className="text-lg font-semibold text-gray-800 mb-4">Booking Details</h2>
                 
@@ -212,7 +256,6 @@ const BookingDetailPage = () => {
                     <div>
                       <p className="text-sm text-gray-500">Location</p>
                       <p className="font-medium text-gray-800">Customer Address</p>
-                      {/* We'd need to fetch the customer address here */}
                     </div>
                   </div>
                   
@@ -229,7 +272,6 @@ const BookingDetailPage = () => {
                   )}
                 </div>
 
-                {/* Service Provider Info */}
                 <div className="mt-8">
                   <h2 className="text-lg font-semibold text-gray-800 mb-4">Service Provider</h2>
                   
@@ -272,11 +314,9 @@ const BookingDetailPage = () => {
                 </div>
               </div>
               
-              {/* Right Column */}
               <div>
                 <h2 className="text-lg font-semibold text-gray-800 mb-4">Payment Information</h2>
                 
-                {/* Payment Summary Card */}
                 <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                   <div className="border-b border-gray-200 px-4 py-3 bg-gray-50">
                     <h3 className="font-medium text-gray-700">Payment Summary</h3>
@@ -330,7 +370,6 @@ const BookingDetailPage = () => {
                   </div>
                 </div>
                 
-                {/* Remaining Balance Card */}
                 {remainingBalance > 0 && (
                   <div className="mt-6 bg-orange-50 border border-orange-200 rounded-lg p-4">
                     <h3 className="font-medium text-orange-800 mb-2 flex items-center">
@@ -360,7 +399,6 @@ const BookingDetailPage = () => {
                   </div>
                 )}
                 
-                {/* Payment Reference Card for Cash Payments */}
                 {booking.paymentMethod?.toLowerCase() === 'cash' && (
                   <div className="mt-6 bg-white border border-gray-200 rounded-lg overflow-hidden">
                     <div className="border-b border-gray-200 px-4 py-3 bg-gray-50">
@@ -385,15 +423,24 @@ const BookingDetailPage = () => {
               </div>
             </div>
             
-            {/* Timeline section - could be added later */}
-            
-            {/* Action buttons */}
             <div className="mt-8 pt-6 border-t border-gray-200 flex flex-wrap justify-end gap-3">
               {booking.status?.toLowerCase() === "pending" && (
                 <button 
                   className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors"
                 >
                   Cancel Booking
+                </button>
+              )}
+              
+              {booking.status?.toLowerCase() === "completed" && (
+                <button 
+                  onClick={handleOpenReviewModal}
+                  className="px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-md transition-colors flex items-center"
+                >
+                  <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976-2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                  </svg>
+                  Write Review
                 </button>
               )}
               
@@ -411,6 +458,14 @@ const BookingDetailPage = () => {
           </div>
         </div>
       </div>
+      
+      {isReviewModalOpen && (
+        <ReviewModal 
+          booking={booking}
+          onClose={handleCloseReviewModal}
+          onSubmit={handleSubmitReview}
+        />
+      )}
     </div>
   );
 };
