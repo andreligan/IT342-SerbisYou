@@ -30,6 +30,11 @@ public class BookingEntity {
     @Column(length = 1000) // Allow for longer notes
     private String note; // Special instructions field
 
+    private String paymentMethod;
+    
+    @Column(nullable = true)
+    private boolean fullPayment = true; // Default to true (full payment)
+
     @JsonIgnore
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
     private List<TransactionEntity> transactions;
@@ -96,6 +101,22 @@ public class BookingEntity {
 
     public void setNote(String note) {
         this.note = note;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+    
+    public boolean isFullPayment() {
+        return fullPayment;
+    }
+
+    public void setFullPayment(boolean fullPayment) {
+        this.fullPayment = fullPayment;
     }
 
     public List<TransactionEntity> getTransactions() {

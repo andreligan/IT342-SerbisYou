@@ -12,6 +12,11 @@ const PaymentSuccessPage = () => {
   const [bookingDetails, setBookingDetails] = useState(null);
   const confettiCanvasRef = useRef(null);
   
+  // Calculate downpayment/remaining balance if applicable
+  const isDownpayment = bookingDetails?.paymentMethod === 'gcash' && bookingDetails?.fullPayment === false;
+  const paidAmount = isDownpayment ? (bookingDetails?.totalCost * 0.5) : bookingDetails?.totalCost;
+  const remainingBalance = isDownpayment ? (bookingDetails?.totalCost * 0.5) : 0;
+
   // Launch confetti when payment success is confirmed
   useEffect(() => {
     if (!isLoading && !error) {
@@ -289,7 +294,36 @@ const PaymentSuccessPage = () => {
                           <p className="text-sm font-medium text-gray-500 mb-1">Payment Method</p>
                           <p className="text-gray-800 capitalize">
                             {bookingDetails.paymentMethod || "Not specified"}
+                            {isDownpayment && " (50% Downpayment)"}
                           </p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-sm font-medium text-gray-500 mb-1">Payment Status</p>
+                          <div className="flex flex-col">
+                            <p className="text-[#495E57] font-bold">
+                              {isDownpayment ? "Partial Payment" : "Full Payment"}
+                            </p>
+                            {isDownpayment && (
+                              <div className="mt-2 bg-blue-50 p-2 rounded-lg border border-blue-100">
+                                <p className="text-sm flex items-center text-blue-800">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                  </svg>
+                                  Downpayment completed: ₱{paidAmount.toLocaleString('en-PH', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                  })}
+                                </p>
+                                <p className="text-sm mt-1 text-blue-700">
+                                  Remaining balance: ₱{remainingBalance.toLocaleString('en-PH', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                  })} (to be paid upon service completion)
+                                </p>
+                              </div>
+                            )}
+                          </div>
                         </div>
                         
                         <div>

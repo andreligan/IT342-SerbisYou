@@ -5,11 +5,19 @@ const PaymentConfirmation = ({
   payMongoFee,
   appFee,
   totalPrice,
+  paymentMethod,
+  isFullPayment,
   debugInfo,
   isProcessingPayment,
   handleBack,
   handleSubmit
 }) => {
+  // Calculate payment amounts
+  const isGCashPayment = paymentMethod === 'gcash';
+  const downpaymentAmount = totalPrice * 0.5;
+  const amountDue = isGCashPayment && !isFullPayment ? downpaymentAmount : totalPrice;
+  const remainingAmount = isGCashPayment && !isFullPayment ? downpaymentAmount : 0;
+
   return (
     <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
       {/* Header with gradient background */}
@@ -124,13 +132,57 @@ const PaymentConfirmation = ({
                 </div>
                 <span className="font-medium text-gray-800">₱{appFee.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
               </div>
+              
+              {/* Show payment type information for GCash */}
+              {isGCashPayment && !isFullPayment && (
+                <div className="pt-2 mt-2 border-t border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Total Amount</span>
+                    <span className="font-medium text-gray-800">₱{totalPrice.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-1">
+                    <span className="text-gray-600">Downpayment (50%)</span>
+                    <span className="font-medium text-gray-800">₱{downpaymentAmount.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-1">
+                    <span className="text-gray-600">Balance Due After Service</span>
+                    <span className="font-medium text-gray-800">₱{remainingAmount.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
+                  </div>
+                </div>
+              )}
+              
+              {/* Total with highlight */}
+              <div className="bg-gradient-to-r from-[#F4CE14]/10 to-transparent p-4 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-gray-800">{isGCashPayment && !isFullPayment ? "Amount Due Now" : "Total Amount Due"}</span>
+                  <span className="text-xl font-bold text-[#495E57]">₱{amountDue.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
+                </div>
+                {isGCashPayment && !isFullPayment && (
+                  <p className="text-xs text-gray-600 mt-1">Remaining balance to be paid after service completion</p>
+                )}
+              </div>
             </div>
             
-            {/* Total with highlight */}
-            <div className="bg-gradient-to-r from-[#F4CE14]/10 to-transparent p-4 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-gray-800">Total Amount Due</span>
-                <span className="text-xl font-bold text-[#495E57]">₱{totalPrice.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
+            {/* Payment Method Display */}
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg flex items-center">
+              <div className={`h-10 w-10 rounded-full ${paymentMethod === 'gcash' ? 'bg-blue-100' : 'bg-amber-100'} flex items-center justify-center mr-4`}>
+                {paymentMethod === 'gcash' ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+                    <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Payment Method</p>
+                <p className="text-base font-semibold text-gray-800 mt-1">
+                  {paymentMethod === 'gcash' ? 'GCash Online Payment' : 'Cash on Service Completion'}
+                  {paymentMethod === 'gcash' && !isFullPayment && ' (50% Downpayment)'}
+                </p>
               </div>
             </div>
           </div>

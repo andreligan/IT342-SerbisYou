@@ -34,6 +34,7 @@ const BookServicePage = () => {
   const [customerId, setCustomerId] = useState(null);
   const [debugInfo, setDebugInfo] = useState(null);
   const [providerInfo, setProviderInfo] = useState(null);
+  const [isFullPayment, setIsFullPayment] = useState(true);
   
   // Get service data from navigation state or default to placeholder
   const serviceData = location.state?.service || {
@@ -261,23 +262,15 @@ const BookServicePage = () => {
     return null;
   };
 
-  // Function to create a GCash checkout session via PayMongo
-  const createGCashCheckout = async () => {
+  // Function to create a GCash checkout session via PayMongo - updated for custom amount
+  const createGCashCheckout = async (checkoutPayload) => {
     try {
       const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
       
-      // Prepare the payload for the PayMongo API
-      const payload = {
-        amount: totalPrice,
-        description: `Payment for ${serviceData.serviceName}`,
-        successUrl: `${window.location.origin}/payment-success`,
-        cancelUrl: `${window.location.origin}/payment-cancel`
-      };
-      
-      console.log("Creating GCash checkout with payload:", payload);
+      console.log("Creating GCash checkout with payload:", checkoutPayload);
       
       // Call our backend API to create a checkout session
-      const response = await axios.post('/api/create-gcash-checkout', payload, {
+      const response = await axios.post('/api/create-gcash-checkout', checkoutPayload, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -313,7 +306,7 @@ const BookServicePage = () => {
     setStep(step - 1);
   };
 
-  // Handle booking submission
+  // Handle booking submission - updated for payment options
   const handleSubmit = async () => {
     setIsProcessingPayment(true);
     setError(null);
@@ -338,6 +331,11 @@ const BookServicePage = () => {
         return;
       }
       
+      // Calculate actual payment amount based on payment method and option
+      const actualPaymentAmount = paymentMethod === 'gcash' && !isFullPayment 
+        ? totalPrice * 0.5  // 50% downpayment
+        : totalPrice;      // Full payment
+      
       // Create booking object with all required fields AND explicitly include provider information
       const bookingRequest = {
         customer: { customerId: customerId },
@@ -350,7 +348,8 @@ const BookServicePage = () => {
         status: "Pending",
         totalCost: totalPrice,
         note: note || "", // Ensure note is not null
-        paymentMethod: paymentMethod
+        paymentMethod: paymentMethod,
+        fullPayment: isFullPayment // Add full payment flag
       };
       
       // Update debug info to show provider data
@@ -366,7 +365,9 @@ const BookServicePage = () => {
           payMongoFee: payMongoFee,
           appFee: appFee,
           customerAddress: address,
-          paymentMethod: paymentMethod
+          paymentMethod: paymentMethod,
+          isFullPayment: isFullPayment,
+          actualPaymentAmount: actualPaymentAmount
         }
       };
       
@@ -377,7 +378,15 @@ const BookServicePage = () => {
       if (paymentMethod === 'gcash') {
         try {
           // Create a GCash checkout session and get the checkout URL
-          const checkoutUrl = await createGCashCheckout();
+          // If using downpayment, adjust the payload amount
+          const checkoutPayload = {
+            amount: isFullPayment ? totalPrice : (totalPrice * 0.5),
+            description: `${isFullPayment ? 'Full Payment' : 'Downpayment (50%)'} for ${serviceData.serviceName}`,
+            successUrl: `${window.location.origin}/payment-success`,
+            cancelUrl: `${window.location.origin}/payment-cancel`
+          };
+          
+          const checkoutUrl = await createGCashCheckout(checkoutPayload);
           
           // Store booking info in session storage for use after payment is complete
           // This is needed because the PayMongo flow will redirect the user away from our app
@@ -529,6 +538,8 @@ const BookServicePage = () => {
           setNote={setNote}
           paymentMethod={paymentMethod}
           setPaymentMethod={setPaymentMethod}
+          isFullPayment={isFullPayment}
+          setIsFullPayment={setIsFullPayment}
           payMongoFee={payMongoFee}
           appFee={appFee}
           totalPrice={totalPrice}
@@ -544,6 +555,8 @@ const BookServicePage = () => {
       {step === 3 && (
         <PaymentConfirmation
           serviceData={serviceData}
+          paymentMethod={paymentMethod}
+          isFullPayment={isFullPayment}
           payMongoFee={payMongoFee}
           appFee={appFee}
           totalPrice={totalPrice}
