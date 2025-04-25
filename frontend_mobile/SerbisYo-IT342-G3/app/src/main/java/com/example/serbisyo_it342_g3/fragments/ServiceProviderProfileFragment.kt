@@ -11,11 +11,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import com.example.serbisyo_it342_g3.R
 import com.example.serbisyo_it342_g3.api.UserApiClient
@@ -29,6 +27,16 @@ import java.io.FileOutputStream
 import android.os.Handler
 import android.os.Looper
 import com.example.serbisyo_it342_g3.api.BaseApiClient
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.os.Build
+import androidx.annotation.RequiresApi
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+
 
 class ServiceProviderProfileFragment : Fragment() {
     private val tag = "SPProfileFragment"
@@ -53,31 +61,6 @@ class ServiceProviderProfileFragment : Fragment() {
     private var userId: Long = 0
     private var providerId: Long = 0
     private var selectedImageUri: Uri? = null
-    
-    // Activity result launcher for image picker
-    private val imagePickerLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-            selectedImageUri = result.data?.data
-            try {
-                profileImageView.setImageURI(selectedImageUri)
-                
-                // Save the selected image URI to shared preferences
-                selectedImageUri?.let {
-                    val prefs = requireActivity().getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
-                    prefs.edit().putString("profile_image_$providerId", it.toString()).apply()
-                }
-                
-                // Hide the "No Image" text if it exists
-                view?.findViewById<TextView>(R.id.tvNoImage)?.visibility = View.GONE
-            } catch (e: Exception) {
-                Log.e(tag, "Error setting selected image", e)
-                // Set default image if there's an error
-                profileImageView.setImageResource(R.drawable.default_profile)
-            }
-        }
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -132,9 +115,15 @@ class ServiceProviderProfileFragment : Fragment() {
         return view
     }
 
+    @Suppress("DEPRECATION")
     private fun openImagePicker() {
-        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-        imagePickerLauncher.launch(intent)
+        try {
+            val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+            startActivityForResult(intent, PICK_IMAGE_REQUEST)
+        } catch (e: Exception) {
+            Log.e(tag, "Error opening image picker", e)
+            Toast.makeText(context, "Failed to open image selector: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun loadProviderProfile() {
@@ -154,7 +143,7 @@ class ServiceProviderProfileFragment : Fragment() {
                 
                 if (error != null) {
                     Log.e(tag, "Error loading profile", error)
-                    tvErrorMessage.text = getString(R.string.profile_not_found)
+                    tvErrorMessage.text = "Profile not found"
                     tvErrorMessage.visibility = View.VISIBLE
                     return@runOnUiThread
                 }
@@ -209,7 +198,7 @@ class ServiceProviderProfileFragment : Fragment() {
                         }
                     }
                 } else {
-                    tvErrorMessage.text = getString(R.string.profile_not_found)
+                    tvErrorMessage.text = "Profile not found"
                     tvErrorMessage.visibility = View.VISIBLE
                 }
             }
@@ -218,41 +207,45 @@ class ServiceProviderProfileFragment : Fragment() {
     
     private fun loadProfileImageFromPrefs() {
         try {
-            val prefs = requireActivity().getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
-            val savedImagePath = prefs.getString("profile_image_$providerId", null)
+            if (providerId == 0L) {
+                Log.e(tag, "Provider ID is 0 when loading profile image")
+                return
+            }
             
-            if (savedImagePath != null) {
-                try {
-                    // Check if this is a file path or content URI
-                    if (savedImagePath.startsWith("/")) {
-                        // It's a file path, use File directly
-                        val file = File(savedImagePath)
-                        if (file.exists()) {
-                            profileImageView.setImageURI(Uri.fromFile(file))
-                            selectedImageUri = Uri.fromFile(file)
-                            
-                            // Hide the "No Image" text if it exists
-                            view?.findViewById<TextView>(R.id.tvNoImage)?.visibility = View.GONE
-                            return
-                        }
-                    }
-                    
-                    // If not a file or file doesn't exist, try as content URI
-                    val uri = Uri.parse(savedImagePath)
-                    
-                    // Instead of trying to access the original URI (which may cause permission errors),
-                    // just store it for when we need to update the profile
-                    selectedImageUri = uri
-                    profileImageView.setImageURI(uri)
-                    
-                    // Hide the "No Image" text if it exists
-                    view?.findViewById<TextView>(R.id.tvNoImage)?.visibility = View.GONE
-                } catch (e: Exception) {
-                    Log.e(tag, "Error loading saved image", e)
+            val prefs = requireActivity().getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
+            val imagePath = prefs.getString("profile_image_$providerId", null)
+            
+            if (imagePath.isNullOrEmpty()) {
+                Log.d(tag, "No profile image path found in preferences")
+                return
+            }
+            
+            Log.d(tag, "Loading profile image from: $imagePath")
+            
+            try {
+                // Check if it's a file path
+                val imageFile = File(imagePath)
+                if (imageFile.exists()) {
+                    // Load from file path using direct approach
+                    profileImageView.setImageURI(Uri.fromFile(imageFile))
+                    return
                 }
+                
+                // Fallback to try as URI
+                val imageUri = Uri.parse(imagePath)
+                profileImageView.setImageURI(imageUri)
+            } catch (e: Exception) {
+                Log.e(tag, "Error loading profile image from path: $imagePath", e)
+                // Set default image
+                profileImageView.setImageResource(R.drawable.default_profile)
+                
+                // Clear the invalid path from preferences
+                prefs.edit().remove("profile_image_$providerId").apply()
             }
         } catch (e: Exception) {
             Log.e(tag, "Error in loadProfileImageFromPrefs", e)
+            // Set default image in case of any error
+            profileImageView.setImageResource(R.drawable.default_profile)
         }
     }
 
@@ -260,27 +253,27 @@ class ServiceProviderProfileFragment : Fragment() {
         var isValid = true
         
         if (etUsername.text.toString().trim().isEmpty()) {
-            etUsername.error = getString(R.string.error_username_empty)
+            etUsername.error = "Username cannot be empty"
             isValid = false
         }
 
         if (etEmail.text.toString().trim().isEmpty()) {
-            etEmail.error = getString(R.string.error_email_empty)
+            etEmail.error = "Email cannot be empty"
             isValid = false
         }
 
         if (etFirstName.text.toString().trim().isEmpty()) {
-            etFirstName.error = getString(R.string.error_firstname_empty)
+            etFirstName.error = "First name cannot be empty"
             isValid = false
         }
 
         if (etLastName.text.toString().trim().isEmpty()) {
-            etLastName.error = getString(R.string.error_lastname_empty)
+            etLastName.error = "Last name cannot be empty"
             isValid = false
         }
 
         if (etPhoneNumber.text.toString().trim().isEmpty()) {
-            etPhoneNumber.error = getString(R.string.error_phone_empty)
+            etPhoneNumber.error = "Phone number cannot be empty"
             isValid = false
         }
 
@@ -341,7 +334,7 @@ class ServiceProviderProfileFragment : Fragment() {
                     progressBar.visibility = View.GONE
 
                     if (updateError != null) {
-                        tvErrorMessage.text = getString(R.string.error_profile_update, updateError.message)
+                        tvErrorMessage.text = "Failed to update profile: ${updateError.message}"
                         tvErrorMessage.visibility = View.VISIBLE
                         return@runOnUiThread
                     }
@@ -365,7 +358,7 @@ class ServiceProviderProfileFragment : Fragment() {
                             }, 3000)
                         }
                     } else {
-                        tvErrorMessage.text = getString(R.string.profile_update_failed)
+                        tvErrorMessage.text = "Profile update failed"
                         tvErrorMessage.visibility = View.VISIBLE
                         // Show toast for failed update
                         Toast.makeText(requireContext(), "Failed to update profile", Toast.LENGTH_SHORT).show()
@@ -375,95 +368,126 @@ class ServiceProviderProfileFragment : Fragment() {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun uploadProfileImage(imageUri: Uri) {
         try {
-            val inputStream = requireContext().contentResolver.openInputStream(imageUri)
-            
-            if (inputStream == null) {
-                tvErrorMessage.text = getString(R.string.error_reading_image)
-                tvErrorMessage.visibility = View.VISIBLE
+            if (providerId <= 0) {
+                Log.e(tag, "Invalid provider ID for image upload")
+                Toast.makeText(requireContext(), "Invalid provider ID", Toast.LENGTH_SHORT).show()
+                progressBar.visibility = View.GONE
+                btnUpdateProfile.isEnabled = true
                 return
             }
+
+            Log.d(tag, "Starting image upload for provider $providerId")
             
-            // Get the current provider ID one more time to ensure we have the right one
-            userApiClient.getServiceProviderProfile(userId, token) { provider, error ->
-                if (error != null || provider == null) {
-                    requireActivity().runOnUiThread {
-                        tvErrorMessage.text = "Failed to get provider ID for image upload"
-                        tvErrorMessage.visibility = View.VISIBLE
-                    }
-                    return@getServiceProviderProfile
-                }
-                
-                // Use the provider ID from the API, not the user ID
-                val actualProviderId = provider.providerId ?: 1L
-                Log.d(tag, "Using provider ID for image upload: $actualProviderId")
-                
-                // Create a local file to store the image
-                val localImageFile = File(requireContext().cacheDir, "temp_profile_image_${System.currentTimeMillis()}.jpg")
-                val outputStream = FileOutputStream(localImageFile)
-                inputStream.copyTo(outputStream)
-                inputStream.close()
-                outputStream.close()
-                
-                // Upload the image
-                userApiClient.uploadServiceProviderImage(actualProviderId, localImageFile, token) { success, error ->
-                    requireActivity().runOnUiThread {
-                        if (success) {
-                            // Show toast message for successful image upload
-                            Toast.makeText(requireContext(), "Profile image uploaded successfully!", Toast.LENGTH_SHORT).show()
-                            
-                            // Show success message
-                            tvSuccessMessage.visibility = View.VISIBLE
-                            // Hide success message after 3 seconds
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                tvSuccessMessage.visibility = View.GONE
-                            }, 3000)
-                            
-                            // Save the image file path to shared preferences
-                            val prefs = requireActivity().getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
-                            prefs.edit().putString("profile_image_${actualProviderId}", localImageFile.absolutePath).apply()
-                            
-                        } else {
-                            // Handle specific error cases
-                            val errorMessage = when {
-                                error?.message?.contains("too large") == true -> 
-                                    getString(R.string.error_image_too_large)
-                                error?.message?.contains("Authentication") == true -> 
-                                    getString(R.string.error_auth)
-                                error?.message?.contains("permission") == true ->
-                                    getString(R.string.error_permission)
-                                else -> 
-                                    getString(R.string.error_image_upload, error?.message)
-                            }
-                            
-                            // Show toast for failed image upload
-                            Toast.makeText(requireContext(), errorMessage, Toast.LENGTH_LONG).show()
-                            
-                            tvErrorMessage.text = errorMessage
-                            tvErrorMessage.visibility = View.VISIBLE
-                            Log.e(tag, "Error uploading profile image", error)
-                            
-                            // Still save the image file path to shared preferences
-                            // This lets users see their selected image even if server upload failed
-                            val prefs = requireActivity().getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
-                            prefs.edit().putString("profile_image_${actualProviderId}", localImageFile.absolutePath).apply()
+            // Save a copy of the image to the app's private storage
+            val imageBitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val source = ImageDecoder.createSource(requireContext().contentResolver, imageUri)
+                ImageDecoder.decodeBitmap(source)
+            } else {
+                MediaStore.Images.Media.getBitmap(requireContext().contentResolver, imageUri)
+            }
+            
+            // Create app-specific directory if it doesn't exist
+            val appDir = File(requireContext().filesDir, "profile_images")
+            if (!appDir.exists()) {
+                appDir.mkdirs()
+            }
+            
+            // Save a file with the provider ID
+            val imageFile = File(appDir, "profile_${providerId}.jpg")
+            FileOutputStream(imageFile).use { out ->
+                imageBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+            }
+            
+            // Save the file path in shared preferences
+            val prefs = requireActivity().getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putString("profile_image_$providerId", imageFile.absolutePath).apply()
+            Log.d(tag, "Saved local image copy at: ${imageFile.absolutePath}")
+            
+            // Create a temporary file for the API upload - use the imageFile directly
+            
+            // Upload the image with the correct parameter types:
+            // uploadServiceProviderImage(providerId: Long, imageFile: File, token: String, callback: (Boolean, Exception?) -> Unit)
+            userApiClient.uploadServiceProviderImage(
+                providerId,
+                imageFile,
+                token
+            ) { success, error ->
+                requireActivity().runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    btnUpdateProfile.isEnabled = true
+                    
+                    if (success) {
+                        // Show toast message for successful image upload
+                        Toast.makeText(requireContext(), "Profile image uploaded successfully!", Toast.LENGTH_SHORT).show()
+                        
+                        // Show success message
+                        tvSuccessMessage.visibility = View.VISIBLE
+                        // Hide success message after 3 seconds
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            tvSuccessMessage.visibility = View.GONE
+                        }, 3000)
+                    } else {
+                        // Handle specific error cases
+                        val errorMessage = when {
+                            error?.message?.contains("too large") == true -> 
+                                "Image is too large"
+                            error?.message?.contains("Authentication") == true -> 
+                                "Authentication error"
+                            error?.message?.contains("permission") == true ->
+                                "Permission denied"
+                            else -> 
+                                "Failed to upload image: ${error?.message}"
                         }
+                        
+                        // Show toast for failed image upload
+                        Toast.makeText(requireContext(), errorMessage, Toast.LENGTH_LONG).show()
+                        
+                        tvErrorMessage.text = errorMessage
+                        tvErrorMessage.visibility = View.VISIBLE
+                        Log.e(tag, "Error uploading profile image to server", error)
                     }
                 }
             }
         } catch (e: Exception) {
-            tvErrorMessage.text = getString(R.string.error_processing_image, e.message)
+            Log.e(tag, "Error processing or uploading profile image", e)
+            Toast.makeText(requireContext(), "Error uploading profile image: ${e.message}", Toast.LENGTH_LONG).show()
+            tvErrorMessage.text = "Error uploading profile image: ${e.message}"
             tvErrorMessage.visibility = View.VISIBLE
-            Log.e(tag, "Error processing image", e)
+            progressBar.visibility = View.GONE
+            btnUpdateProfile.isEnabled = true
         }
     }
 
     private fun getBaseUrl(): String {
         return BaseApiClient.BASE_URL
     }
+    
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        if (requestCode == PICK_IMAGE_REQUEST && resultCode == Activity.RESULT_OK && data != null && data.data != null) {
+            try {
+                selectedImageUri = data.data
+                profileImageView.setImageURI(selectedImageUri)
+                
+                // Hide the "No Image" text if it exists
+                view?.findViewById<TextView>(R.id.tvNoImage)?.visibility = View.GONE
+                
+                Log.d(tag, "Image selected: $selectedImageUri")
+            } catch (e: Exception) {
+                Log.e(tag, "Error handling selected image", e)
+                Toast.makeText(context, "Failed to load selected image: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     companion object {
+        private const val PICK_IMAGE_REQUEST = 1001
+        
         @JvmStatic
         fun newInstance(userId: Long, token: String, providerId: Long) =
             ServiceProviderProfileFragment().apply {

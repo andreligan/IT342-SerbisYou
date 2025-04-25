@@ -710,4 +710,281 @@ class AddressApiClient(private val context: Context) {
             }
         }
     }
+
+    // Add a new address for service provider
+    fun addServiceProviderAddress(providerId: Long, address: Address, token: String, callback: (Boolean, Exception?) -> Unit) {
+        if (token.isBlank()) {
+            Log.e(TAG, "Token is empty or blank")
+            callback(false, Exception("Authentication token is required"))
+            return
+        }
+
+        Log.d(TAG, "Adding address for service provider: $providerId")
+        
+        // Create payload matching backend expectations
+        val jsonObject = JSONObject().apply {
+            put("streetName", address.street) // Using the field name expected by the entity
+            put("barangay", address.barangay)
+            put("city", address.city)
+            put("province", address.province)
+            put("zipCode", address.postalCode) // Using the field name expected by the entity
+            put("main", false) // Set as non-main address by default
+            
+            // Create a service provider object to properly associate with the address
+            put("serviceProvider", JSONObject().apply {
+                put("providerId", providerId)
+            })
+            
+            put("customer", JSONObject.NULL) // Set customer to null for service provider addresses
+        }
+        
+        // Log request for debugging
+        Log.d(TAG, "Request body: ${jsonObject.toString()}")
+        
+        val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
+        
+        // Use the correct endpoint path that exists in the backend
+        val request = Request.Builder()
+            .url("$BASE_URL/api/addresses/postAddress")
+            .post(requestBody)
+            .header("Authorization", "Bearer $token")
+            .header("Content-Type", "application/json")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to add address", e)
+                callback(false, e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                Log.d(TAG, "Response code: ${response.code}")
+                Log.d(TAG, "Response body: $responseBody")
+                
+                if (response.isSuccessful) {
+                    callback(true, null)
+                } else {
+                    callback(false, Exception("Failed to add address: ${response.code}, ${responseBody ?: "No response body"}"))
+                }
+            }
+        })
+    }
+    
+    // Delete service provider address
+    fun deleteServiceProviderAddress(addressId: Long, token: String, callback: (Boolean, Exception?) -> Unit) {
+        if (token.isBlank()) {
+            Log.e(TAG, "Token is empty or blank")
+            callback(false, Exception("Authentication token is required"))
+            return
+        }
+
+        Log.d(TAG, "Deleting address: $addressId")
+        
+        val request = Request.Builder()
+            .url("$BASE_URL/api/addresses/deleteAddress/$addressId")
+            .delete()
+            .header("Authorization", "Bearer $token")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to delete address", e)
+                callback(false, e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                Log.d(TAG, "Response code: ${response.code}")
+                Log.d(TAG, "Response body: $responseBody")
+                
+                if (response.isSuccessful) {
+                    callback(true, null)
+                } else {
+                    callback(false, Exception("Failed to delete address: ${response.code}, ${responseBody ?: "No response body"}"))
+                }
+            }
+        })
+    }
+    
+    // Set address as service provider's main address
+    fun setServiceProviderMainAddress(providerId: Long, addressId: Long, token: String, callback: (Boolean, Exception?) -> Unit) {
+        if (token.isBlank()) {
+            Log.e(TAG, "Token is empty or blank")
+            callback(false, Exception("Authentication token is required"))
+            return
+        }
+        
+        Log.d(TAG, "Setting address $addressId as main for provider $providerId")
+        
+        // First get all provider addresses to find the one to update
+        val url = "$BASE_URL/api/addresses/getAll"
+        
+        val request = Request.Builder()
+            .url(url)
+            .get()
+            .header("Authorization", "Bearer $token")
+            .build()
+            
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to fetch addresses", e)
+                callback(false, e)
+            }
+            
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                
+                if (!response.isSuccessful || responseBody == null) {
+                    Log.e(TAG, "Failed to fetch addresses: ${response.code}")
+                    callback(false, Exception("Failed to fetch addresses: ${response.code}"))
+                    return
+                }
+                
+                try {
+                    val type = object : TypeToken<List<Address>>() {}.type
+                    val addresses = gson.fromJson<List<Address>>(responseBody, type)
+                    
+                    // Filter addresses by providerId
+                    val providerAddresses = addresses.filter { address ->
+                        // Access serviceProvider safely without generating a reference error
+                        val serviceProviderObject = address.serviceProvider as? Map<*, *>
+                        val spId = serviceProviderObject?.get("providerId") as? Number
+                        spId?.toLong() == providerId
+                    }
+                    
+                    // Find the address to update
+                    val addressToUpdate = providerAddresses.find { it.addressId == addressId }
+                    
+                    if (addressToUpdate == null) {
+                        callback(false, Exception("Address not found"))
+                        return
+                    }
+                    
+                    // Update the address to be main
+                    updateAddressMain(addressId, true, providerId, token) { success, error ->
+                        if (success) {
+                            // Now update all other addresses to not be main
+                            val otherAddresses = providerAddresses.filter { it.addressId != addressId }
+                            if (otherAddresses.isEmpty()) {
+                                callback(true, null)
+                                return@updateAddressMain
+                            }
+                            
+                            var updatedCount = 0
+                            var errorOccurred = false
+                            
+                            otherAddresses.forEach { address ->
+                                updateAddressMain(address.addressId!!, false, providerId, token) { innerSuccess, innerError ->
+                                    updatedCount++
+                                    
+                                    if (!innerSuccess) {
+                                        errorOccurred = true
+                                    }
+                                    
+                                    // If all addresses have been processed
+                                    if (updatedCount == otherAddresses.size) {
+                                        callback(!errorOccurred, if (errorOccurred) Exception("Some addresses could not be updated") else null)
+                                    }
+                                }
+                            }
+                        } else {
+                            callback(false, error)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error processing addresses", e)
+                    callback(false, e)
+                }
+            }
+        })
+    }
+    
+    // Helper method to update the main status of an address
+    private fun updateAddressMain(addressId: Long, isMain: Boolean, providerId: Long, token: String, callback: (Boolean, Exception?) -> Unit) {
+        // Fetch the specific address first to get all its details
+        val getUrl = "$BASE_URL/api/addresses/getById/$addressId"
+        
+        val getRequest = Request.Builder()
+            .url(getUrl)
+            .get()
+            .header("Authorization", "Bearer $token")
+            .build()
+            
+        client.newCall(getRequest).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to fetch address details", e)
+                callback(false, e)
+            }
+            
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                
+                if (!response.isSuccessful || responseBody == null) {
+                    Log.e(TAG, "Failed to fetch address: ${response.code}")
+                    callback(false, Exception("Failed to fetch address: ${response.code}"))
+                    return
+                }
+                
+                try {
+                    val address = gson.fromJson(responseBody, Address::class.java)
+                    
+                    // Create JSON object with updated main status
+                    val jsonObject = JSONObject().apply {
+                        put("streetName", when {
+                            !address.streetName.isNullOrEmpty() -> address.streetName
+                            else -> address.street
+                        })
+                        put("barangay", address.barangay ?: "")
+                        put("city", address.city)
+                        put("province", address.province)
+                        put("zipCode", when {
+                            address.zipCode != null && address.zipCode.isNotEmpty() -> address.zipCode
+                            else -> address.postalCode
+                        })
+                        put("main", isMain) // Set main status
+                        
+                        // Set service provider
+                        put("serviceProvider", JSONObject().apply {
+                            put("providerId", providerId)
+                        })
+                        
+                        // Set customer to null
+                        put("customer", JSONObject.NULL)
+                    }
+                    
+                    val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
+                    
+                    val updateRequest = Request.Builder()
+                        .url("$BASE_URL/api/addresses/updateAddress/$addressId")
+                        .put(requestBody)
+                        .header("Authorization", "Bearer $token")
+                        .header("Content-Type", "application/json")
+                        .build()
+                        
+                    client.newCall(updateRequest).enqueue(object : Callback {
+                        override fun onFailure(call: Call, e: IOException) {
+                            Log.e(TAG, "Failed to update address", e)
+                            callback(false, e)
+                        }
+                        
+                        override fun onResponse(call: Call, response: Response) {
+                            val updateResponseBody = response.body?.string()
+                            
+                            if (response.isSuccessful) {
+                                Log.d(TAG, "Successfully updated address $addressId, main=$isMain")
+                                callback(true, null)
+                            } else {
+                                Log.e(TAG, "Failed to update address: ${response.code}, $updateResponseBody")
+                                callback(false, Exception("Failed to update address: ${response.code}"))
+                            }
+                        }
+                    })
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error processing address", e)
+                    callback(false, e)
+                }
+            }
+        })
+    }
 }

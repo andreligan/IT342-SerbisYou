@@ -6,6 +6,7 @@ import com.example.serbisyo_it342_g3.data.Address
 import com.example.serbisyo_it342_g3.data.Customer
 import com.example.serbisyo_it342_g3.data.ServiceProvider
 import com.example.serbisyo_it342_g3.data.User
+import com.google.gson.reflect.TypeToken
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -365,6 +366,63 @@ class UserApiClient(context: Context) {
                         )
                         callback(defaultProvider, null)
                     }
+                }
+            }
+        })
+    }
+
+    // Get service provider addresses
+    fun getServiceProviderAddresses(providerId: Long, token: String, callback: (List<Address>?, Exception?) -> Unit) {
+        Log.d(TAG, "Getting addresses for service provider: $providerId")
+        
+        if (token.isBlank()) {
+            Log.e(TAG, "Token is empty or blank")
+            callback(null, Exception("Authentication token is required"))
+            return
+        }
+        
+        // Fetch all addresses first
+        val url = "${baseApiClient.getBaseUrl()}/api/addresses/getAll"
+        Log.d(TAG, "Request URL: $url")
+        
+        val request = Request.Builder()
+            .url(url)
+            .get()
+            .header("Authorization", "Bearer $token")
+            .build()
+            
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to fetch addresses", e)
+                callback(null, e)
+            }
+            
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                
+                if (response.isSuccessful && responseBody != null) {
+                    try {
+                        Log.d(TAG, "Successfully fetched addresses")
+                        val type = object : TypeToken<List<Address>>() {}.type
+                        val allAddresses = gson.fromJson<List<Address>>(responseBody, type)
+                        
+                        // Filter addresses by providerId
+                        val providerAddresses = allAddresses.filter { address ->
+                            // Access serviceProvider safely without generating a reference error
+                            val serviceProviderObject = address.serviceProvider as? Map<*, *>
+                            val spId = serviceProviderObject?.get("providerId") as? Number
+                            spId?.toLong() == providerId
+                        }
+                        
+                        Log.d(TAG, "Found ${providerAddresses.size} addresses for provider $providerId")
+                        callback(providerAddresses, null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing addresses data", e)
+                        callback(null, e)
+                    }
+                } else {
+                    Log.e(TAG, "Error fetching addresses: ${response.code}")
+                    callback(null, Exception("Failed to fetch addresses: ${response.code}"))
                 }
             }
         })
