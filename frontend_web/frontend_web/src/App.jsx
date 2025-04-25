@@ -8,6 +8,7 @@ import CustomerHomePage from "./components/CustomerHomePage";
 import BrowseServicesPage from "./components/BrowseServicesPage";
 import BookServicePage from "./components/BookServicePage";
 import ServiceProviderHomePage from "./components/service_provider/ServiceProviderHomePage";
+import AdminHomePage from "./components/AdminHomePage"; // Import AdminHomePage
 import PlumbingServicesPage from "./components/PlumbingServicesPage";
 import AddServicePage from "./components/service_provider/AddServicePage";
 import LogoutConfirmationPopup from "./components/LogoutConfirmationPopup";
@@ -47,6 +48,8 @@ const ProtectedRoute = ({ element, allowedRoles }) => {
       return <Navigate to="/customerHomePage" replace />;
     } else if (userRole?.toLowerCase() === "service provider") {
       return <Navigate to="/serviceProviderHomePage" replace />;
+    } else if (userRole?.toLowerCase() === "admin") {
+      return <Navigate to="/adminHomePage" replace />;
     } else {
       return <Navigate to="/" replace />;
     }
@@ -194,7 +197,7 @@ function App() {
       <div className="flex items-center gap-6 mr-6">
         {/* Home Icon with SVG glow effect */}
         <button
-          onClick={() => navigate(userRole === "customer" ? "/customerHomePage" : "/serviceProviderHomePage")}
+          onClick={() => navigate(userRole === "customer" ? "/customerHomePage" : userRole === "admin" ? "/adminHomePage" : "/serviceProviderHomePage")}
           className="p-2.5 rounded-full flex items-center justify-center"
           aria-label="Home"
         >
@@ -346,6 +349,8 @@ function App() {
         navigate("/customerHomePage");
       } else if (userRole?.toLowerCase() === "service provider") {
         navigate("/serviceProviderHomePage");
+      } else if (userRole?.toLowerCase() === "admin") {
+        navigate("/adminHomePage");
       }
     } else {
       navigate("/");
@@ -392,9 +397,13 @@ function App() {
           element={
             isAuthenticated ? 
               <Navigate 
-                to={userRole?.toLowerCase() === "customer" 
-                  ? "/customerHomePage" 
-                  : "/serviceProviderHomePage"} 
+                to={
+                  userRole?.toLowerCase() === "customer" 
+                    ? "/customerHomePage" 
+                    : userRole?.toLowerCase() === "admin"
+                      ? "/adminHomePage"
+                      : "/serviceProviderHomePage"
+                } 
                 replace 
               /> 
               : <LandingPage />
@@ -465,6 +474,10 @@ function App() {
         <Route
           path="/provider-booking-details/:bookingId"
           element={<ProtectedRoute element={<BookingDetailPage />} allowedRoles={["service provider"]} />}
+        />
+        <Route
+          path="/adminHomePage"
+          element={<ProtectedRoute element={<AdminHomePage />} allowedRoles={["admin"]} />}
         />
       </Routes>
 

@@ -44,6 +44,8 @@ const LoginPopup = ({ open, onClose }) => {
         navigate('/customerHomePage', { replace: true });
       } else if (role.toLowerCase() === "service provider") {
         navigate('/serviceProviderHomePage', { replace: true });
+      } else if (role.toLowerCase() === "admin") {
+        navigate('/adminHomePage', { replace: true });
       } else {
         // Handle other roles or unexpected cases
         console.error("Unknown user role:", role);
