@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Box, Typography, Avatar, Grid, Button } from "@mui/material";
-import { styled } from "@mui/system";
 import Footer from "./Footer";
-import { Link, useNavigate } from "react-router-dom"; // Import Link for navigation
+import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import plumbing from "../assets/plumbing.jpg";
 import electrical from "../assets/electrical.jpg";
 import cleaning from "../assets/cleaning.jpg";
@@ -18,147 +17,38 @@ import serviceImage2 from "../assets/carpentry.jpg";
 import serviceImage3 from "../assets/cleaning.jpg";
 import API from "../utils/API";
 
-const HeroSection = styled(Box)({
-  display: "flex",
-  height: "50vh",
-  position: "relative",
-});
-
-const LeftContent = styled(Box)({
-  flex: 1,
-  backgroundColor: "#495E57",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "center",
-  alignItems: "center",
-  padding: "40px",
-  zIndex: 2,
-});
-
-const RightContent = styled(Box)({
-  flex: 1,
-  position: "relative",
-  overflow: "hidden",
-});
-
-const SlideshowImage = styled("img")({
-  width: "100%",
-  height: "100%",
-  objectFit: "cover",
-  position: "absolute",
-  animation: "fade 10s infinite",
-  "@keyframes fade": {
-    "0%": { opacity: 1 },
-    "33%": { opacity: 0 },
-    "66%": { opacity: 1 },
-    "100%": { opacity: 0 },
-  },
-});
-
-// Featured Home Categories Section
-const FeaturedCategoriesContainer = styled(Box)({
-  padding: "20px",
-  textAlign: "center",
-  backgroundColor: "#F5F7F8",
-  height: "400px",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "center",
-  alignItems: "center",
-});
-
-const CategoryCircle = styled(Box)(({ src }) => ({
-  width: "100px",
-  height: "100px",
-  margin: "0 auto",
-  backgroundColor: "#f5f5f5",
-  borderRadius: "50%",
-  backgroundImage: `url(${src})`,
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-}));
-
-const CategoryName = styled(Typography)({
-  marginTop: "10px",
-  fontSize: "14px",
-  fontWeight: "bold",
-  color: "#333",
-});
-
-const ArrowButton = styled(Button)({
-  minWidth: "40px",
-  minHeight: "40px",
-  fontSize: "20px",
-  fontWeight: "bold",
-  borderRadius: "50%",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  margin: "0 10px",
-});
-
-// Featured Service Providers Section
-const FeaturedProvidersContainer = styled(Box)({
-  padding: "20px",
-  height: "400px",
-  textAlign: "center",
-  backgroundColor: "#F5F7F8",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "center",
-  alignItems: "center",
-});
-
-const ProviderCard = styled(Box)({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  padding: "20px",
-  border: "1px solid #ddd",
-  borderRadius: "8px",
-  backgroundColor: "#F9F9F9",
-  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-  width: "300px",
-  transition: "box-shadow 0.3s ease, transform 0.3s ease",
-  "&:hover": {
-    boxShadow: "0 8px 16px rgba(244, 206, 20, 0.8)",
-    transform: "scale(1.05)",
-  },
-});
-
-const ProviderImage = styled(Avatar)({
-  width: "80px",
-  height: "80px",
-  marginBottom: "10px",
-});
-
-const ProviderName = styled(Typography)({
-  fontSize: "16px",
-  fontWeight: "bold",
-  color: "#333",
-  marginBottom: "8px",
-});
-
-const ProviderRating = styled(Box)({
-  display: "flex",
-  alignItems: "center",
-  marginBottom: "8px",
-});
-
-const ProviderJob = styled(Typography)({
-  fontSize: "14px",
-  color: "#666",
-  textAlign: "center",
-});
-
 function CustomerHomePage() {
   const navigate = useNavigate();
 
-  const [categories, setCategories] = useState([]); // State to store categories
-  const [isLoading, setIsLoading] = useState(true); // State to track loading status
+  const [categories, setCategories] = useState([]); 
+  const [isLoading, setIsLoading] = useState(true); 
   const [page, setPage] = useState(1);
 
   const itemsPerPage = 5;
+
+  // Animation variants
+  const pageVariants = {
+    initial: { opacity: 0 },
+    animate: { 
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      }
+    }
+  };
+
+  const itemVariants = {
+    initial: { opacity: 0, y: 20 },
+    animate: { 
+      opacity: 1, 
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+        damping: 10
+      }
+    }
+  };
 
   // Fallback mapping for category images
   const categoryImageMap = {
@@ -185,11 +75,9 @@ function CustomerHomePage() {
         }
 
         const response = await API.get("/api/service-categories/getAll");
-
         setCategories(response.data);
         setIsLoading(false);
       } catch (error) {
-        console.log("Categories fetched:", response.data); // Log the fetched categories
         console.error("Error fetching categories:", error);
         setIsLoading(false);
       }
@@ -207,87 +95,204 @@ function CustomerHomePage() {
   };
 
   return (
-    <>
+    <motion.div
+      initial="initial"
+      animate="animate"
+      variants={pageVariants}
+    >
       {/* Hero Section */}
-      <HeroSection>
-        <LeftContent>
-          <Typography variant="h4" sx={{ fontWeight: "bold", color: "#F4CE14", mb: 2 }}>
-            Welcome, Our Dear Customer!
-          </Typography>
-          <Typography variant="body1" sx={{ color: "white", mb: 4, textAlign: "center" }}>
-            Helpful services to ease your stress are here. Start connecting with reliable service providers today!
-          </Typography>
-          <Button
-            variant="contained"
-            sx={{
-              backgroundColor: "#4caf50",
-              color: "#fff",
-              textTransform: "none",
-              "&:hover": {
-                backgroundColor: "#388e3c",
-              },
-            }}
-            onClick={() => navigate("/browseServices")}
+      <motion.div 
+        className="flex relative h-[50vh]"
+        variants={itemVariants}
+      >
+        {/* Left Content */}
+        <div className="flex-1 bg-[#495E57] flex flex-col justify-center items-center p-10 z-10">
+          <motion.h1 
+            className="font-bold text-3xl md:text-4xl text-[#F4CE14] mb-2 text-center"
+            variants={itemVariants}
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
           >
-            Book a Service
-          </Button>
-        </LeftContent>
-        <RightContent>
-          <SlideshowImage src={serviceImage1} alt="Service 1" />
-          <SlideshowImage src={serviceImage2} alt="Service 2" style={{ animationDelay: "3.3s" }} />
-          <SlideshowImage src={serviceImage3} alt="Service 3" style={{ animationDelay: "6.6s" }} />
-        </RightContent>
-      </HeroSection>
+            Welcome, Our Dear Customer!
+          </motion.h1>
+          <motion.p 
+            className="text-white mb-6 text-center max-w-md"
+            variants={itemVariants}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            Helpful services to ease your stress are here. Start connecting with reliable service providers today!
+          </motion.p>
+          <motion.button
+            className="bg-[#F4CE14] hover:bg-[#F4CE14] text-[#495E57] py-2 px-6 rounded-md transition-all duration-300 shadow-md hover:shadow-lg"
+            onClick={() => navigate("/browseServices")}
+            variants={itemVariants}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Browse Services
+          </motion.button>
+        </div>
+        
+        {/* Right Content - Slideshow */}
+        <div className="flex-1 relative overflow-hidden">
+          <img 
+            src={serviceImage1} 
+            alt="Service 1" 
+            className="w-full h-full object-cover absolute animate-fade"
+          />
+          <img 
+            src={serviceImage2} 
+            alt="Service 2" 
+            className="w-full h-full object-cover absolute animate-fade-delayed-1"
+            style={{ animationDelay: "3.3s" }}
+          />
+          <img 
+            src={serviceImage3} 
+            alt="Service 3" 
+            className="w-full h-full object-cover absolute animate-fade-delayed-2"
+            style={{ animationDelay: "6.6s" }}
+          />
+        </div>
+      </motion.div>
 
       {/* Featured Home Categories Section */}
-      <FeaturedCategoriesContainer>
-        <Typography variant="h4" fontWeight={"bold"} color={"#495E57"} gutterBottom style={{ marginBottom: "40px" }}>
+      <motion.div 
+        className="py-16 px-4 text-center bg-gray-50"
+        variants={itemVariants}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+      >
+        <motion.h2 
+          className="text-3xl font-bold text-[#495E57] mb-10"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
           Featured Home Categories
-        </Typography>
+        </motion.h2>
+        
         {isLoading ? (
-          <Typography>Loading categories...</Typography>
+          <motion.div 
+            className="flex justify-center items-center py-12"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <div className="w-12 h-12 border-4 border-[#F4CE14] border-t-transparent rounded-full animate-spin"></div>
+            <span className="ml-3 text-gray-600">Loading categories...</span>
+          </motion.div>
         ) : (
-          <Box display="flex" alignItems="center" justifyContent="center" gap="10px">
-            <ArrowButton
-              variant="contained"
-              color="primary"
-              disabled={page === 1}
+          <div className="flex items-center justify-center gap-4 max-w-6xl mx-auto">
+            <motion.button
               onClick={() => handlePageChange(page - 1)}
+              disabled={page === 1}
+              className={`w-10 h-10 flex items-center justify-center rounded-full ${
+                page === 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#495E57] text-white hover:bg-[#3e4f49] transition-colors'
+              }`}
+              whileHover={page !== 1 ? { scale: 1.1 } : {}}
+              whileTap={page !== 1 ? { scale: 0.9 } : {}}
             >
               &lt;
-            </ArrowButton>
+            </motion.button>
 
-            <Grid container spacing={4} justifyContent="center" style={{ flex: 1 }}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-6 flex-1">
               {currentCategories.map((category, index) => (
-                <Grid item xs={6} sm={4} md={2} key={index}>
-                  <Link to="#" style={{ textDecoration: "none" }}>
-                    <CategoryCircle
-                      src={category.image || categoryImageMap[category.categoryName] || "/default-category.jpg"}
-                      alt={category.categoryName} />
-                    <CategoryName>{category.categoryName}</CategoryName>
+                <motion.div 
+                  key={category.categoryId || index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * (index + 1) }}
+                  whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                >
+                  <Link to={`/browseServices?category=${category.categoryId}`} className="block">
+                    <motion.div 
+                      className="w-20 h-20 md:w-24 md:h-24 rounded-full mx-auto bg-cover bg-center shadow-md border-2 border-white"
+                      style={{ 
+                        backgroundImage: `url(${category.image || categoryImageMap[category.categoryName] || "/default-category.jpg"})` 
+                      }}
+                      whileHover={{ scale: 1.05, boxShadow: "0 8px 15px rgba(0,0,0,0.1)" }}
+                    />
+                    <p className="mt-3 text-sm font-medium text-gray-800">{category.categoryName}</p>
                   </Link>
-                </Grid>
+                </motion.div>
               ))}
-            </Grid>
+            </div>
 
-            <ArrowButton
-              variant="contained"
-              color="primary"
-              disabled={page === Math.ceil(categories.length / itemsPerPage)}
+            <motion.button
               onClick={() => handlePageChange(page + 1)}
+              disabled={page === Math.ceil(categories.length / itemsPerPage)}
+              className={`w-10 h-10 flex items-center justify-center rounded-full ${
+                page === Math.ceil(categories.length / itemsPerPage) 
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                  : 'bg-[#495E57] text-white hover:bg-[#3e4f49] transition-colors'
+              }`}
+              whileHover={page !== Math.ceil(categories.length / itemsPerPage) ? { scale: 1.1 } : {}}
+              whileTap={page !== Math.ceil(categories.length / itemsPerPage) ? { scale: 0.9 } : {}}
             >
               &gt;
-            </ArrowButton>
-          </Box>
+            </motion.button>
+          </div>
         )}
-        <Typography variant="body1" style={{ fontWeight: "bold", marginTop: "40px" }}>
-          {page}
-        </Typography>
-      </FeaturedCategoriesContainer>
+
+        <motion.div 
+          className="mt-8 flex justify-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+        >
+          <span className="text-sm bg-gray-200 px-4 py-1 rounded-full font-medium text-gray-700">
+            Page {page} of {Math.max(1, Math.ceil(categories.length / itemsPerPage))}
+          </span>
+        </motion.div>
+
+        <motion.div 
+          className="mt-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+        >
+          <Link 
+            to="/browseServices"
+            className="inline-flex items-center px-6 py-3 bg-[#F4CE14] hover:bg-[#e0b813] text-[#333] rounded-lg shadow-md transition-all hover:shadow-lg font-medium"
+          >
+            View All Services
+            <svg className="ml-2 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </Link>
+        </motion.div>
+      </motion.div>
+
+      {/* Add animation keyframes */}
+      <style jsx>{`
+        @keyframes fade {
+          0% { opacity: 1; }
+          33% { opacity: 0; }
+          66% { opacity: 1; }
+          100% { opacity: 0; }
+        }
+        .animate-fade {
+          animation: fade 10s infinite;
+        }
+        .animate-fade-delayed-1 {
+          animation: fade 10s infinite;
+          animation-delay: 3.3s;
+        }
+        .animate-fade-delayed-2 {
+          animation: fade 10s infinite;
+          animation-delay: 6.6s;
+        }
+      `}</style>
 
       {/* Footer */}
       <Footer />
-    </>
+    </motion.div>
   );
 }
 

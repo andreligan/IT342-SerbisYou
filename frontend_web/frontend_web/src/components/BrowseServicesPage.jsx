@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { motion } from "framer-motion"; // Add framer motion import
 import ServiceFilters from "./filters/ServiceFilters";
 import ServiceDetailsModal from "./modals/ServiceDetailsModal";
 
@@ -23,7 +24,50 @@ const BrowseServicesPage = () => {
   const [serviceRatings, setServiceRatings] = useState({});
   const [clickPosition, setClickPosition] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [popularCategories, setPopularCategories] = useState([]); // New state for popular categories
   const navigate = useNavigate();
+
+  // Define animation variants
+  const fadeIn = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { duration: 0.6 } }
+  };
+
+  const fadeInUp = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { 
+        type: "spring",
+        stiffness: 100,
+        damping: 15
+      }
+    }
+  };
+
+  const staggerContainer = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { 
+        type: "spring",
+        stiffness: 70,
+        damping: 14
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchServicesAndRatings = async () => {
@@ -42,6 +86,18 @@ const BrowseServicesPage = () => {
         });
 
         const services = servicesResponse.data;
+
+        // Extract categories for popular tags
+        const categoriesSet = new Set();
+        services.forEach(service => {
+          if (service.category && service.category.categoryName) {
+            categoriesSet.add(service.category.categoryName);
+          }
+        });
+        
+        // Convert to array and take only up to 5 categories for the popular tags
+        const uniqueCategories = Array.from(categoriesSet);
+        setPopularCategories(uniqueCategories.slice(0, 5));
 
         const ratingsMap = {};
         const servicesWithImages = await Promise.all(
@@ -243,11 +299,14 @@ const BrowseServicesPage = () => {
   }, []);
 
   const serviceCards = useMemo(() => {
-    return filteredServices.map((service) => (
-      <div
+    return filteredServices.map((service, index) => (
+      <motion.div
         key={service.serviceId}
+        variants={cardVariants}
+        custom={index}
         onClick={(e) => handleOpenModal(service, e)}
         className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col h-full relative overflow-hidden border border-gray-100 transform hover:-translate-y-1"
+        whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
       >
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
@@ -339,41 +398,98 @@ const BrowseServicesPage = () => {
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
     ));
   }, [filteredServices, handleOpenModal, renderStars, serviceRatings]);
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      <div className="relative bg-gradient-to-r from-[#495E57] to-[#3A4A45] overflow-hidden">
-        {/* Decorative Elements */}
+      <motion.div 
+        className="relative bg-gradient-to-r from-[#495E57] to-[#3A4A45] overflow-hidden"
+        initial="hidden"
+        animate="visible"
+        variants={fadeIn}
+      >
+        {/* Decorative Elements with subtle animations */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-4 -right-4 w-40 h-40 rounded-full bg-[#F4CE14]/10 blur-2xl"></div>
-          <div className="absolute top-1/2 left-1/4 w-64 h-64 rounded-full bg-[#F4CE14]/5 blur-3xl"></div>
+          <motion.div 
+            className="absolute -top-4 -right-4 w-40 h-40 rounded-full bg-[#F4CE14]/10 blur-2xl"
+            animate={{ 
+              scale: [1, 1.05, 1],
+              opacity: [0.8, 1, 0.8] 
+            }}
+            transition={{ 
+              duration: 6,
+              ease: "easeInOut",
+              repeat: Infinity,
+              repeatType: "reverse"
+            }}
+          />
+          <motion.div 
+            className="absolute top-1/2 left-1/4 w-64 h-64 rounded-full bg-[#F4CE14]/5 blur-3xl"
+            animate={{ 
+              scale: [1, 1.1, 1],
+              x: [0, 10, 0] 
+            }}
+            transition={{ 
+              duration: 8,
+              ease: "easeInOut",
+              repeat: Infinity,
+              repeatType: "reverse"
+            }}
+          />
           <div className="absolute bottom-0 right-1/3 w-32 h-32 rounded-full bg-white/5 blur-xl"></div>
-          <svg className="absolute left-0 bottom-0 opacity-10" width="200" height="200" viewBox="0 0 200 200">
+          <motion.svg 
+            className="absolute left-0 bottom-0 opacity-10" 
+            width="200" 
+            height="200" 
+            viewBox="0 0 200 200"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 0.1 }}
+            transition={{ duration: 1.5, ease: "easeInOut" }}
+          >
             <path d="M20,70 Q40,20 80,30 T140,50 T180,30" stroke="#F4CE14" strokeWidth="3" fill="none" />
             <path d="M0,100 Q65,55 95,85 T160,80 T190,55 T200,70" stroke="#F4CE14" strokeWidth="2" fill="none" />
-          </svg>
+          </motion.svg>
         </div>
         
         <div className="container mx-auto px-4 py-16 relative z-10">
-          <div className="flex flex-col items-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full mb-4 text-[#F4CE14] shadow-inner">
+          <motion.div 
+            className="flex flex-col items-center"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+          >
+            {/* <motion.div 
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full mb-4 text-[#F4CE14] shadow-inner"
+              variants={fadeInUp}
+            >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
               <span className="text-sm font-medium tracking-wide">Verified Professional Services</span>
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 text-center leading-tight">
-              Find the Perfect <span className="text-[#F4CE14]">Service</span> <br className="hidden md:block" />for Your Needs
-            </h1>
-            <p className="text-center text-gray-200 max-w-xl mx-auto mb-8 text-lg">
-              Connect with skilled professionals offering quality services for all your household and personal requirements.
-            </p>
+            </motion.div> */}
             
-            {/* Search functionality - Updated with working search */}
-            <form onSubmit={handleSearchSubmit} className="w-full max-w-2xl mx-auto">
+            <motion.h1 
+              className="text-4xl md:text-5xl font-bold text-white mb-4 text-center leading-tight"
+              variants={fadeInUp}
+            >
+              Find the Perfect <span className="text-[#F4CE14]">Service</span> <br className="hidden md:block" />for Your Needs
+            </motion.h1>
+            
+            <motion.p 
+              className="text-center text-gray-200 max-w-xl mx-auto mb-8 text-lg"
+              variants={fadeInUp}
+            >
+              Connect with skilled professionals offering quality services for all your household and personal requirements.
+            </motion.p>
+            
+            {/* Search functionality with animation */}
+            <motion.form 
+              onSubmit={handleSearchSubmit} 
+              className="w-full max-w-2xl mx-auto"
+              variants={fadeInUp}
+            >
               <div className="flex items-center bg-white/95 backdrop-blur-md p-2 rounded-full shadow-lg">
                 <div className="flex-1 px-4">
                   <input 
@@ -384,59 +500,96 @@ const BrowseServicesPage = () => {
                     className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-gray-700 placeholder-gray-400"
                   />
                 </div>
-                <button 
+                <motion.button 
                   type="submit"
                   className="flex items-center gap-2 bg-[#F4CE14] text-[#495E57] font-semibold py-2 px-6 rounded-full hover:bg-[#f8dc5a] transition duration-200 shadow-md"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                   <span>Search</span>
-                </button>
+                </motion.button>
               </div>
-            </form>
+            </motion.form>
             
-            {/* Popular services tags - Updated to apply search filter on click */}
-            <div className="flex flex-wrap justify-center mt-6 gap-2">
+            {/* Popular categories from actual data */}
+            <motion.div 
+              className="flex flex-wrap justify-center mt-6 gap-2"
+              variants={fadeInUp}
+            >
               <span className="text-sm text-gray-300 self-center">Popular:</span>
-              {['Plumbing', 'Cleaning', 'Electrical', 'Carpentry', 'Delivery'].map((tag) => (
-                <span 
-                  key={tag} 
-                  onClick={() => {
-                    setSearchTerm(tag);
-                    setFilteredServices(applyFilters(services, activeFilters));
-                  }}
-                  className="px-3 py-1 bg-white/10 hover:bg-white/20 cursor-pointer text-white text-xs rounded-full transition-colors"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
+              {isLoading ? (
+                <span className="text-sm text-gray-300">Loading categories...</span>
+              ) : popularCategories.length > 0 ? (
+                popularCategories.map((category, index) => (
+                  <motion.span 
+                    key={category} 
+                    onClick={() => {
+                      setSearchTerm(category);
+                      setFilteredServices(applyFilters(services, activeFilters));
+                    }}
+                    className="px-3 py-1 bg-white/10 hover:bg-white/20 cursor-pointer text-white text-xs rounded-full transition-colors"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ 
+                      delay: 0.5 + (index * 0.1),
+                      duration: 0.3,
+                      type: "spring",
+                      stiffness: 100
+                    }}
+                    whileHover={{ 
+                      scale: 1.1,
+                      backgroundColor: "rgba(255, 255, 255, 0.3)" 
+                    }}
+                  >
+                    {category}
+                  </motion.span>
+                ))
+              ) : (
+                <span className="text-sm text-gray-300">No categories found</span>
+              )}
+            </motion.div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
       
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row">
-          <div className="md:w-72 lg:w-80 flex-shrink-0 md:pr-6 md:mr-4 md:border-r md:border-gray-200 md:sticky md:top-4 md:self-start" 
-               style={{ maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto' }}>
+          <motion.div 
+            className="md:w-72 lg:w-80 flex-shrink-0 md:pr-6 md:mr-4 md:border-r md:border-gray-200 md:sticky md:top-4 md:self-start" 
+            style={{ maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto' }}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+          >
             <ServiceFilters 
               services={services}
               onFilterChange={handleFilterChange}
               className="w-full mb-6 md:mb-0"
             />
-          </div>
+          </motion.div>
           
           <div className="flex-1 md:pl-2">
             {isLoading ? (
-              <div className="flex justify-center items-center h-64">
+              <motion.div 
+                className="flex justify-center items-center h-64"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
                 <div className="flex flex-col items-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#F4CE14]"></div>
                   <p className="mt-4 text-gray-500">Loading services...</p>
                 </div>
-              </div>
+              </motion.div>
             ) : filteredServices.length === 0 ? (
-              <div className="bg-white rounded-xl shadow-md p-12 text-center">
+              <motion.div 
+                className="bg-white rounded-xl shadow-md p-12 text-center"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
                 <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-10 h-10 text-gray-400">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75l-2.489-2.489m0 0a3.375 3.375 0 10-4.773-4.773 3.375 3.375 0 004.774 4.774zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -457,10 +610,15 @@ const BrowseServicesPage = () => {
                 >
                   Reset all filters
                 </button>
-              </div>
+              </motion.div>
             ) : (
               <>
-                <div className="flex justify-between items-center mb-8 bg-white p-3 px-5 rounded-full shadow-sm">
+                <motion.div 
+                  className="flex justify-between items-center mb-8 bg-white p-3 px-5 rounded-full shadow-sm"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                >
                   <p className="text-gray-600">
                     <span className="font-semibold text-[#495E57]">{filteredServices.length}</span> services found
                   </p>
@@ -478,11 +636,16 @@ const BrowseServicesPage = () => {
                       <option value="experience">Most Experienced</option>
                     </select>
                   </div>
-                </div>
+                </motion.div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <motion.div 
+                  className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                  variants={staggerContainer}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {serviceCards}
-                </div>
+                </motion.div>
               </>
             )}
           </div>
