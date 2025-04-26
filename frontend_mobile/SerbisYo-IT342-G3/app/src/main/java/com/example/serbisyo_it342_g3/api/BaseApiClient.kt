@@ -59,9 +59,9 @@ class BaseApiClient(private val context: Context) {
     
     // Common HTTP client configured with appropriate timeouts
     val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .writeTimeout(15, TimeUnit.SECONDS)
+        .connectTimeout(30, TimeUnit.SECONDS)  // Keep increased timeout
+        .readTimeout(30, TimeUnit.SECONDS)     // Keep increased timeout
+        .writeTimeout(30, TimeUnit.SECONDS)    // Keep increased timeout
         .build()
         
     // Common Gson instance for JSON parsing
@@ -86,5 +86,14 @@ class BaseApiClient(private val context: Context) {
         // Add logging for debugging
         Log.d(TAG, "Using base URL: $BASE_URL")
         return BASE_URL
+    }
+    
+    // Helper methods that match the backend's expected URLs
+    fun getSuccessUrl(): String {
+        return "http://localhost:5173/payment-success"
+    }
+    
+    fun getCancelUrl(): String {
+        return "http://localhost:5173/payment-cancel"
     }
 } 

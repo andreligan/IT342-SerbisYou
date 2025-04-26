@@ -46,6 +46,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import com.example.serbisyo_it342_g3.MainActivity
+import com.example.serbisyo_it342_g3.api.PaymentApiClient
 import com.example.serbisyo_it342_g3.data.Booking
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -94,6 +95,7 @@ class BrowseServicesActivity : AppCompatActivity() {
     // Add constants at class level, add this near the top before onCreate
     companion object {
         private const val ADDRESS_UPDATE_REQUEST_CODE = 100
+        private const val PAYMENT_REQUEST_CODE = 1001
     }
 
     // Add a reference to the current active booking dialog
@@ -1161,7 +1163,7 @@ class BrowseServicesActivity : AppCompatActivity() {
                 showServiceBookingDialog(service)
             }
             
-            // Confirm booking button
+            // Proceed to payment button
             findViewById<Button>(R.id.btnProceedToPayment).setOnClickListener {
                 // Get special instructions
                 val specialInstructions = findViewById<EditText>(R.id.etSpecialInstructions).text.toString()
@@ -1169,60 +1171,19 @@ class BrowseServicesActivity : AppCompatActivity() {
                 // Get selected payment method
                 val paymentMethod = if (rgPaymentMethod.checkedRadioButtonId == R.id.rbGCash) "GCash" else "Cash"
                 
-                // Show confirmation progress
-                val progressDialog = ProgressDialog(this@BrowseServicesActivity)
-                progressDialog.setMessage("Creating your booking...")
-                progressDialog.setCancelable(false)
-                progressDialog.show()
+                // Dismiss this dialog and show payment summary
+                dialog.dismiss()
                 
-                // Create booking with API
-                val bookingApiClient = BookingApiClient(this@BrowseServicesActivity)
-
-                // Extract only the start time from the time slot (e.g., "01:30:00" from "01:30:00-01:45:00")
-                val startTime = timeSlot.split("-").firstOrNull() ?: timeSlot
-
-                bookingApiClient.createBooking(
-                    serviceId = service.serviceId,
-                    customerId = userId,
+                // Show payment summary dialog
+                showPaymentSummaryDialog(
+                    service = service,
                     bookingDate = bookingDate,
-                    token = token,
-                    note = specialInstructions,
-                    paymentMethod = paymentMethod,
-                    bookingTime = startTime, // Use only the start time
-                    totalCost = totalPrice.toDouble()
-                ) { booking, error ->
-                    runOnUiThread {
-                        progressDialog.dismiss()
-                        
-                        if (error != null) {
-                            Log.e(tag, "Error creating booking", error)
-                            Toast.makeText(
-                                this@BrowseServicesActivity,
-                                "Error creating booking: ${error.message}",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            return@runOnUiThread
-                        }
-                        
-                        if (booking != null) {
-                            Toast.makeText(
-                                this@BrowseServicesActivity,
-                                "Booking created successfully! Status: ${booking.status}",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            dialog.dismiss()
-                            
-                            // Show success dialog or navigate to bookings screen
-                            showBookingSuccessDialog(booking)
-                        } else {
-                            Toast.makeText(
-                                this@BrowseServicesActivity,
-                                "Unknown error occurred while creating booking",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    }
-                }
+                    timeSlot = timeSlot,
+                    totalPrice = totalPrice,
+                    customerAddress = customerAddress,
+                    specialInstructions = specialInstructions,
+                    paymentMethod = paymentMethod
+                )
             }
         }
         
@@ -1300,6 +1261,255 @@ class BrowseServicesActivity : AppCompatActivity() {
         builder.show()
     }
     
+    /**
+     * Shows a dialog with payment summary before completing booking
+     */
+    private fun showPaymentSummaryDialog(
+        service: Service,
+        bookingDate: String,
+        timeSlot: String,
+        totalPrice: Int,
+        customerAddress: Address?,
+        specialInstructions: String,
+        paymentMethod: String
+    ) {
+        val dialog = Dialog(this, android.R.style.Theme_Material_Light_Dialog_NoActionBar_MinWidth)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_payment_summary)
+        
+        // Make dialog full width with rounded corners
+        dialog.window?.apply {
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        }
+        
+        // Get user data
+        val sharedPrefs = getSharedPreferences("UserPrefs", MODE_PRIVATE)
+        val userId = try {
+            sharedPrefs.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            val userIdStr = sharedPrefs.getString("userId", "0")
+            userIdStr?.toLongOrNull() ?: 0
+        }
+        
+        // Calculate prices
+        val servicePrice = parsePrice(service.effectivePrice).roundToInt()
+        val platformFee = totalPrice - servicePrice // Calculate the combined fees
+        
+        // Setup views
+        dialog.findViewById<TextView>(R.id.tvServicePrice).text = "₱$servicePrice"
+        dialog.findViewById<TextView>(R.id.tvPlatformFee).text = "₱$platformFee"
+        dialog.findViewById<TextView>(R.id.tvTotalAmount).text = "₱$totalPrice"
+        
+        // Back button
+        dialog.findViewById<Button>(R.id.btnBack).setOnClickListener {
+            dialog.dismiss()
+            // Go back to the booking review dialog
+            showBookingReviewDialog(service, bookingDate, timeSlot, customerAddress)
+        }
+        
+        // Complete booking button
+        dialog.findViewById<Button>(R.id.btnCompleteBooking).setOnClickListener {
+            dialog.dismiss()
+            
+            if (paymentMethod.equals("GCash", ignoreCase = true)) {
+                // Process payment through PayMongo for GCash
+                initiateGCashPayment(service, bookingDate, timeSlot, totalPrice, customerAddress, specialInstructions)
+            } else {
+                // Process as Cash payment (direct booking)
+                processCashBooking(service, bookingDate, timeSlot, totalPrice, customerAddress, specialInstructions, paymentMethod)
+            }
+        }
+        
+        dialog.show()
+    }
+    
+    /**
+     * Initiates a GCash payment through PayMongo
+     */
+    private fun initiateGCashPayment(
+        service: Service,
+        bookingDate: String,
+        timeSlot: String,
+        totalPrice: Int,
+        customerAddress: Address?,
+        specialInstructions: String
+    ) {
+        // Show progress dialog
+        val progressDialog = ProgressDialog(this)
+        progressDialog.setMessage("Initiating payment process...")
+        progressDialog.setCancelable(false)
+        progressDialog.show()
+        
+        // Get user ID from SharedPreferences
+        val sharedPrefs = getSharedPreferences("UserPrefs", MODE_PRIVATE)
+        val userId = try {
+            sharedPrefs.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            val userIdStr = sharedPrefs.getString("userId", "0")
+            userIdStr?.toLongOrNull() ?: 0
+        }
+        
+        // Create payment client
+        val paymentApiClient = PaymentApiClient(this)
+        
+        // Create checkout session
+        val description = "Payment for ${service.serviceName} on $bookingDate"
+        paymentApiClient.createGCashCheckout(
+            amount = totalPrice.toDouble(),
+            description = description,
+            token = token
+        ) { checkoutUrl, error ->
+            runOnUiThread {
+                progressDialog.dismiss()
+                
+                if (error != null) {
+                    Log.e(tag, "Error creating GCash checkout", error)
+                    Toast.makeText(
+                        this,
+                        "Error initiating payment: ${error.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@runOnUiThread
+                }
+                
+                if (checkoutUrl != null) {
+                    // Store these details for later use when payment completes
+                    val preferences = getSharedPreferences("PendingBooking", MODE_PRIVATE)
+                    preferences.edit().apply {
+                        putLong("serviceId", service.serviceId)
+                        putLong("customerId", userId)
+                        putString("bookingDate", bookingDate)
+                        putString("timeSlot", timeSlot)
+                        putString("specialInstructions", specialInstructions)
+                        putString("paymentMethod", "GCash")
+                        putInt("totalPrice", totalPrice)
+                        apply()
+                    }
+                    
+                    // Launch WebView for payment
+                    val intent = Intent(this, PaymentWebViewActivity::class.java)
+                    intent.putExtra(PaymentWebViewActivity.EXTRA_PAYMENT_URL, checkoutUrl)
+                    startActivityForResult(intent, PAYMENT_REQUEST_CODE)
+                } else {
+                    Toast.makeText(
+                        this,
+                        "Failed to get payment checkout URL",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+    
+    /**
+     * Process a booking with cash payment
+     */
+    private fun processCashBooking(
+        service: Service,
+        bookingDate: String,
+        timeSlot: String,
+        totalPrice: Int,
+        customerAddress: Address?,
+        specialInstructions: String,
+        paymentMethod: String
+    ) {
+        // Show confirmation progress
+        val progressDialog = ProgressDialog(this)
+        progressDialog.setMessage("Creating your booking...")
+        progressDialog.setCancelable(false)
+        progressDialog.show()
+        
+        // Get user ID from SharedPreferences
+        val sharedPrefs = getSharedPreferences("UserPrefs", MODE_PRIVATE)
+        val userId = try {
+            sharedPrefs.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            val userIdStr = sharedPrefs.getString("userId", "0")
+            userIdStr?.toLongOrNull() ?: 0
+        }
+        
+        // Create booking with API
+        val bookingApiClient = BookingApiClient(this)
+        
+        // Extract only the start time from the time slot (e.g., "01:30:00" from "01:30:00-01:45:00")
+        val startTime = timeSlot.split("-").firstOrNull() ?: timeSlot
+        
+        bookingApiClient.createBooking(
+            serviceId = service.serviceId,
+            customerId = userId,
+            bookingDate = bookingDate,
+            token = token,
+            note = specialInstructions,
+            paymentMethod = paymentMethod,
+            bookingTime = startTime,
+            totalCost = totalPrice.toDouble()
+        ) { booking, error ->
+            runOnUiThread {
+                progressDialog.dismiss()
+                
+                if (error != null) {
+                    Log.e(tag, "Error creating booking", error)
+                    Toast.makeText(
+                        this,
+                        "Error creating booking: ${error.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@runOnUiThread
+                }
+                
+                if (booking != null) {
+                    // Show success dialog
+                    showPaymentSuccessDialog(booking)
+                } else {
+                    Toast.makeText(
+                        this,
+                        "Unknown error occurred while creating booking",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+    
+    /**
+     * Shows a dialog confirming successful payment and booking
+     */
+    private fun showPaymentSuccessDialog(booking: Booking) {
+        val dialog = Dialog(this, android.R.style.Theme_Material_Light_Dialog_NoActionBar_MinWidth)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_payment_success)
+        
+        // Make dialog full width with rounded corners
+        dialog.window?.apply {
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        }
+        
+        // Booking history button
+        dialog.findViewById<Button>(R.id.btnBookingHistory).setOnClickListener {
+            dialog.dismiss()
+            // Navigate to bookings history
+            val intent = Intent(this, ProfileManagementActivity::class.java)
+            intent.putExtra("tab_index", 2) // Booking history tab
+            startActivity(intent)
+            finish()
+        }
+        
+        // Browse more services button
+        dialog.findViewById<Button>(R.id.btnBrowseServices).setOnClickListener {
+            dialog.dismiss()
+            // Stay on the current screen
+            Toast.makeText(
+                this@BrowseServicesActivity,
+                "Continue browsing services",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+        
+        dialog.show()
+    }
+    
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             android.R.id.home -> {
@@ -1321,7 +1531,77 @@ class BrowseServicesActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         
-        if (requestCode == ADDRESS_UPDATE_REQUEST_CODE) {
+        if (requestCode == PAYMENT_REQUEST_CODE) {
+            when (resultCode) {
+                PaymentWebViewActivity.RESULT_PAYMENT_SUCCESS -> {
+                    // Payment was successful, create the booking
+                    val preferences = getSharedPreferences("PendingBooking", MODE_PRIVATE)
+                    val serviceId = preferences.getLong("serviceId", 0)
+                    val customerId = preferences.getLong("customerId", 0)
+                    val bookingDate = preferences.getString("bookingDate", "") ?: ""
+                    val timeSlot = preferences.getString("timeSlot", "") ?: ""
+                    val specialInstructions = preferences.getString("specialInstructions", "") ?: ""
+                    val paymentMethod = preferences.getString("paymentMethod", "GCash") ?: "GCash"
+                    val totalPrice = preferences.getInt("totalPrice", 0)
+                    
+                    // Extract only the start time from the time slot
+                    val startTime = timeSlot.split("-").firstOrNull() ?: timeSlot
+                    
+                    // Show progress dialog
+                    val progressDialog = ProgressDialog(this)
+                    progressDialog.setMessage("Creating your booking...")
+                    progressDialog.setCancelable(false)
+                    progressDialog.show()
+                    
+                    // Create booking with API
+                    val bookingApiClient = BookingApiClient(this)
+                    bookingApiClient.createBooking(
+                        serviceId = serviceId,
+                        customerId = customerId,
+                        bookingDate = bookingDate,
+                        token = token,
+                        note = specialInstructions,
+                        paymentMethod = paymentMethod,
+                        bookingTime = startTime,
+                        totalCost = totalPrice.toDouble()
+                    ) { booking, error ->
+                        runOnUiThread {
+                            progressDialog.dismiss()
+                            
+                            if (error != null) {
+                                Log.e(tag, "Error creating booking after payment", error)
+                                Toast.makeText(
+                                    this,
+                                    "Error creating booking: ${error.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                return@runOnUiThread
+                            }
+                            
+                            if (booking != null) {
+                                // Clear pending booking data
+                                preferences.edit().clear().apply()
+                                
+                                // Show success dialog
+                                showPaymentSuccessDialog(booking)
+                            } else {
+                                Toast.makeText(
+                                    this,
+                                    "Unknown error occurred while creating booking",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
+                }
+                PaymentWebViewActivity.RESULT_PAYMENT_CANCELLED -> {
+                    Toast.makeText(this, "Payment was cancelled", Toast.LENGTH_LONG).show()
+                }
+                else -> {
+                    Toast.makeText(this, "Payment process was interrupted", Toast.LENGTH_LONG).show()
+                }
+            }
+        } else if (requestCode == ADDRESS_UPDATE_REQUEST_CODE) {
             // If there's an active dialog and address TextView, refresh it
             if (activeBookingDialog != null && activeBookingDialog?.isShowing == true 
                 && activeAddressTextView != null) {
