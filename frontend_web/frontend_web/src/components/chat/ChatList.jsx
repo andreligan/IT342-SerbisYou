@@ -5,6 +5,7 @@ function ChatList({ onSelectUser, searchQuery }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const baseURL = "http://localhost:8080"; // Backend base URL
 
   useEffect(() => {
     const fetchConversationPartners = async () => {
@@ -14,16 +15,28 @@ function ChatList({ onSelectUser, searchQuery }) {
         const conversationPartners = await ChatService.getConversationPartners();
         
         if (conversationPartners && conversationPartners.length > 0) {
-          setUsers(conversationPartners);
+          // Map over the partners to format their profile image URLs
+          const partnersWithFormattedImages = conversationPartners.map(partner => {
+            if (partner.profileImage && !partner.profileImage.startsWith('http')) {
+              // Add base URL to profile image paths
+              return {
+                ...partner,
+                profileImage: `${baseURL}${partner.profileImage}`
+              };
+            }
+            return partner;
+          });
+          
+          setUsers(partnersWithFormattedImages);
         } else {
           console.log('No conversation partners found');
-          setUsers([]); // Set empty array instead of mock data
+          setUsers([]);
         }
         setError(null);
       } catch (err) {
         console.error('Failed to fetch conversation partners:', err);
         setError('Failed to load conversations');
-        setUsers([]); // Set empty array instead of mock data
+        setUsers([]);
       } finally {
         setLoading(false);
       }
@@ -83,7 +96,15 @@ function ChatList({ onSelectUser, searchQuery }) {
           >
             <div className="w-10 h-10 rounded-full bg-gray-300 mr-3 flex items-center justify-center overflow-hidden">
               {user.profileImage ? (
-                <img src={user.profileImage} alt={user.userName} className="w-full h-full object-cover" />
+                <img 
+                  src={user.profileImage} 
+                  alt={user.userName} 
+                  className="w-full h-full object-cover" 
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.firstName || user.userName || 'User')}&background=random`;
+                  }}
+                />
               ) : (
                 <span className="font-medium text-gray-600">
                   {(user.firstName?.charAt(0) || user.userName?.charAt(0) || '?').toUpperCase()}

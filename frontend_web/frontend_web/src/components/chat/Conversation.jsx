@@ -11,23 +11,43 @@ function Conversation({ user, messages: initialMessages, onBack, onClose, onMess
   const messageEndRef = useRef(null);
   const currentUserId = ChatService.getCurrentUserId();
   
-  // Fetch conversation history when component mounts
+  // Fetch conversation history and mark messages as read when component mounts
   useEffect(() => {
-    const fetchMessages = async () => {
+    const fetchMessagesAndMarkRead = async () => {
       try {
         if (user?.userId) {
+          // Get conversation history
           const conversationHistory = await ChatService.getConversation(user.userId);
+          
           if (conversationHistory && conversationHistory.length > 0) {
             setMessages(conversationHistory);
+            
+            // Mark unread messages from the other user as read
+            const unreadMessages = conversationHistory.filter(msg => 
+              msg.sender?.userId === user.userId && // Message from the other user
+              msg.status !== 'READ' && // Not already read
+              msg.messageId // Has a valid ID
+            );
+            
+            console.log(`Found ${unreadMessages.length} unread messages to mark as read`);
+            
+            // Mark each unread message as read
+            for (const message of unreadMessages) {
+              try {
+                await ChatService.markMessageAsRead(message.messageId);
+              } catch (err) {
+                console.error(`Failed to mark message ${message.messageId} as read:`, err);
+                // Continue with other messages even if one fails
+              }
+            }
           }
         }
       } catch (err) {
         console.error('Failed to load conversation history:', err);
-        // If API call fails, keep showing the initial messages
       }
     };
     
-    fetchMessages();
+    fetchMessagesAndMarkRead();
   }, [user?.userId]);
   
   const handleSendMessage = async (e) => {
@@ -141,19 +161,6 @@ function Conversation({ user, messages: initialMessages, onBack, onClose, onMess
       )}
       
       <form onSubmit={handleSendMessage} className="p-3 border-t border-gray-200 flex items-center space-x-2">
-        <div className="flex items-center space-x-2">
-          <button type="button" className="text-gray-500">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </button>
-          <button type="button" className="text-gray-500">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </button>
-        </div>
-        
         <input
           type="text"
           value={newMessage}

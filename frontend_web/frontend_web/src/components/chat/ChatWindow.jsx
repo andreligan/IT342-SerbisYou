@@ -9,11 +9,12 @@ function ChatWindow({ onClose }) {
   const [view, setView] = useState('list'); // 'list', 'search', or 'conversation'
   const [searchQuery, setSearchQuery] = useState('');
   const chatWindowRef = useRef(null);
-  const [refreshList, setRefreshList] = useState(0); // Add state to refresh list after sending a message
+  const [refreshList, setRefreshList] = useState(0);
 
   const handleUserSelect = (user) => {
     setSelectedUser(user);
     setView('conversation');
+    // User selected, will mark messages as read in Conversation component
   };
 
   const handleBackToList = () => {
@@ -57,7 +58,7 @@ function ChatWindow({ onClose }) {
       {view === 'conversation' ? (
         <Conversation 
           user={selectedUser} 
-          messages={selectedUser?.messages?.length > 0 ? selectedUser.messages : [{ text: "No messages yet.", system: true }]} // Fallback for empty messages
+          messages={selectedUser?.messages?.length > 0 ? selectedUser.messages : []}
           onBack={handleBackToList}
           onClose={onClose}
           onMessageSent={() => setRefreshList(prev => prev + 1)}
