@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import ReviewModal from "./ReviewModal";
+import NotificationService from "../../../services/NotificationService"; // Import NotificationService
 
 const CustomerBookingHistoryContent = () => {
   const [bookings, setBookings] = useState([]);
@@ -233,12 +234,41 @@ const CustomerBookingHistoryContent = () => {
       
       console.log("Sending params:", params.toString());
       
-      await axios.post("/api/reviews/createWithIDs", params, {
+      const reviewResponse = await axios.post("/api/reviews/createWithIDs", params, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/x-www-form-urlencoded'
         }
       });
+      
+      console.log("Review created successfully:", reviewResponse.data);
+      
+      // Create notification for the service provider about the new review
+      try {
+        const providerUserId = currentBookingForReview.service?.provider?.userAuth?.userId;
+        const customerName = `${currentBookingForReview.customer?.firstName || ''} ${currentBookingForReview.customer?.lastName || ''}`.trim();
+        const serviceName = currentBookingForReview.service?.serviceName || "your service";
+        
+        if (providerUserId) {
+          const notificationData = {
+            user: { userId: providerUserId },
+            type: "review",
+            message: `${customerName} left a ${reviewData.rating}-star review for ${serviceName}`,
+            isRead: false,
+            createdAt: new Date().toISOString(),
+            referenceId: currentBookingForReview.bookingId.toString(),
+            referenceType: "Review"
+          };
+          
+          await NotificationService.createNotification(notificationData);
+          console.log("Review notification created successfully");
+        } else {
+          console.warn("Could not create review notification - provider user ID not found");
+        }
+      } catch (notifError) {
+        console.error("Error creating review notification:", notifError);
+        // Continue with the review process even if notification creation fails
+      }
 
       // Update the local state to mark this booking as reviewed
       setReviewedBookings(prev => ({
@@ -277,7 +307,7 @@ const CustomerBookingHistoryContent = () => {
         <div className="text-center py-6 bg-gray-50 rounded-lg border border-gray-200">
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
-              strokeLinecap="round"
+              // strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
