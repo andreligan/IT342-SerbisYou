@@ -75,8 +75,8 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Add this line to check if we're on the booking page
-  const isBookingPage = location.pathname === "/bookService";
+  // Update this line to also check if we're on the add service page
+  const isHeaderHidden = location.pathname === "/bookService" || location.pathname === "/addService";
 
   useEffect(() => {
     const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
@@ -362,8 +362,8 @@ function App() {
 
   return (
     <>
-      {/* Only render header when not on booking page */}
-      {!isBookingPage && (
+      {/* Only render header when not on booking page or add service page */}
+      {!isHeaderHidden && (
         <header className="flex justify-between items-center px-4 py-2 bg-white shadow-md sticky top-0 z-30">
           <div 
             className="flex items-center cursor-pointer" 
