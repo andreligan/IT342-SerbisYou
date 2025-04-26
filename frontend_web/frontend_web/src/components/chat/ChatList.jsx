@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import ChatService from '../../services/ChatService';
+import axios from 'axios';
 
 function ChatList({ onSelectUser, searchQuery }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const baseURL = "http://localhost:8080"; // Backend base URL
+  const baseURL = "http://localhost:8080";
 
   useEffect(() => {
     const fetchConversationPartners = async () => {
@@ -13,21 +14,65 @@ function ChatList({ onSelectUser, searchQuery }) {
         setLoading(true);
         // Fetch users that the current user has had conversations with
         const conversationPartners = await ChatService.getConversationPartners();
-        
+
         if (conversationPartners && conversationPartners.length > 0) {
-          // Map over the partners to format their profile image URLs
-          const partnersWithFormattedImages = conversationPartners.map(partner => {
-            if (partner.profileImage && !partner.profileImage.startsWith('http')) {
-              // Add base URL to profile image paths
+          // Enhance users with proper profile images
+          const enhancedUsers = await Promise.all(conversationPartners.map(async (user) => {
+            try {
+              let profileImagePath = null;
+              const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+
+              if (user.role?.toLowerCase() === 'customer') {
+                // Get customer profile image
+                const customersResponse = await axios.get('/api/customers/getAll', {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+
+                const customer = customersResponse.data.find(
+                  c => c.userAuth && c.userAuth.userId == user.userId
+                );
+
+                if (customer) {
+                  const imageResponse = await axios.get(`/api/customers/getProfileImage/${customer.customerId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                  });
+
+                  if (imageResponse.data) {
+                    profileImagePath = `${baseURL}${imageResponse.data}`;
+                  }
+                }
+              } else if (user.role?.toLowerCase() === 'service provider') {
+                // Get service provider profile image
+                const providersResponse = await axios.get('/api/service-providers/getAll', {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+
+                const provider = providersResponse.data.find(
+                  p => p.userAuth && p.userAuth.userId == user.userId
+                );
+
+                if (provider) {
+                  const imageResponse = await axios.get(`/api/service-providers/getServiceProviderImage/${provider.providerId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                  });
+
+                  if (imageResponse.data) {
+                    profileImagePath = `${baseURL}${imageResponse.data}`;
+                  }
+                }
+              }
+
               return {
-                ...partner,
-                profileImage: `${baseURL}${partner.profileImage}`
+                ...user,
+                profileImage: profileImagePath || user.profileImage
               };
+            } catch (err) {
+              console.warn(`Could not fetch profile image for user ${user.userId}:`, err);
+              return user;
             }
-            return partner;
-          });
-          
-          setUsers(partnersWithFormattedImages);
+          }));
+
+          setUsers(enhancedUsers);
         } else {
           console.log('No conversation partners found');
           setUsers([]);
@@ -41,14 +86,14 @@ function ChatList({ onSelectUser, searchQuery }) {
         setLoading(false);
       }
     };
-    
+
     fetchConversationPartners();
   }, []);
 
   // Filter users based on search query
   const filteredUsers = users.filter(user => {
     if (!searchQuery) return true;
-    
+
     const query = searchQuery.toLowerCase();
     return (
       (user.userName?.toLowerCase().includes(query)) ||
@@ -79,7 +124,7 @@ function ChatList({ onSelectUser, searchQuery }) {
         <span className="inline-block w-3 h-3 bg-green-500 rounded-full mr-2"></span>
         <span className="text-sm text-gray-600">Recent Conversations</span>
       </div>
-      
+
       {filteredUsers.length === 0 ? (
         <div className="text-center p-6 text-gray-500">
           No recent conversations found.

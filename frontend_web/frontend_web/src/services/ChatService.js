@@ -297,7 +297,33 @@ const ChatService = {
       // Try to use the dedicated endpoint
       try {
         const response = await axios.get(`/api/messages/conversation-partners/${currentUserId}`, authHeaders);
-        return response.data;
+        
+        // Get the user roles for each partner to help with profile image fetching
+        const partners = response.data || [];
+        
+        if (partners.length > 0) {
+          const enhancedPartners = await Promise.all(partners.map(async (partner) => {
+            try {
+              if (partner.userId) {
+                const userResponse = await axios.get(`/api/user-auth/getById/${partner.userId}`, authHeaders);
+                if (userResponse.data) {
+                  return {
+                    ...partner,
+                    role: userResponse.data.role
+                  };
+                }
+              }
+              return partner;
+            } catch (err) {
+              console.warn(`Could not fetch role for user ${partner.userId}:`, err);
+              return partner;
+            }
+          }));
+          
+          return enhancedPartners;
+        }
+        
+        return partners;
       } catch (error) {
         console.warn('Conversation partners endpoint not available, falling back to alternative method');
         
