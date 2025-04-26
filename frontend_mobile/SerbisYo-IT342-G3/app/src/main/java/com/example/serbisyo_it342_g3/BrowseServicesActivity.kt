@@ -47,6 +47,7 @@ import org.json.JSONObject
 import java.io.IOException
 import com.example.serbisyo_it342_g3.MainActivity
 import com.example.serbisyo_it342_g3.api.PaymentApiClient
+import com.example.serbisyo_it342_g3.api.TransactionApiClient
 import com.example.serbisyo_it342_g3.data.Booking
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -1446,9 +1447,8 @@ class BrowseServicesActivity : AppCompatActivity() {
             totalCost = totalPrice.toDouble()
         ) { booking, error ->
             runOnUiThread {
-                progressDialog.dismiss()
-                
                 if (error != null) {
+                    progressDialog.dismiss()
                     Log.e(tag, "Error creating booking", error)
                     Toast.makeText(
                         this,
@@ -1459,15 +1459,49 @@ class BrowseServicesActivity : AppCompatActivity() {
                 }
                 
                 if (booking != null) {
-                    // Show success dialog
-                    showPaymentSuccessDialog(booking)
+                    // Create transaction record for the booking
+                    createTransactionRecord(booking.bookingId, totalPrice.toDouble(), paymentMethod) {
+                        progressDialog.dismiss()
+                        // Show success dialog
+                        showPaymentSuccessDialog(booking)
+                    }
                 } else {
+                    progressDialog.dismiss()
                     Toast.makeText(
                         this,
                         "Unknown error occurred while creating booking",
                         Toast.LENGTH_LONG
                     ).show()
                 }
+            }
+        }
+    }
+    
+    /**
+     * Create a transaction record after successful booking
+     */
+    private fun createTransactionRecord(bookingId: Long, amount: Double, paymentMethod: String, onComplete: () -> Unit) {
+        // Create transaction client
+        val transactionApiClient = TransactionApiClient(this)
+        
+        Log.d(tag, "Creating transaction record for booking: $bookingId, amount: $amount, method: $paymentMethod")
+        
+        transactionApiClient.createTransaction(
+            bookingId = bookingId,
+            amount = amount,
+            paymentMethod = paymentMethod,
+            token = token
+        ) { transaction, error ->
+            runOnUiThread {
+                if (error != null) {
+                    Log.e(tag, "Error creating transaction record", error)
+                    // Don't show error to user, just log it - this shouldn't prevent the booking from completing
+                } else if (transaction != null) {
+                    Log.d(tag, "Transaction record created successfully with ID: ${transaction.transactionId}")
+                }
+                
+                // Continue with success flow regardless of transaction creation result
+                onComplete()
             }
         }
     }
@@ -1566,9 +1600,8 @@ class BrowseServicesActivity : AppCompatActivity() {
                         totalCost = totalPrice.toDouble()
                     ) { booking, error ->
                         runOnUiThread {
-                            progressDialog.dismiss()
-                            
                             if (error != null) {
+                                progressDialog.dismiss()
                                 Log.e(tag, "Error creating booking after payment", error)
                                 Toast.makeText(
                                     this,
@@ -1582,9 +1615,14 @@ class BrowseServicesActivity : AppCompatActivity() {
                                 // Clear pending booking data
                                 preferences.edit().clear().apply()
                                 
-                                // Show success dialog
-                                showPaymentSuccessDialog(booking)
+                                // Create transaction record for the GCash payment
+                                createTransactionRecord(booking.bookingId, totalPrice.toDouble(), paymentMethod) {
+                                    progressDialog.dismiss()
+                                    // Show success dialog
+                                    showPaymentSuccessDialog(booking)
+                                }
                             } else {
+                                progressDialog.dismiss()
                                 Toast.makeText(
                                     this,
                                     "Unknown error occurred while creating booking",
