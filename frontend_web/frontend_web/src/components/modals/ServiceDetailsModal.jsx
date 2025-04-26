@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const BASE_URL = "http://localhost:8080";
 
@@ -16,7 +17,10 @@ const ServiceDetailsModal = ({
   const modalRef = useRef(null);
   const navigate = useNavigate();
   const [imageFailed, setImageFailed] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview'); // New state for tabs
+  const [activeTab, setActiveTab] = useState('overview'); // State for tabs
+  const [reviews, setReviews] = useState([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [reviewError, setReviewError] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -30,18 +34,75 @@ const ServiceDetailsModal = ({
     }
   }, [isOpen]);
 
+  // Load reviews when service changes or reviews tab is activated
   useEffect(() => {
-    if (isOpen && service?.provider) {
-      console.log(`Modal opened for service: ${service.serviceName}`);
-      console.log("Provider details:", service.provider);
-      if (service.provider.profileImage) {
-        console.log(`Provider has profile image: ${service.provider.profileImage}`);
-      } else {
-        console.log("Provider has no profile image path");
+    const fetchReviews = async () => {
+      if (!service || !service.serviceId) return;
+      
+      // Only fetch if we're on the reviews tab
+      if (activeTab !== 'reviews') return;
+      
+      try {
+        setLoadingReviews(true);
+        setReviewError(null);
+        
+        // Get the auth token
+        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        
+        if (!token) {
+          console.error("No authentication token found");
+          setLoadingReviews(false);
+          return;
+        }
+        
+        // First get the provider ID from the service
+        const providerId = service.provider?.providerId;
+        
+        if (!providerId) {
+          setReviewError("Provider information not found");
+          setLoadingReviews(false);
+          return;
+        }
+        
+        // Get all reviews for this provider
+        const reviewsResponse = await axios.get(`/api/reviews/getByProvider/${providerId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        // Filter reviews for this specific service
+        // This requires checking bookings to match the service ID
+        const bookingsResponse = await axios.get('/api/bookings/getAll', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        // Get bookings for this service
+        const serviceBookings = bookingsResponse.data.filter(booking => 
+          booking.service?.serviceId === service.serviceId
+        ).map(booking => booking.bookingId);
+        
+        // Filter reviews for these bookings
+        const serviceReviews = reviewsResponse.data.filter(review => 
+          serviceBookings.includes(review.booking?.bookingId) || 
+          serviceBookings.includes(review.bookingId)
+        );
+        
+        // Sort by date, newest first
+        serviceReviews.sort((a, b) => 
+          new Date(b.reviewDate) - new Date(a.reviewDate)
+        );
+        
+        setReviews(serviceReviews);
+      } catch (error) {
+        console.error("Error fetching reviews:", error);
+        setReviewError("Failed to load reviews");
+      } finally {
+        setLoadingReviews(false);
       }
-    }
-  }, [isOpen, service]);
-  
+    };
+    
+    fetchReviews();
+  }, [service, activeTab]);
+
   if (!isOpen || !service) return null;
   
   let overlayStyle = {
@@ -119,6 +180,19 @@ const ServiceDetailsModal = ({
     } else {
       console.error("No provider ID found in:", service.provider);
     }
+  };
+
+  const formatReviewDate = (dateString) => {
+    if (!dateString) return "";
+    
+    const date = new Date(dateString);
+    if (isNaN(date)) return "Invalid date";
+    
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long', 
+      day: 'numeric'
+    });
   };
 
   return (
@@ -210,6 +284,15 @@ const ServiceDetailsModal = ({
               <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
             </svg>
             Provider
+          </button>
+          <button 
+            className={`px-6 py-4 font-medium text-sm flex items-center transition-colors ${activeTab === 'reviews' ? 'text-[#495E57] border-b-2 border-[#F4CE14]' : 'text-gray-500 hover:text-gray-700'}`}
+            onClick={() => setActiveTab('reviews')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            </svg>
+            Reviews
           </button>
         </div>
         <div className="p-6">
@@ -425,6 +508,85 @@ const ServiceDetailsModal = ({
                     Book This Service
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+          {activeTab === 'reviews' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-[#495E57] flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                  Customer Reviews
+                </h3>
+                <div className="flex items-center bg-[#495E57]/10 px-3 py-1 rounded-lg">
+                  <span className="font-medium text-[#495E57] mr-2">
+                    {serviceRatings[service.serviceId]?.averageRating?.toFixed(1) || "0.0"}
+                  </span>
+                  <div className="flex">
+                    {renderStars(serviceRatings[service.serviceId]?.averageRating || 0)}
+                  </div>
+                  <span className="ml-2 text-sm text-gray-500">
+                    ({serviceRatings[service.serviceId]?.reviewCount || 0} reviews)
+                  </span>
+                </div>
+              </div>
+              {loadingReviews ? (
+                <div className="flex justify-center items-center py-12">
+                  <div className="w-12 h-12 rounded-full border-b-2 border-[#495E57] animate-spin"></div>
+                </div>
+              ) : reviewError ? (
+                <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg">
+                  <p className="font-medium">Error loading reviews</p>
+                  <p>{reviewError}</p>
+                </div>
+              ) : reviews.length > 0 ? (
+                <div className="space-y-6">
+                  {reviews.map((review) => (
+                    <div key={review.reviewId} className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-start space-x-4">
+                          <div className="w-10 h-10 bg-[#F4CE14]/20 rounded-full flex items-center justify-center text-[#495E57] font-medium">
+                            {review.customer?.firstName?.charAt(0) || 'U'}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-800">
+                              {review.customer?.firstName} {review.customer?.lastName || ''}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {formatReviewDate(review.reviewDate)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center">
+                          {renderStars(review.rating || 0)}
+                          <span className="ml-2 text-[#495E57] font-medium">{review.rating.toFixed(1)}</span>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-gray-700">{review.comment || "No comment provided"}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-gray-50 p-8 rounded-lg text-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                  <p className="text-gray-600 font-medium">No reviews yet for this service</p>
+                  <p className="text-gray-500 mt-1 text-sm">Be the first to review after booking!</p>
+                </div>
+              )}
+              <div className="flex justify-center pt-4">
+                <button 
+                  onClick={onBookService}
+                  className="bg-[#F4CE14] hover:bg-[#e5c013] text-[#495E57] font-bold px-8 py-3 rounded-lg transition-colors shadow-sm flex items-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Book This Service
+                </button>
               </div>
             </div>
           )}
