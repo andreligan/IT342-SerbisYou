@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import Footer from "./Footer";
 import { useNavigate } from "react-router-dom";
+import BaseModal from "./shared/BaseModal";
+import { motion } from "framer-motion";
 
 // Import images - adjust path as needed for your project structure
 import plumbing from "../assets/plumbing.jpg";
@@ -30,31 +32,54 @@ const categories = [
 
 // Sign In Required Popup Component
 const SignInRequiredPopup = ({ isOpen, onClose, onOk }) => {
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-8 max-w-md w-full">
-        <h3 className="text-2xl font-semibold text-[#495E57] mb-4">Sign Up Required</h3>
-        <p className="text-gray-600 mb-6">
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="max-w-md"
+    >
+      <div className="bg-white rounded-lg p-8">
+        <motion.h3 
+          className="text-2xl font-semibold text-[#495E57] mb-4"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          Sign Up Required
+        </motion.h3>
+        <motion.p 
+          className="text-gray-600 mb-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1, duration: 0.3 }}
+        >
           You need to create an account to browse services and make bookings.
-        </p>
-        <div className="flex justify-end space-x-4">
-          <button
+        </motion.p>
+        <motion.div 
+          className="flex justify-end space-x-4"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.3 }}
+        >
+          <motion.button
             onClick={onClose}
             className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
             Cancel
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             onClick={onOk}
             className="px-6 py-2 bg-[#F4CE14] text-[#495E57] font-semibold rounded-lg hover:bg-opacity-90"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
             OK
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </div>
-    </div>
+    </BaseModal>
   );
 };
 

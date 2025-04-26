@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import BaseModal from "../shared/BaseModal";
 
 const AddServicePage = () => {
   const navigate = useNavigate();
@@ -476,123 +477,108 @@ const AddServicePage = () => {
         </motion.div>
 
         {/* Confirmation Dialog */}
-        <AnimatePresence>
-          {isPopupOpen && (
+        <BaseModal
+          isOpen={isPopupOpen}
+          onClose={() => setIsPopupOpen(false)}
+          maxWidth="max-w-md"
+          clickPosition={null}
+        >
+          <div className="bg-white rounded-xl overflow-hidden">
             <motion.div 
-              className="fixed inset-0 backdrop-blur-sm bg-gray-500/30 flex items-center justify-center p-4 z-50"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              className="bg-gradient-to-r from-[#495E57] to-[#3e4f49] px-6 py-4"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1, duration: 0.3 }}
             >
-              <motion.div 
-                className="bg-white rounded-xl max-w-md w-full overflow-hidden shadow-2xl border border-gray-100"
-                initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                transition={{ 
-                  type: "spring", 
-                  stiffness: 300, 
-                  damping: 30,
-                  duration: 0.4
-                }}
-              >
-                <motion.div 
-                  className="bg-gradient-to-r from-[#495E57] to-[#3e4f49] px-6 py-4"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1, duration: 0.3 }}
-                >
-                  <h3 className="text-lg font-medium text-white flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                    Confirm Service Details
-                  </h3>
-                </motion.div>
-                <div className="p-6">
-                  <div className="space-y-5">
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2, duration: 0.3 }}
-                    >
-                      <p className="text-sm text-gray-500 font-medium mb-1">Category</p>
-                      <p className="font-semibold text-gray-800">
-                        {serviceCategories.find((cat) => cat.categoryId === formData.category)?.categoryName || ""}
-                      </p>
-                    </motion.div>
-                    
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3, duration: 0.3 }}
-                    >
-                      <p className="text-sm text-gray-500 font-medium mb-1">Service Name</p>
-                      <p className="font-semibold text-gray-800">{formData.name}</p>
-                    </motion.div>
-                    
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4, duration: 0.3 }}
-                    >
-                      <p className="text-sm text-gray-500 font-medium mb-1">Description</p>
-                      <p className="font-medium text-gray-700 line-clamp-3">{formData.serviceDescription}</p>
-                    </motion.div>
-                    
-                    <motion.div 
-                      className="grid grid-cols-2 gap-4"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.5, duration: 0.3 }}
-                    >
-                      <div>
-                        <p className="text-sm text-gray-500 font-medium mb-1">Price</p>
-                        <p className="font-semibold text-gray-800">₱{formData.price}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500 font-medium mb-1">Duration</p>
-                        <p className="font-semibold text-gray-800">{formData.durationEstimate}</p>
-                      </div>
-                    </motion.div>
-                  </div>
-                  
-                  <motion.div 
-                    className="mt-8 grid grid-cols-2 gap-4"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6, duration: 0.3 }}
-                  >
-                    <motion.button
-                      type="button"
-                      onClick={() => setIsPopupOpen(false)}
-                      className="flex justify-center items-center text-gray-700 bg-gray-100 px-4 py-3 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors font-medium"
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                      Cancel
-                    </motion.button>
-                    <motion.button
-                      type="button"
-                      onClick={handleConfirm}
-                      className="flex justify-center items-center bg-[#F4CE14] text-[#495E57] px-4 py-3 font-medium rounded-lg hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-colors"
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Confirm
-                    </motion.button>
-                  </motion.div>
-                </div>
-              </motion.div>
+              <h3 className="text-lg font-medium text-white flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Confirm Service Details
+              </h3>
             </motion.div>
-          )}
-        </AnimatePresence>
+            <div className="p-6">
+              <div className="space-y-5">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.3 }}
+                >
+                  <p className="text-sm text-gray-500 font-medium mb-1">Category</p>
+                  <p className="font-semibold text-gray-800">
+                    {serviceCategories.find((cat) => cat.categoryId === formData.category)?.categoryName || ""}
+                  </p>
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3, duration: 0.3 }}
+                >
+                  <p className="text-sm text-gray-500 font-medium mb-1">Service Name</p>
+                  <p className="font-semibold text-gray-800">{formData.name}</p>
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4, duration: 0.3 }}
+                >
+                  <p className="text-sm text-gray-500 font-medium mb-1">Description</p>
+                  <p className="font-medium text-gray-700 line-clamp-3">{formData.serviceDescription}</p>
+                </motion.div>
+                
+                <motion.div 
+                  className="grid grid-cols-2 gap-4"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5, duration: 0.3 }}
+                >
+                  <div>
+                    <p className="text-sm text-gray-500 font-medium mb-1">Price</p>
+                    <p className="font-semibold text-gray-800">₱{formData.price}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 font-medium mb-1">Duration</p>
+                    <p className="font-semibold text-gray-800">{formData.durationEstimate}</p>
+                  </div>
+                </motion.div>
+              </div>
+              
+              <motion.div 
+                className="mt-8 grid grid-cols-2 gap-4"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, duration: 0.3 }}
+              >
+                <motion.button
+                  type="button"
+                  onClick={() => setIsPopupOpen(false)}
+                  className="flex justify-center items-center text-gray-700 bg-gray-100 px-4 py-3 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors font-medium"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Cancel
+                </motion.button>
+                <motion.button
+                  type="button"
+                  onClick={handleConfirm}
+                  className="flex justify-center items-center bg-[#F4CE14] text-[#495E57] px-4 py-3 font-medium rounded-lg hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-colors"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Confirm
+                </motion.button>
+              </motion.div>
+            </div>
+          </div>
+        </BaseModal>
       </motion.div>
     </AnimatePresence>
   );

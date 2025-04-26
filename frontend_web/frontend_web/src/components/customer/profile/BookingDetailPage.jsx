@@ -620,13 +620,12 @@ const BookingDetailPage = () => {
         </div>
       </div>
       
-      {isReviewModalOpen && (
-        <ReviewModal 
-          booking={booking}
-          onClose={handleCloseReviewModal}
-          onSubmit={handleSubmitReview}
-        />
-      )}
+      <ReviewModal 
+        booking={booking}
+        isOpen={isReviewModalOpen}
+        onClose={handleCloseReviewModal}
+        onSubmit={handleSubmitReview}
+      />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import BaseModal from '../shared/BaseModal';
 
 const CategoryManagement = () => {
   const [newCategory, setNewCategory] = useState({ categoryName: '', description: '' });
@@ -431,79 +432,93 @@ const CategoryManagement = () => {
           </motion.div>
         </div>
 
-        <AnimatePresence>
-          {editingCategory && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
-              onClick={() => setEditingCategory(null)}
-            >
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full m-4"
-                onClick={e => e.stopPropagation()}
+        <BaseModal
+          isOpen={editingCategory !== null}
+          onClose={() => setEditingCategory(null)}
+          maxWidth="max-w-lg"
+        >
+          <div className="bg-white rounded-lg overflow-hidden">
+            <div className="flex justify-between items-center p-6 bg-gradient-to-r from-[#495E57] to-[#3e4f49]">
+              <h2 className="text-xl font-bold text-white flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                </svg>
+                Edit Category
+              </h2>
+              <motion.button 
+                onClick={() => setEditingCategory(null)}
+                className="text-gray-500 hover:text-gray-700"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
               >
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-bold text-[#495E57]">Edit Category</h2>
-                  <button 
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </motion.button>
+            </div>
+            <div className="p-6">
+              <form className="space-y-4">
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.1 }}
+                >
+                  <label htmlFor="edit-categoryName" className="block text-sm font-medium text-gray-700">Category Name</label>
+                  <input
+                    type="text"
+                    id="edit-categoryName"
+                    name="categoryName"
+                    value={editingCategory?.categoryName || ""}
+                    onChange={handleEditInputChange}
+                    className="mt-1 p-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#495E57] focus:border-[#495E57]"
+                    required
+                  />
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
+                >
+                  <label htmlFor="edit-description" className="block text-sm font-medium text-gray-700">Description</label>
+                  <textarea
+                    id="edit-description"
+                    name="description"
+                    value={editingCategory?.description || ""}
+                    onChange={handleEditInputChange}
+                    rows="5"
+                    className="mt-1 p-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#495E57] focus:border-[#495E57]"
+                    required
+                  />
+                </motion.div>
+                <motion.div 
+                  className="flex justify-end space-x-3 pt-4 border-t border-gray-200"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.3 }}
+                >
+                  <motion.button
+                    type="button"
                     onClick={() => setEditingCategory(null)}
-                    className="text-gray-500 hover:text-gray-700"
+                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                <form className="space-y-4">
-                  <div>
-                    <label htmlFor="edit-categoryName" className="block text-sm font-medium text-gray-700">Category Name</label>
-                    <input
-                      type="text"
-                      id="edit-categoryName"
-                      name="categoryName"
-                      value={editingCategory.categoryName}
-                      onChange={handleEditInputChange}
-                      className="mt-1 p-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#495E57] focus:border-[#495E57]"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="edit-description" className="block text-sm font-medium text-gray-700">Description</label>
-                    <textarea
-                      id="edit-description"
-                      name="description"
-                      value={editingCategory.description}
-                      onChange={handleEditInputChange}
-                      rows="5"
-                      className="mt-1 p-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#495E57] focus:border-[#495E57]"
-                      required
-                    />
-                  </div>
-                  <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-                    <button
-                      type="button"
-                      onClick={() => setEditingCategory(null)}
-                      className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleUpdateCategory}
-                      className="px-4 py-2 bg-[#F4CE14] text-[#495E57] font-medium rounded-lg hover:bg-[#e6c013] transition-colors"
-                    >
-                      Update Category
-                    </button>
-                  </div>
-                </form>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                    Cancel
+                  </motion.button>
+                  <motion.button
+                    type="button"
+                    onClick={handleUpdateCategory}
+                    className="px-4 py-2 bg-[#F4CE14] text-[#495E57] font-medium rounded-lg hover:bg-[#e6c013] transition-colors"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Update Category
+                  </motion.button>
+                </motion.div>
+              </form>
+            </div>
+          </div>
+        </BaseModal>
       </div>
     </div>
   );

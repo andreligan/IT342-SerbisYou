@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import BaseModal from '../../shared/BaseModal';
 
 // Base URL for the backend server
 const BASE_URL = "http://localhost:8080";
@@ -685,322 +686,272 @@ function MyServicesContent() {
       )}
 
       {/* Edit Service Dialog */}
-      {openEditDialog && (
-        <motion.div 
-          className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center"
-          aria-labelledby="modal-title" 
-          role="dialog" 
-          aria-modal="true"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          {/* Background overlay with blur */}
+      <BaseModal 
+        isOpen={openEditDialog}
+        onClose={() => setOpenEditDialog(false)}
+        maxWidth="max-w-lg"
+      >
+        <div className="bg-white rounded-xl text-left overflow-hidden shadow-xl border border-gray-100">
           <motion.div 
-            className="fixed inset-0 backdrop-blur-sm bg-gray-500/30"
-            onClick={() => setOpenEditDialog(false)}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          ></motion.div>
-
-          {/* Modal panel - centered */}
-          <motion.div 
-            className="bg-white rounded-xl text-left overflow-hidden shadow-xl z-10 w-full max-w-lg mx-4 my-auto border border-gray-100"
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            transition={{ 
-              type: "spring", 
-              stiffness: 300, 
-              damping: 30,
-              duration: 0.4
-            }}
+            className="bg-gradient-to-r from-[#495E57] to-[#3e4f49] px-6 py-4 flex justify-between items-center"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1, duration: 0.3 }}
           >
-            <motion.div 
-              className="bg-gradient-to-r from-[#495E57] to-[#3e4f49] px-6 py-4 flex justify-between items-center"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1, duration: 0.3 }}
+            <h3 className="text-lg font-medium text-white flex items-center" id="modal-title">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Edit Service
+            </h3>
+            <motion.button
+              onClick={() => setOpenEditDialog(false)}
+              className="text-white hover:text-gray-200 focus:outline-none"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
             >
-              <h3 className="text-lg font-medium text-white flex items-center" id="modal-title">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                Edit Service
-              </h3>
-              <motion.button
-                onClick={() => setOpenEditDialog(false)}
-                className="text-white hover:text-gray-200 focus:outline-none"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </motion.button>
-            </motion.div>
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </motion.button>
+          </motion.div>
 
-            <div className="bg-white px-6 pt-5 pb-6">
-              <div className="space-y-5">
-                {/* Service Category */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2, duration: 0.3 }}
+          <div className="bg-white px-6 pt-5 pb-6">
+            <div className="space-y-5">
+              {/* Service Category */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.3 }}
+              >
+                <label htmlFor="categoryId" className="block text-sm font-medium text-gray-700 mb-1">Service Category</label>
+                <select
+                  id="categoryId"
+                  name="categoryId"
+                  value={currentService.categoryId}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-[#F4CE14] focus:border-[#F4CE14] shadow-sm transition-all"
+                  required
                 >
-                  <label htmlFor="categoryId" className="block text-sm font-medium text-gray-700 mb-1">Service Category</label>
-                  <select
-                    id="categoryId"
-                    name="categoryId"
-                    value={currentService.categoryId}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-[#F4CE14] focus:border-[#F4CE14] shadow-sm transition-all"
-                    required
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map((category) => (
-                      <option key={category.categoryId} value={category.categoryId}>
-                        {category.categoryName}
-                      </option>
-                    ))}
-                  </select>
-                </motion.div>
-                
-                {/* Service Name */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3, duration: 0.3 }}
-                >
-                  <label htmlFor="serviceName" className="block text-sm font-medium text-gray-700 mb-1">Service Name</label>
+                  <option value="">Select a category</option>
+                  {categories.map((category) => (
+                    <option key={category.categoryId} value={category.categoryId}>
+                      {category.categoryName}
+                    </option>
+                  ))}
+                </select>
+              </motion.div>
+              
+              {/* Service Name */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.3 }}
+              >
+                <label htmlFor="serviceName" className="block text-sm font-medium text-gray-700 mb-1">Service Name</label>
+                <input
+                  type="text"
+                  id="serviceName"
+                  name="serviceName"
+                  value={currentService.serviceName}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-[#F4CE14] focus:border-[#F4CE14] shadow-sm transition-all"
+                  required
+                />
+              </motion.div>
+              
+              {/* Service Description */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.3 }}
+              >
+                <label htmlFor="serviceDescription" className="block text-sm font-medium text-gray-700 mb-1">Service Description</label>
+                <textarea
+                  id="serviceDescription"
+                  name="serviceDescription"
+                  rows="4"
+                  value={currentService.serviceDescription}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-[#F4CE14] focus:border-[#F4CE14] shadow-sm transition-all resize-none"
+                  required
+                ></textarea>
+              </motion.div>
+              
+              {/* Price and Duration */}
+              <motion.div 
+                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.3 }}
+              >
+                <div>
+                  <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">Price (₱)</label>
                   <input
                     type="text"
-                    id="serviceName"
-                    name="serviceName"
-                    value={currentService.serviceName}
+                    id="price"
+                    name="price"
+                    value={currentService.price}
                     onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-[#F4CE14] focus:border-[#F4CE14] shadow-sm transition-all"
                     required
                   />
-                </motion.div>
+                </div>
                 
-                {/* Service Description */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4, duration: 0.3 }}
-                >
-                  <label htmlFor="serviceDescription" className="block text-sm font-medium text-gray-700 mb-1">Service Description</label>
-                  <textarea
-                    id="serviceDescription"
-                    name="serviceDescription"
-                    rows="4"
-                    value={currentService.serviceDescription}
+                <div>
+                  <label htmlFor="durationEstimate" className="block text-sm font-medium text-gray-700 mb-1">Duration Estimate</label>
+                  <input
+                    type="text"
+                    id="durationEstimate"
+                    name="durationEstimate"
+                    value={currentService.durationEstimate}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-[#F4CE14] focus:border-[#F4CE14] shadow-sm transition-all resize-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-[#F4CE14] focus:border-[#F4CE14] shadow-sm transition-all"
                     required
-                  ></textarea>
-                </motion.div>
-                
-                {/* Price and Duration */}
-                <motion.div 
-                  className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5, duration: 0.3 }}
-                >
-                  <div>
-                    <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">Price (₱)</label>
-                    <input
-                      type="text"
-                      id="price"
-                      name="price"
-                      value={currentService.price}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-[#F4CE14] focus:border-[#F4CE14] shadow-sm transition-all"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="durationEstimate" className="block text-sm font-medium text-gray-700 mb-1">Duration Estimate</label>
-                    <input
-                      type="text"
-                      id="durationEstimate"
-                      name="durationEstimate"
-                      value={currentService.durationEstimate}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-[#F4CE14] focus:border-[#F4CE14] shadow-sm transition-all"
-                      required
-                    />
-                  </div>
-                </motion.div>
-              </div>
+                  />
+                </div>
+              </motion.div>
             </div>
+          </div>
 
-            {/* Action buttons */}
-            <motion.div 
-              className="bg-gray-50 px-6 py-4 sm:flex sm:flex-row-reverse gap-3"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.3 }}
+          {/* Action buttons */}
+          <motion.div 
+            className="bg-gray-50 px-6 py-4 sm:flex sm:flex-row-reverse gap-3"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.3 }}
+          >
+            <motion.button
+              type="button"
+              className="w-full sm:w-auto flex justify-center items-center bg-[#F4CE14] text-[#495E57] px-6 py-3 font-medium rounded-lg hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-colors"
+              onClick={handleUpdateService}
+              disabled={loading || !currentService.categoryId || !currentService.serviceName}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
             >
-              <motion.button
-                type="button"
-                className="w-full sm:w-auto flex justify-center items-center bg-[#F4CE14] text-[#495E57] px-6 py-3 font-medium rounded-lg hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-colors"
-                onClick={handleUpdateService}
-                disabled={loading || !currentService.categoryId || !currentService.serviceName}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                {loading ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-[#495E57]" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Updating...
-                  </>
-                ) : (
-                  <>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Update Service
-                  </>
-                )}
-              </motion.button>
-              <motion.button
-                type="button"
-                className="w-full sm:w-auto mt-3 sm:mt-0 flex justify-center items-center text-gray-700 bg-gray-100 px-6 py-3 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors font-medium"
-                onClick={() => setOpenEditDialog(false)}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Cancel
-              </motion.button>
-            </motion.div>
+              {loading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-[#495E57]" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Update Service
+                </>
+              )}
+            </motion.button>
+            <motion.button
+              type="button"
+              className="w-full sm:w-auto mt-3 sm:mt-0 flex justify-center items-center text-gray-700 bg-gray-100 px-6 py-3 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors font-medium"
+              onClick={() => setOpenEditDialog(false)}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Cancel
+            </motion.button>
           </motion.div>
-        </motion.div>
-      )}
+        </div>
+      </BaseModal>
 
       {/* Delete Confirmation Dialog */}
-      {openDeleteDialog && (
-        <motion.div 
-          className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center"
-          aria-labelledby="modal-title" 
-          role="dialog" 
-          aria-modal="true"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          {/* Background overlay with blur */}
+      <BaseModal 
+        isOpen={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+        maxWidth="max-w-lg"
+      >
+        <div className="bg-white rounded-xl text-left overflow-hidden shadow-xl border border-gray-100">
           <motion.div 
-            className="fixed inset-0 backdrop-blur-sm bg-gray-500/30"
-            onClick={() => setOpenDeleteDialog(false)}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          ></motion.div>
-
-          {/* Modal panel - centered */}
-          <motion.div 
-            className="bg-white rounded-xl text-left overflow-hidden shadow-xl z-10 w-full max-w-lg mx-4 my-auto border border-gray-100"
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            transition={{ 
-              type: "spring", 
-              stiffness: 300, 
-              damping: 30,
-              duration: 0.4
-            }}
+            className="bg-gradient-to-r from-red-600 to-red-500 px-6 py-4"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1, duration: 0.3 }}
           >
-            <motion.div 
-              className="bg-gradient-to-r from-red-600 to-red-500 px-6 py-4"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1, duration: 0.3 }}
-            >
-              <h3 className="text-lg font-medium text-white flex items-center" id="modal-title">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                Confirm Deletion
-              </h3>
-            </motion.div>
-            
-            <motion.div 
-              className="bg-white px-6 pt-5 pb-6"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.3 }}
-            >
-              <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    Delete Service
-                  </h3>
-                  <p className="text-gray-600">
-                    Are you sure you want to delete the service "<span className="font-semibold text-gray-900">{currentService.serviceName}</span>"? This action cannot be undone.
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-            
-            <motion.div 
-              className="bg-gray-50 px-6 py-4 sm:flex sm:flex-row-reverse gap-3"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.3 }}
-            >
-              <motion.button 
-                type="button" 
-                className="w-full sm:w-auto flex justify-center items-center bg-red-600 text-white px-6 py-3 font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400 transition-colors"
-                onClick={handleDeleteService}
-                disabled={loading}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                {loading ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Deleting...
-                  </span>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                    </svg>
-                    Delete Service
-                  </>
-                )}
-              </motion.button>
-              <motion.button 
-                type="button" 
-                className="w-full sm:w-auto mt-3 sm:mt-0 flex justify-center items-center text-gray-700 bg-gray-100 px-6 py-3 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors font-medium"
-                onClick={() => setOpenDeleteDialog(false)}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Cancel
-              </motion.button>
-            </motion.div>
+            <h3 className="text-lg font-medium text-white flex items-center" id="modal-title">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Confirm Deletion
+            </h3>
           </motion.div>
-        </motion.div>
-      )}
+          
+          <motion.div 
+            className="bg-white px-6 pt-5 pb-6"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.3 }}
+          >
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Delete Service
+                </h3>
+                <p className="text-gray-600">
+                  Are you sure you want to delete the service "<span className="font-semibold text-gray-900">{currentService.serviceName}</span>"? This action cannot be undone.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+          
+          <motion.div 
+            className="bg-gray-50 px-6 py-4 sm:flex sm:flex-row-reverse gap-3"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.3 }}
+          >
+            <motion.button 
+              type="button" 
+              className="w-full sm:w-auto flex justify-center items-center bg-red-600 text-white px-6 py-3 font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400 transition-colors"
+              onClick={handleDeleteService}
+              disabled={loading}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+            >
+              {loading ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Deleting...
+                </span>
+              ) : (
+                <>
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                  </svg>
+                  Delete Service
+                </>
+              )}
+            </motion.button>
+            <motion.button 
+              type="button" 
+              className="w-full sm:w-auto mt-3 sm:mt-0 flex justify-center items-center text-gray-700 bg-gray-100 px-6 py-3 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors font-medium"
+              onClick={() => setOpenDeleteDialog(false)}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Cancel
+            </motion.button>
+          </motion.div>
+        </div>
+      </BaseModal>
     </motion.div>
   );
 }

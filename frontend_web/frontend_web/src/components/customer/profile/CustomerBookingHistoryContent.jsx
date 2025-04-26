@@ -647,13 +647,12 @@ const CustomerBookingHistoryContent = () => {
         </div>
       )}
 
-      {isReviewModalOpen && (
-        <ReviewModal
-          booking={currentBookingForReview}
-          onClose={handleCloseReviewModal}
-          onSubmit={handleSubmitReview}
-        />
-      )}
+      <ReviewModal
+        booking={currentBookingForReview}
+        isOpen={isReviewModalOpen}
+        onClose={handleCloseReviewModal}
+        onSubmit={handleSubmitReview}
+      />
     </div>
   );
 };

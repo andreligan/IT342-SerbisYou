@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import BaseModal from '../shared/BaseModal';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -777,94 +778,83 @@ const UserManagement = () => {
         </motion.div>
       </div>
 
-      <AnimatePresence>
-        {isDeleteModalOpen && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      <BaseModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        maxWidth="max-w-md"
+      >
+        <div className="bg-white rounded-lg p-6">
+          <motion.div 
+            className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4"
+            animate={{ 
+              scale: [1, 1.1, 1],
+              rotate: [0, 10, -10, 0] 
+            }}
+            transition={{ 
+              duration: 0.5,
+              delay: 0.2,
+              ease: "easeInOut"
+            }}
+          >
+            <svg
+              className="h-6 w-6 text-red-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </motion.div>
+          <motion.h3 
+            className="text-lg leading-6 font-medium text-gray-900 text-center mb-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            transition={{ delay: 0.3 }}
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ 
-                type: "spring", 
-                stiffness: 500, 
-                damping: 30 
-              }}
-              className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl"
+            Delete User
+          </motion.h3>
+          <motion.div 
+            className="mt-2"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            <p className="text-sm text-gray-500 text-center">
+              Are you sure you want to delete this user? This action cannot be undone.
+            </p>
+          </motion.div>
+          <motion.div 
+            className="mt-5 sm:mt-6 grid grid-cols-2 gap-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            <motion.button
+              type="button"
+              className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-[#495E57] hover:bg-[#F4CE14] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#F4CE14]"
+              onClick={() => setIsDeleteModalOpen(false)}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
             >
-                <motion.div 
-                  className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4"
-                  animate={{ 
-                    scale: [1, 1.1, 1],
-                    rotate: [0, 10, -10, 0] 
-                  }}
-                  transition={{ 
-                    duration: 0.5,
-                    delay: 0.2,
-                    ease: "easeInOut"
-                  }}
-                >
-                  <svg
-                    className="h-6 w-6 text-red-600"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </motion.div>
-                <motion.h3 
-                  className="text-lg leading-6 font-medium text-gray-900"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  Delete User
-                </motion.h3>
-                <motion.div 
-                  className="mt-2"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                >
-                  <p className="text-sm text-gray-500">
-                    Are you sure you want to delete this user? This action cannot be undone.
-                  </p>
-                </motion.div>
-              </motion.div>
-              <motion.div 
-                className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-              >
-                <button
-                  type="button"
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:col-start-2 sm:text-sm"
-                  onClick={handleDeleteUser}
-                >
-                  Delete
-                </button>
-                <button
-                  type="button"
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-[#495E57] hover:bg-[#F4CE14] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#F4CE14] sm:mt-0 sm:col-start-1 sm:text-sm"
-                  onClick={() => setIsDeleteModalOpen(false)}
-                >
-                  Cancel
-                </button>
-              </motion.div>
-            </motion.div>
-        )}
-      </AnimatePresence>
+              Cancel
+            </motion.button>
+            <motion.button
+              type="button"
+              className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              onClick={handleDeleteUser}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+            >
+              Delete
+            </motion.button>
+          </motion.div>
+        </div>
+      </BaseModal>
     </div>
   );
 };
