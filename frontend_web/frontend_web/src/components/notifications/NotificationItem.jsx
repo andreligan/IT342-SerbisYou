@@ -1,6 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const NotificationItem = ({ notification, onMarkAsRead }) => {
+  const navigate = useNavigate();
+
   const getTypeIcon = (type) => {
     switch (type) {
       case 'message':
@@ -68,8 +71,39 @@ const NotificationItem = ({ notification, onMarkAsRead }) => {
     }
     
     // Handle navigation based on notification type
-    // You can implement navigation to different parts of the app 
-    // based on referenceType and referenceId
+    if (notification.type === 'message' && notification.referenceId) {
+      // For message notifications, extract sender info and open chat
+      const messageContent = notification.message || '';
+      const senderMatch = messageContent.match(/^([^:]+) sent you a message/);
+      const senderName = senderMatch ? senderMatch[1] : 'Unknown';
+      
+      // Trigger the chat to open with this sender
+      // We'll store the sender info in localStorage for the ChatWindow to pick up
+      localStorage.setItem('pendingChatUser', JSON.stringify({
+        name: senderName,
+        referenceId: notification.referenceId,
+        messageId: notification.id
+      }));
+      
+      // Dispatch a custom event to notify components that need to open the chat
+      window.dispatchEvent(new CustomEvent('openChatWithUser'));
+      
+      // If we're on the notifications page, navigate to home to ensure the chat icon is visible
+      if (window.location.pathname === '/notifications') {
+        const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
+        if (userRole?.toLowerCase() === 'customer') {
+          navigate('/customerHomePage');
+        } else if (userRole?.toLowerCase() === 'service provider') {
+          navigate('/serviceProviderHomePage');
+        }
+      }
+    } else if (notification.type === 'booking' && notification.referenceId) {
+      // For booking notifications, navigate to the booking details page
+      navigate(`/booking-details/${notification.referenceId}`);
+    } else if (notification.type === 'transaction' && notification.referenceId) {
+      // For transaction notifications, you could navigate to a transaction page
+      // navigate(`/transaction/${notification.referenceId}`);
+    }
   };
 
   return (

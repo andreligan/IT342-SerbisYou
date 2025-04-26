@@ -167,6 +167,19 @@ function App() {
     }
   }, [isAuthenticated]);
 
+  // Listen for requests to open the chat window
+  useEffect(() => {
+    const handleOpenChat = () => {
+      setIsChatOpen(true);
+    };
+    
+    window.addEventListener('openChatWithUser', handleOpenChat);
+    
+    return () => {
+      window.removeEventListener('openChatWithUser', handleOpenChat);
+    };
+  }, []);
+
   const confirmLogout = () => {
     console.log("User has logged out.");
     localStorage.removeItem("authToken");
