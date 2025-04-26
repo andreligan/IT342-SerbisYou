@@ -5,22 +5,18 @@ import { format, addDays } from 'date-fns';
 import DateTimeSelection from "./DateTimeSelection";
 import ReviewBookingDetails from "./ReviewBookingDetails";
 import PaymentConfirmation from "./PaymentConfirmation";
-import NotificationService from '../services/NotificationService'; // Import NotificationService
+import NotificationService from '../services/NotificationService';
+import { motion, AnimatePresence } from "framer-motion";
 
 const BookServicePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // States for multi-step form
   const [step, setStep] = useState(1);
-
-  // States for booking data
   const [bookingDate, setBookingDate] = useState(new Date());
   const [bookingTime, setBookingTime] = useState("");
   const [address, setAddress] = useState("");
   const [note, setNote] = useState("");
-  
-  // States for UI
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingTimeSlots, setIsLoadingTimeSlots] = useState(false);
   const [error, setError] = useState(null);
@@ -36,19 +32,16 @@ const BookServicePage = () => {
   const [debugInfo, setDebugInfo] = useState(null);
   const [providerInfo, setProviderInfo] = useState(null);
   const [isFullPayment, setIsFullPayment] = useState(true);
-  
-  // Get service data from navigation state or default to placeholder
+
   const serviceData = location.state?.service || {
     serviceName: "Service",
     price: 1000,
     provider: { providerId: null },
   };
 
-  // Debug serviceData to see if it contains the provider information
   useEffect(() => {
     console.log("Service data received:", serviceData);
     console.log("Provider ID:", serviceData?.provider?.providerId);
-    // Store provider info separately for debugging
     if (serviceData?.provider) {
       setProviderInfo({
         providerId: serviceData.provider.providerId,
@@ -58,21 +51,19 @@ const BookServicePage = () => {
     }
   }, [serviceData]);
 
-  // Updated fee calculation with detailed breakdown
   useEffect(() => {
     if (serviceData && serviceData.price) {
       const price = parseFloat(serviceData.price);
-      const payMongoFeeAmount = price * 0.025; // 2.5% PayMongo fee
-      const appFeeAmount = price * 0.025; // 2.5% app fee
+      const payMongoFeeAmount = price * 0.025;
+      const appFeeAmount = price * 0.025;
       
       setPayMongoFee(payMongoFeeAmount);
       setAppFee(appFeeAmount);
-      setServiceFee(payMongoFeeAmount + appFeeAmount); // Total service fee
+      setServiceFee(payMongoFeeAmount + appFeeAmount);
       setTotalPrice(price + payMongoFeeAmount + appFeeAmount);
     }
   }, [serviceData]);
 
-  // Fetch user address - improved approach using existing APIs
   useEffect(() => {
     const fetchAddress = async () => {
       try {
@@ -88,20 +79,16 @@ const BookServicePage = () => {
 
         console.log("Current User ID:", userId);
         
-        // Get all customers - we'll find our match here
         const customersResponse = await axios.get("/api/customers/getAll", {
           headers: { Authorization: `Bearer ${token}` },
         });
         
         console.log("Customers received:", customersResponse.data.length);
         
-        // More careful matching of customer to user ID
         const customer = customersResponse.data.find(cust => {
-          // Handle different data formats and potential type issues
           if (!cust.userAuth) return false;
-          
           const custUserId = cust.userAuth.userId;
-          return custUserId == userId; // Use loose equality to handle string/number differences
+          return custUserId == userId;
         });
         
         console.log("Matching customer found:", customer ? "Yes" : "No");
@@ -112,18 +99,15 @@ const BookServicePage = () => {
           return;
         }
 
-        // Store customerId for later use
         setCustomerId(customer.customerId);
         console.log("Customer ID stored:", customer.customerId);
         
-        // Now get all addresses
         const addressesResponse = await axios.get("/api/addresses/getAll", {
           headers: { Authorization: `Bearer ${token}` },
         });
         
         console.log("Total addresses:", addressesResponse.data.length);
         
-        // Find addresses that match this customer
         const addresses = addressesResponse.data.filter(addr => {
           if (!addr.customer) return false;
           return addr.customer.customerId == customer.customerId;
@@ -131,23 +115,21 @@ const BookServicePage = () => {
         
         console.log("Found addresses for customer:", addresses.length);
         
-        // Prefer the main address, fall back to any address
         let selectedAddress = addresses.find(addr => addr.main === true);
         if (!selectedAddress && addresses.length > 0) {
           selectedAddress = addresses[0];
         }
         
         if (selectedAddress) {
-          // Safely construct address string, handling possible null values
           const parts = [
             selectedAddress.streetName, 
             selectedAddress.barangay, 
             selectedAddress.city, 
             selectedAddress.province
-          ].filter(Boolean); // Remove any null/undefined/empty values
+          ].filter(Boolean);
           
           setAddress(parts.join(', '));
-          setError(null); // Clear any previous errors
+          setError(null);
         } else {
           setError("No address found. Please add your address in your profile.");
         }
@@ -162,14 +144,12 @@ const BookServicePage = () => {
     fetchAddress();
   }, []);
 
-  // Fetch time slots when date changes
   useEffect(() => {
     if (bookingDate && serviceData?.provider?.providerId) {
       fetchAvailableTimeSlots();
     }
   }, [bookingDate, serviceData?.provider?.providerId]);
 
-  // Fetch available time slots for the selected date
   const fetchAvailableTimeSlots = async () => {
     setIsLoadingTimeSlots(true);
     setError(null);
@@ -182,7 +162,6 @@ const BookServicePage = () => {
         return;
       }
       
-      // Get the day of week for the selected date
       const dayOfWeek = format(bookingDate, 'EEEE').toUpperCase();
       const providerId = serviceData.provider.providerId;
       
@@ -199,7 +178,6 @@ const BookServicePage = () => {
         return;
       }
       
-      // Fetch available schedule for the selected day
       const response = await axios.get(
         `/api/schedules/provider/${providerId}/day/${dayOfWeek}`,
         {
@@ -209,11 +187,10 @@ const BookServicePage = () => {
       
       console.log("Schedule API response:", response.data);
       
-      // Create time slots from the schedule
       const slots = response.data
         .filter(schedule => {
           console.log("Schedule availability:", schedule.isAvailable);
-          return schedule.isAvailable !== false;  // Include if not explicitly false
+          return schedule.isAvailable !== false;
         })
         .map(schedule => ({
           value: `${schedule.startTime}-${schedule.endTime}`,
@@ -233,7 +210,6 @@ const BookServicePage = () => {
     }
   };
 
-  // Helper function to format time with AM/PM
   const formatTimeWithAMPM = (time) => {
     if (!time) return "";
     const [hours, minutes] = time.split(":");
@@ -243,41 +219,30 @@ const BookServicePage = () => {
     return `${formattedHours}:${minutes} ${period}`;
   };
 
-  // Helper function to format date in readable format
   const formatDateForDisplay = (date) => {
     return format(date, 'EEEE, MMMM d, yyyy');
   };
 
-  // Function to ensure proper time format for Java's LocalTime (HH:mm:ss)
   const formatTimeForBackend = (timeStr) => {
     if (!timeStr) return null;
-    
-    // If the time already has seconds, return as is
     if (timeStr.split(':').length === 3) return timeStr;
-    
-    // If the time has hours and minutes only, add :00 for seconds
     if (timeStr.split(':').length === 2) return `${timeStr}:00`;
-    
-    // If the format is unexpected, log and return null
     console.error("Unexpected time format:", timeStr);
     return null;
   };
 
-  // Function to create a GCash checkout session via PayMongo - updated for custom amount
   const createGCashCheckout = async (checkoutPayload) => {
     try {
       const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
       
       console.log("Creating GCash checkout with payload:", checkoutPayload);
       
-      // Call our backend API to create a checkout session
       const response = await axios.post('/api/create-gcash-checkout', checkoutPayload, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       console.log("Checkout session created:", response.data);
       
-      // Return the checkout URL from the response
       return response.data.checkout_url;
     } catch (error) {
       console.error("Error creating GCash checkout:", error);
@@ -285,7 +250,6 @@ const BookServicePage = () => {
     }
   };
 
-  // Proceed to next step
   const handleNext = () => {
     if (step === 1) {
       if (!bookingDate || !bookingTime) {
@@ -298,16 +262,14 @@ const BookServicePage = () => {
       }
     }
     
-    setError(null); // Clear any errors
+    setError(null);
     setStep(step + 1);
   };
 
-  // Go back to previous step
   const handleBack = () => {
     setStep(step - 1);
   };
 
-  // Handle booking submission - updated for payment options
   const handleSubmit = async () => {
     setIsProcessingPayment(true);
     setError(null);
@@ -322,7 +284,6 @@ const BookServicePage = () => {
         return;
       }
       
-      // Extract and format time correctly for Java LocalTime
       let timeString = bookingTime.split('-')[0].trim();
       timeString = formatTimeForBackend(timeString);
       
@@ -332,29 +293,26 @@ const BookServicePage = () => {
         return;
       }
       
-      // Calculate actual payment amount based on payment method and option
       const actualPaymentAmount = paymentMethod === 'gcash' && !isFullPayment 
-        ? totalPrice * 0.5  // 50% downpayment
-        : totalPrice;      // Full payment
+        ? totalPrice * 0.5
+        : totalPrice;
       
-      // Create booking object with all required fields AND explicitly include provider information
       const bookingRequest = {
         customer: { customerId: customerId },
         service: { 
           serviceId: serviceData.serviceId,
-          serviceName: serviceData.serviceName, // Add service name explicitly
+          serviceName: serviceData.serviceName,
           provider: serviceData.provider ? { providerId: serviceData.provider.providerId } : null 
         },
         bookingDate: format(bookingDate, 'yyyy-MM-dd'),
-        bookingTime: timeString,  // Now properly formatted with seconds
+        bookingTime: timeString,
         status: "Pending",
         totalCost: totalPrice,
-        note: note || "", // Ensure note is not null
+        note: note || "",
         paymentMethod: paymentMethod,
-        fullPayment: isFullPayment // Add full payment flag
+        fullPayment: isFullPayment
       };
       
-      // Update debug info to show provider data
       const debugData = {
         requestData: bookingRequest,
         additionalInfo: {
@@ -376,11 +334,8 @@ const BookServicePage = () => {
       setDebugInfo(debugData);
       console.log('DEBUG - Complete Booking Request:', debugData);
       
-      // Different flow for GCash payments
       if (paymentMethod === 'gcash') {
         try {
-          // Create a GCash checkout session and get the checkout URL
-          // If using downpayment, adjust the payload amount
           const checkoutPayload = {
             amount: isFullPayment ? totalPrice : (totalPrice * 0.5),
             description: `${isFullPayment ? 'Full Payment' : 'Downpayment (50%)'} for ${serviceData.serviceName}`,
@@ -390,14 +345,11 @@ const BookServicePage = () => {
           
           const checkoutUrl = await createGCashCheckout(checkoutPayload);
           
-          // Store booking info in session storage for use after payment is complete
-          // This is needed because the PayMongo flow will redirect the user away from our app
           sessionStorage.setItem('pendingBooking', JSON.stringify(bookingRequest));
           
-          // Redirect the user to PayMongo's checkout page
           console.log("Redirecting to GCash payment page:", checkoutUrl);
           window.location.href = checkoutUrl;
-          return; // Stop execution here since we're redirecting
+          return;
         } catch (paymentError) {
           console.error("Payment processing error:", paymentError);
           setError("Failed to process GCash payment: " + paymentError.message);
@@ -406,7 +358,6 @@ const BookServicePage = () => {
         }
       }
       
-      // For cash payments, continue with booking creation normally
       try {
         const response = await axios.post('/api/bookings/postBooking', bookingRequest, {
           headers: { Authorization: `Bearer ${token}` }
@@ -414,12 +365,10 @@ const BookServicePage = () => {
         
         console.log('Booking successful:', response.data);
 
-        // After successful booking creation, create notification for the service provider
         if (response.data && response.data.bookingId) {
           try {
-            // Create notification for service provider
             const notificationData = {
-              user: { userId: serviceData.provider.userAuth.userId }, // Provider's user ID
+              user: { userId: serviceData.provider.userAuth.userId },
               type: "booking",
               message: `New booking request: ${serviceData.serviceName} on ${formatDateForDisplay(bookingDate)} at ${formatTimeWithAMPM(timeString)}`,
               isRead: false,
@@ -432,7 +381,6 @@ const BookServicePage = () => {
             console.log("Booking notification created successfully");
           } catch (notifError) {
             console.error("Error creating booking notification:", notifError);
-            // Continue with the booking flow even if notification creation fails
           }
         }
 
@@ -440,7 +388,6 @@ const BookServicePage = () => {
       } catch (apiError) {
         console.error("API Error:", apiError);
         
-        // Extract detailed error message if possible
         let errorMessage = "Failed to create your booking. Please try again.";
         if (apiError.response) {
           console.log("API response status:", apiError.response.status);
@@ -461,136 +408,136 @@ const BookServicePage = () => {
     }
   };
 
+  const pageVariants = {
+    initial: { opacity: 0, x: 20 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: -20 }
+  };
+
+  const stepVariants = {
+    inactive: { scale: 0.9, opacity: 0.7 },
+    active: { scale: 1, opacity: 1 },
+    completed: { scale: 1, opacity: 1 }
+  };
+
   return (
-    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
-      <h1 className="text-3xl sm:text-4xl font-bold text-[#495E57] mb-6 text-center">
-        Book Service
-      </h1>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 px-4">
+      <div className="max-w-5xl mx-auto">
+        <h1 className="text-3xl sm:text-4xl font-bold text-[#495E57] mb-6 text-center">
+          Book Service
+        </h1>
 
-      {/* Progress Bar */}
-      <div className="w-full mb-8">
-        <div className="flex mb-2">
-          <div className="flex-1"></div>
-          {[1, 2, 3].map((stepNumber) => (
-            <div className="flex-1 flex flex-col items-center" key={stepNumber}>
-              <div
-                className={`w-10 h-10 flex items-center justify-center rounded-full border-2 
-                ${step === stepNumber
-                  ? "border-[#F4CE14] bg-[#F4CE14] text-[#495E57]"
-                  : step > stepNumber
-                  ? "border-[#495E57] bg-[#495E57] text-white"
-                  : "border-gray-300 bg-white text-gray-300"
-                }`}
-              >
-                {stepNumber}
+        {/* Updated Progress Bar with Step Circles */}
+        <div className="mb-12 relative">
+          <div className="flex justify-between">
+            {['Select Date & Time', 'Review Details', 'Payment'].map((label, index) => (
+              <div key={index} className="flex flex-col items-center z-10">
+                <motion.div 
+                  className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-lg md:text-2xl font-semibold shadow-md ${
+                    step >= index + 1 
+                      ? 'bg-[#F4CE14] text-[#495E57]' 
+                      : 'bg-gray-100 text-gray-300'
+                  }`}
+                  whileHover={step >= index + 1 ? { scale: 1.05, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" } : {}}
+                >
+                  {index + 1}
+                </motion.div>
+                <div className="text-xs md:text-sm mt-2 text-center px-1">{label}</div>
               </div>
-            </div>
-          ))}
-          <div className="flex-1"></div>
-        </div>
-        <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-200">
-          <div
-            style={{ width: `${((step - 1) / 2) * 100}%` }}
-            className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-[#495E57]"
-          ></div>
-        </div>
-        <div className="flex text-xs sm:text-sm text-gray-500">
-          <div className="flex-1 text-center">
-            <div>Select Date & Time</div>
+            ))}
           </div>
-          <div className="flex-1 text-center">
-            <div>Review Details</div>
-          </div>
-          <div className="flex-1 text-center">
-            <div>Payment</div>
+          
+          {/* Connector lines positioned in the middle of the circles */}
+          <div className="absolute top-8 md:top-10 left-0 right-0 flex justify-center w-4/5 mx-auto z-0">
+            {[1, 2].map((_, index) => (
+              <div key={`connector-${index}`} className="w-full mx-2">
+                <div className={`h-1 ${
+                  step > index + 1 ? 'bg-[#F4CE14]' : 'bg-gray-200'
+                } transition-all duration-500`}></div>
+              </div>
+            ))}
           </div>
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="text-red-500 text-center mb-4">{error}</div>
+        )}
+
+        {/* Step Content with Animation */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            variants={pageVariants}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+          >
+            {step === 1 && (
+              <DateTimeSelection
+                serviceData={serviceData}
+                bookingDate={bookingDate}
+                setBookingDate={setBookingDate}
+                bookingTime={bookingTime}
+                setBookingTime={setBookingTime}
+                address={address}
+                isLoading={isLoading}
+                isLoadingTimeSlots={isLoadingTimeSlots}
+                error={error}
+                availableTimeSlots={availableTimeSlots}
+                selectedTimeSlotIndex={selectedTimeSlotIndex}
+                setSelectedTimeSlotIndex={setSelectedTimeSlotIndex}
+                navigate={navigate}
+                payMongoFee={payMongoFee}
+                appFee={appFee}
+                totalPrice={totalPrice}
+                handleNext={handleNext}
+                formatTimeWithAMPM={formatTimeWithAMPM}
+                fetchAvailableTimeSlots={fetchAvailableTimeSlots}
+              />
+            )}
+
+            {step === 2 && (
+              <ReviewBookingDetails 
+                serviceData={serviceData}
+                bookingDate={bookingDate}
+                bookingTime={bookingTime}
+                address={address}
+                note={note}
+                setNote={setNote}
+                paymentMethod={paymentMethod}
+                setPaymentMethod={setPaymentMethod}
+                isFullPayment={isFullPayment}
+                setIsFullPayment={setIsFullPayment}
+                payMongoFee={payMongoFee}
+                appFee={appFee}
+                totalPrice={totalPrice}
+                handleBack={handleBack}
+                handleNext={handleNext}
+                formatDateForDisplay={formatDateForDisplay}
+                formatTimeWithAMPM={formatTimeWithAMPM}
+                navigate={navigate}
+              />
+            )}
+
+            {step === 3 && (
+              <PaymentConfirmation
+                serviceData={serviceData}
+                paymentMethod={paymentMethod}
+                isFullPayment={isFullPayment}
+                payMongoFee={payMongoFee}
+                appFee={appFee}
+                totalPrice={totalPrice}
+                debugInfo={debugInfo}
+                isProcessingPayment={isProcessingPayment}
+                handleBack={handleBack}
+                handleSubmit={handleSubmit}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
-
-      {/* Error Display */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-md">
-          <p className="flex items-center">
-            <svg
-              className="w-5 h-5 mr-2"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                clipRule="evenodd"
-              ></path>
-            </svg>
-            {error}
-          </p>
-        </div>
-      )}
-
-      {/* Step 1: Schedule Selection - Using DateTimeSelection component */}
-      {step === 1 && (
-        <DateTimeSelection
-          serviceData={serviceData}
-          bookingDate={bookingDate}
-          setBookingDate={setBookingDate}
-          bookingTime={bookingTime}
-          setBookingTime={setBookingTime}
-          address={address}
-          isLoading={isLoading}
-          isLoadingTimeSlots={isLoadingTimeSlots}
-          error={error}
-          availableTimeSlots={availableTimeSlots}
-          selectedTimeSlotIndex={selectedTimeSlotIndex}
-          setSelectedTimeSlotIndex={setSelectedTimeSlotIndex}
-          navigate={navigate}
-          payMongoFee={payMongoFee}
-          appFee={appFee}
-          totalPrice={totalPrice}
-          handleNext={handleNext}
-          formatTimeWithAMPM={formatTimeWithAMPM}
-          fetchAvailableTimeSlots={fetchAvailableTimeSlots}
-        />
-      )}
-
-      {/* Step 2: Review Details - Using ReviewBookingDetails component */}
-      {step === 2 && (
-        <ReviewBookingDetails 
-          serviceData={serviceData}
-          bookingDate={bookingDate}
-          bookingTime={bookingTime}
-          address={address}
-          note={note}
-          setNote={setNote}
-          paymentMethod={paymentMethod}
-          setPaymentMethod={setPaymentMethod}
-          isFullPayment={isFullPayment}
-          setIsFullPayment={setIsFullPayment}
-          payMongoFee={payMongoFee}
-          appFee={appFee}
-          totalPrice={totalPrice}
-          handleBack={handleBack}
-          handleNext={handleNext}
-          formatDateForDisplay={formatDateForDisplay}
-          formatTimeWithAMPM={formatTimeWithAMPM}
-          navigate={navigate}
-        />
-      )}
-
-      {/* Step 3: Payment - Using PaymentConfirmation component */}
-      {step === 3 && (
-        <PaymentConfirmation
-          serviceData={serviceData}
-          paymentMethod={paymentMethod}
-          isFullPayment={isFullPayment}
-          payMongoFee={payMongoFee}
-          appFee={appFee}
-          totalPrice={totalPrice}
-          debugInfo={debugInfo}
-          isProcessingPayment={isProcessingPayment}
-          handleBack={handleBack}
-          handleSubmit={handleSubmit}
-        />
-      )}
     </div>
   );
 };
