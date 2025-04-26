@@ -5,6 +5,7 @@ import { format, addDays } from 'date-fns';
 import DateTimeSelection from "./DateTimeSelection";
 import ReviewBookingDetails from "./ReviewBookingDetails";
 import PaymentConfirmation from "./PaymentConfirmation";
+import NotificationService from '../services/NotificationService'; // Import NotificationService
 
 const BookServicePage = () => {
   const navigate = useNavigate();
@@ -341,6 +342,7 @@ const BookServicePage = () => {
         customer: { customerId: customerId },
         service: { 
           serviceId: serviceData.serviceId,
+          serviceName: serviceData.serviceName, // Add service name explicitly
           provider: serviceData.provider ? { providerId: serviceData.provider.providerId } : null 
         },
         bookingDate: format(bookingDate, 'yyyy-MM-dd'),
@@ -411,6 +413,29 @@ const BookServicePage = () => {
         });
         
         console.log('Booking successful:', response.data);
+
+        // After successful booking creation, create notification for the service provider
+        if (response.data && response.data.bookingId) {
+          try {
+            // Create notification for service provider
+            const notificationData = {
+              user: { userId: serviceData.provider.userAuth.userId }, // Provider's user ID
+              type: "booking",
+              message: `New booking request: ${serviceData.serviceName} on ${formatDateForDisplay(bookingDate)} at ${formatTimeWithAMPM(timeString)}`,
+              isRead: false,
+              createdAt: new Date().toISOString(),
+              referenceId: response.data.bookingId,
+              referenceType: "Booking"
+            };
+            
+            await NotificationService.createNotification(notificationData);
+            console.log("Booking notification created successfully");
+          } catch (notifError) {
+            console.error("Error creating booking notification:", notifError);
+            // Continue with the booking flow even if notification creation fails
+          }
+        }
+
         navigate('/payment-success', { state: { bookingData: response.data } });
       } catch (apiError) {
         console.error("API Error:", apiError);

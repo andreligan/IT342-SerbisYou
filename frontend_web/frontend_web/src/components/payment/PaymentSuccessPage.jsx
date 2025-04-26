@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import confetti from 'canvas-confetti';
+import NotificationService from '../../services/NotificationService'; // Add this import
 
 const PaymentSuccessPage = () => {
   const navigate = useNavigate();
@@ -120,6 +121,12 @@ const PaymentSuccessPage = () => {
         // Parse the booking request
         const bookingRequest = JSON.parse(pendingBooking);
         
+        // Store the service information
+        // In the pendingBooking, the service object typically only contains serviceId and provider
+        // We need to save this service ID to fetch the full service details later
+        const serviceId = bookingRequest.service?.serviceId;
+        console.log("Service ID from pending booking:", serviceId);
+        
         // Add an idempotency key based on timestamp and service to help prevent duplicates
         const idempotencyKey = `booking_${bookingRequest.customer.customerId}_${bookingRequest.service.serviceId}_${Date.now()}`;
         bookingRequest.idempotencyKey = idempotencyKey;
@@ -135,6 +142,76 @@ const PaymentSuccessPage = () => {
         
         console.log('Booking created after successful payment:', response.data);
         setBookingDetails(response.data);
+        
+        // Create notification for service provider (for GCash payment)
+        if (response.data && response.data.service && response.data.service.provider) {
+          try {
+            // Format date and time for notification message
+            const formattedDate = formatDate(response.data.bookingDate);
+            const formattedTime = formatTime(response.data.bookingTime);
+            
+            // Get the service name from response data or use a generic name
+            const serviceName = response.data.service?.serviceName || "Service";
+            console.log("Using service name for notification:", serviceName);
+            
+            // Get provider user ID, with fallback options
+            let providerUserId;
+            
+            // Option 1: Try to get from userAuth object if available
+            if (response.data.service.provider.userAuth && response.data.service.provider.userAuth.userId) {
+              providerUserId = response.data.service.provider.userAuth.userId;
+              console.log("Provider user ID from userAuth:", providerUserId);
+            }
+            // Option 2: If provider has a direct userId property (might be set in some implementations)
+            else if (response.data.service.provider.userId) {
+              providerUserId = response.data.service.provider.userId;
+              console.log("Provider user ID from provider:", providerUserId);
+            }
+            // Option 3: If all else fails, fetch the provider details
+            else {
+              try {
+                const providerId = response.data.service.provider.providerId;
+                console.log("Fetching provider details for provider ID:", providerId);
+                
+                const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+                const providerResponse = await axios.get(`/api/service-providers/getById/${providerId}`, {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                
+                if (providerResponse.data && providerResponse.data.userAuth) {
+                  providerUserId = providerResponse.data.userAuth.userId;
+                  console.log("Provider user ID from API call:", providerUserId);
+                } else {
+                  throw new Error("Could not get provider user ID from API");
+                }
+              } catch (error) {
+                console.error("Error fetching provider details:", error);
+                throw new Error("Failed to retrieve provider user ID");
+              }
+            }
+            
+            if (!providerUserId) {
+              throw new Error("Could not determine provider user ID");
+            }
+            
+            // Create notification data with the resolved userId
+            const notificationData = {
+              user: { userId: providerUserId }, // Provider's user ID
+              type: "booking",
+              message: `New booking request: ${serviceName} on ${formattedDate} at ${formattedTime}`,
+              isRead: false,
+              createdAt: new Date().toISOString(),
+              referenceId: response.data.bookingId,
+              referenceType: "Booking"
+            };
+            
+            await NotificationService.createNotification(notificationData);
+            console.log("GCash payment booking notification created successfully");
+          } catch (notifError) {
+            console.error("Error creating GCash payment booking notification:", notifError);
+            // Continue with the booking flow even if notification creation fails
+          }
+        }
         
         // Clear the pending booking from session storage
         sessionStorage.removeItem('pendingBooking');

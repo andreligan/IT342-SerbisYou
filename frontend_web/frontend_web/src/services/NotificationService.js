@@ -27,9 +27,18 @@ const NotificationService = {
   createNotification: async (notification) => {
     try {
       const authHeaders = NotificationService.getAuthHeaders();
+      console.log("Creating notification with data:", notification);
+      console.log("Using auth headers:", authHeaders);
+      
       const response = await axios.post('/api/notifications/create', notification, authHeaders);
+      console.log("Notification created response:", response.data);
       return response.data;
     } catch (error) {
+      console.error('Failed to create notification:', error);
+      if (error.response) {
+        console.error('Response data:', error.response.data);
+        console.error('Response status:', error.response.status);
+      }
       throw error;
     }
   },
@@ -164,7 +173,7 @@ const NotificationService = {
                     authHeaders
                   );
                   
-                  // Delete notification
+                  // Delete notification - only for message notifications
                   await NotificationService.deleteNotification(msgNotification.notificationId);
                 }
               } catch (updateError) {
@@ -183,22 +192,30 @@ const NotificationService = {
         }
       }
       
-      // Default notification processing (for non-message types or if message processing failed)
-      const updatedNotification = {
-        read: true
-      };
-      
-      const response = await axios.put(`/api/notifications/update/${notificationId}`, updatedNotification, authHeaders);
-      
-      // Delete notification after marking it as read
-      try {
-        await NotificationService.deleteNotification(notificationId);
-      } catch (deleteError) {
-        console.error('Failed to delete notification:', deleteError);
-        // Continue even if deletion fails
+      // For non-message notifications, just mark as read without deleting
+      if (notification && notification.type?.toLowerCase() !== 'message') {
+        const updatedNotification = {
+          read: true
+          // We don't modify other fields, so the message will remain intact
+        };
+        
+        const response = await axios.put(`/api/notifications/update/${notificationId}`, updatedNotification, authHeaders);
+        return response.data;
+      } else {
+        // For message notifications that weren't handled above
+        // Mark as read first
+        const updatedNotification = { read: true };
+        await axios.put(`/api/notifications/update/${notificationId}`, updatedNotification, authHeaders);
+        
+        // Delete the message notification after marking as read
+        try {
+          await NotificationService.deleteNotification(notificationId);
+        } catch (deleteError) {
+          console.error('Failed to delete message notification:', deleteError);
+        }
       }
       
-      return response.data;
+      return { success: true };
     } catch (error) {
       throw error;
     }
@@ -231,25 +248,32 @@ const NotificationService = {
           try {
             // Update message status to READ
             await ChatService.markMessageAsRead(notification.referenceId);
+            
+            // Mark as read first
+            const updatedNotification = { read: true };
+            await axios.put(
+              `/api/notifications/update/${notification.notificationId}`, 
+              updatedNotification, 
+              NotificationService.getAuthHeaders()
+            );
+            
+            // Then delete it (only for message notifications)
+            await NotificationService.deleteNotification(notification.notificationId);
           } catch (msgError) {
             // Continue even if message update fails
           }
-        }
-        
-        // Mark notification as read and delete it
-        try {
-          // Mark as read first
-          const updatedNotification = { read: true };
-          await axios.put(
-            `/api/notifications/update/${notification.notificationId}`, 
-            updatedNotification, 
-            NotificationService.getAuthHeaders()
-          );
-          
-          // Then delete it
-          await NotificationService.deleteNotification(notification.notificationId);
-        } catch (notifError) {
-          // Continue with next notification even if this one fails
+        } else {
+          // For non-message notifications, just mark as read without deleting
+          try {
+            const updatedNotification = { read: true };
+            await axios.put(
+              `/api/notifications/update/${notification.notificationId}`, 
+              updatedNotification, 
+              NotificationService.getAuthHeaders()
+            );
+          } catch (notifError) {
+            // Continue with next notification even if this one fails
+          }
         }
       }
       
