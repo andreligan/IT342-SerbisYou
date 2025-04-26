@@ -2,7 +2,6 @@ package edu.cit.serbisyo.entity;
 
 import jakarta.persistence.*;
 
-
 @Entity
 @Table(name = "Service_Category")
 public class ServiceCategoryEntity {
@@ -12,6 +11,9 @@ public class ServiceCategoryEntity {
     private Long categoryId;
 
     private String categoryName;
+    
+    @Column(length = 1000)
+    private String description;
 
     // Getters and Setters
 
@@ -29,5 +31,13 @@ public class ServiceCategoryEntity {
 
     public void setCategoryName(String categoryName) {
         this.categoryName = categoryName;
+    }
+    
+    public String getDescription() {
+        return description;
+    }
+    
+    public void setDescription(String description) {
+        this.description = description;
     }
 }

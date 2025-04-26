@@ -229,7 +229,7 @@ const AdminHomePage = () => {
               </div>
               <h3 className="text-lg font-semibold mb-2 text-gray-800">User Management</h3>
               <p className="text-gray-600 mb-4">Manage all users in the system, including customers and service providers.</p>
-              <Link to="/admin/users" className="w-full bg-[#495E57] text-white px-4 py-2 rounded hover:bg-[#3a4a45] transition-colors flex items-center justify-center">
+              <Link to="/adminHomePage/users" className="w-full bg-[#495E57] text-white px-4 py-2 rounded hover:bg-[#3a4a45] transition-colors flex items-center justify-center">
                 <span>Manage Users</span>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -245,7 +245,7 @@ const AdminHomePage = () => {
               </div>
               <h3 className="text-lg font-semibold mb-2 text-gray-800">Service Categories</h3>
               <p className="text-gray-600 mb-4">Add, edit, and manage service categories available on the platform.</p>
-              <Link to="/admin/categories" className="w-full bg-[#495E57] text-white px-4 py-2 rounded hover:bg-[#3a4a45] transition-colors flex items-center justify-center">
+              <Link to="/adminHomePage/categories" className="w-full bg-[#495E57] text-white px-4 py-2 rounded hover:bg-[#3a4a45] transition-colors flex items-center justify-center">
                 <span>Manage Categories</span>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -261,7 +261,7 @@ const AdminHomePage = () => {
               </div>
               <h3 className="text-lg font-semibold mb-2 text-gray-800">Provider Verification</h3>
               <p className="text-gray-600 mb-4">Review and approve service providers requesting verification on the platform.</p>
-              <Link to="/admin/verification" className="w-full bg-[#495E57] text-white px-4 py-2 rounded hover:bg-[#3a4a45] transition-colors flex items-center justify-center">
+              <Link to="/adminHomePage/verification" className="w-full bg-[#495E57] text-white px-4 py-2 rounded hover:bg-[#3a4a45] transition-colors flex items-center justify-center">
                 <span>View Requests</span>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />

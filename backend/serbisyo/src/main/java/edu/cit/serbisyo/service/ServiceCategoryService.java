@@ -41,6 +41,7 @@ public class ServiceCategoryService {
                 .orElseThrow(() -> new NoSuchElementException("Service Category with ID " + categoryId + " not found"));
 
         existingCategory.setCategoryName(newCategoryDetails.getCategoryName());
+        existingCategory.setDescription(newCategoryDetails.getDescription());
 
         return serviceCategoryRepository.save(existingCategory);
     }

@@ -3,10 +3,10 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 
 const CategoryManagement = () => {
+  const [newCategory, setNewCategory] = useState({ categoryName: '', description: '' });
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [newCategory, setNewCategory] = useState({ name: '', description: '' });
   const [editingCategory, setEditingCategory] = useState(null);
 
   useEffect(() => {
@@ -50,8 +50,10 @@ const CategoryManagement = () => {
       const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
       const headers = { 'Authorization': `Bearer ${token}` };
       
+      console.log("Creating category with data:", newCategory);
+      
       await axios.post('/api/service-categories/create', newCategory, { headers });
-      setNewCategory({ name: '', description: '' });
+      setNewCategory({ categoryName: '', description: '' });
       fetchCategories();
     } catch (err) {
       console.error('Error creating category:', err);
@@ -114,12 +116,12 @@ const CategoryManagement = () => {
             <h2 className="text-lg font-medium mb-4">Create New Category</h2>
             <form onSubmit={handleCreateCategory} className="space-y-4">
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700">Category Name</label>
+                <label htmlFor="categoryName" className="block text-sm font-medium text-gray-700">Category Name</label>
                 <input
                   type="text"
-                  id="name"
-                  name="name"
-                  value={newCategory.name}
+                  id="categoryName"
+                  name="categoryName"
+                  value={newCategory.categoryName}
                   onChange={handleInputChange}
                   className="mt-1 p-2 w-full border border-gray-300 rounded"
                   required
@@ -164,7 +166,7 @@ const CategoryManagement = () => {
                     categories.map((category) => (
                       <tr key={category.categoryId} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{category.categoryId}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{category.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{category.categoryName}</td>
                         <td className="px-6 py-4 text-sm text-gray-900">{category.description}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button 
@@ -200,12 +202,12 @@ const CategoryManagement = () => {
               <h2 className="text-xl font-bold mb-4">Edit Category</h2>
               <form className="space-y-4">
                 <div>
-                  <label htmlFor="edit-name" className="block text-sm font-medium text-gray-700">Category Name</label>
+                  <label htmlFor="edit-categoryName" className="block text-sm font-medium text-gray-700">Category Name</label>
                   <input
                     type="text"
-                    id="edit-name"
-                    name="name"
-                    value={editingCategory.name}
+                    id="edit-categoryName"
+                    name="categoryName"
+                    value={editingCategory.categoryName}
                     onChange={handleEditInputChange}
                     className="mt-1 p-2 w-full border border-gray-300 rounded"
                     required

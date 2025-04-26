@@ -483,15 +483,15 @@ function App() {
           element={<ProtectedRoute element={<AdminHomePage />} allowedRoles={["admin"]} />}
         />
         <Route
-          path="/admin/users"
+          path="/adminHomePage/users"
           element={<ProtectedRoute element={<UserManagement />} allowedRoles={["admin"]} />}
         />
         <Route
-          path="/admin/categories"
+          path="/adminHomePage/categories"
           element={<ProtectedRoute element={<CategoryManagement />} allowedRoles={["admin"]} />}
         />
         <Route
-          path="/admin/verification"
+          path="/adminHomePage/verification"
           element={<ProtectedRoute element={<ProviderVerification />} allowedRoles={["admin"]} />}
         />
       </Routes>
