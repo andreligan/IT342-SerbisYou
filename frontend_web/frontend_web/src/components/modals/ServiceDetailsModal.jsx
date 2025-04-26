@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import BaseModal from "../shared/BaseModal";
+import { motion } from "framer-motion";
 
 const BASE_URL = "http://localhost:8080";
 
@@ -14,12 +15,27 @@ const ServiceDetailsModal = ({
   renderStars,
   clickPosition
 }) => {
+  const [animationState, setAnimationState] = useState('closed');
+  const modalRef = useRef(null);
   const navigate = useNavigate();
   const [imageFailed, setImageFailed] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('overview'); // State for tabs
   const [reviews, setReviews] = useState([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [reviewError, setReviewError] = useState(null);
+  const [customerImages, setCustomerImages] = useState({}); // State for storing customer profile images
+
+  useEffect(() => {
+    if (isOpen) {
+      setAnimationState('opening');
+      const timer = setTimeout(() => {
+        setAnimationState('open');
+      }, 10);
+      return () => clearTimeout(timer);
+    } else {
+      setAnimationState('closed');
+    }
+  }, [isOpen]);
 
   // Load reviews when service changes or reviews tab is activated
   useEffect(() => {
@@ -90,6 +106,113 @@ const ServiceDetailsModal = ({
     fetchReviews();
   }, [service, activeTab]);
 
+  // Fetch customer profile images
+  const fetchCustomerImages = async (reviews) => {
+    try {
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      if (!token) return;
+
+      const images = {};
+      
+      for (const review of reviews) {
+        if (review.customer?.customerId) {
+          try {
+            const imageResponse = await axios.get(`/api/customers/getProfileImage/${review.customer.customerId}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            if (imageResponse.data) {
+              // Prepend base URL to make a complete image path
+              const baseURL = "http://localhost:8080";
+              images[review.customer.customerId] = `${baseURL}${imageResponse.data}`;
+            }
+          } catch (err) {
+            console.error(`Error fetching image for customer ${review.customer.customerId}:`, err);
+            // Continue without setting the image
+          }
+        }
+      }
+      
+      setCustomerImages(images);
+    } catch (err) {
+      console.error('Error fetching customer images:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (reviews && reviews.length > 0) {
+      fetchCustomerImages(reviews);
+    }
+  }, [reviews]);
+
+  const formatTimeAgo = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    
+    if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`;
+    
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) return `${diffInMinutes} ${diffInMinutes === 1 ? 'minute' : 'minutes'} ago`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours} ${diffInHours === 1 ? 'hour' : 'hours'} ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 30) return `${diffInDays} ${diffInDays === 1 ? 'day' : 'days'} ago`;
+    
+    const diffInMonths = Math.floor(diffInDays / 30);
+    if (diffInMonths < 12) return `${diffInMonths} ${diffInMonths === 1 ? 'month' : 'months'} ago`;
+    
+    const diffInYears = Math.floor(diffInMonths / 12);
+    return `${diffInYears} ${diffInYears === 1 ? 'year' : 'years'} ago`;
+  };
+
+  if (!isOpen || !service) return null;
+  
+  let overlayStyle = {
+    opacity: 0,
+    transition: 'opacity 0.3s ease-out'
+  };
+  
+  let modalStyle = {
+    transform: 'scale(0.8)',
+    opacity: 0,
+    transition: 'transform 0.4s ease-out, opacity 0.3s ease-out',
+  };
+  
+  let backdropStyle = {
+    backdropFilter: 'blur(0px)',
+    backgroundColor: 'rgba(0, 0, 0, 0)',
+    transition: 'backdrop-filter 0.4s ease-out, background-color 0.3s ease-out',
+  }
+  
+  if (animationState === 'opening') {
+    overlayStyle.opacity = 0;
+    modalStyle = {
+      ...modalStyle,
+      transform: clickPosition ? `translate(${clickPosition.x}px, ${clickPosition.y}px) scale(0.5)` : 'scale(0.8)',
+      opacity: 0
+    };
+    backdropStyle = {
+      ...backdropStyle,
+      backdropFilter: 'blur(0px)',
+      backgroundColor: 'rgba(0, 0, 0, 0)'
+    };
+  } else if (animationState === 'open') {
+    overlayStyle.opacity = 1;
+    modalStyle = {
+      ...modalStyle,
+      transform: 'scale(1) translate(0, 0)',
+      opacity: 1
+    };
+    backdropStyle = {
+      ...backdropStyle,
+      backdropFilter: 'blur(10px)',
+      backgroundColor: 'rgba(0, 0, 0, 0.7)'
+    };
+  }
+
   const getImageUrl = (imagePath) => {
     if (!imagePath) return "/default-profile.jpg";
     if (imagePath.startsWith('http')) {
@@ -137,19 +260,18 @@ const ServiceDetailsModal = ({
     });
   };
 
-  if (!service) return null;
-
   return (
     <BaseModal
       isOpen={isOpen}
       onClose={onClose}
-      maxWidth="max-w-xl"
       clickPosition={clickPosition}
       contentProps={{
-        className: "relative bg-white rounded-2xl shadow-2xl overflow-hidden"
+        className: "relative bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]",
+        style: { width: '60%' } // Fixed width at 60% of screen width
       }}
     >
-      <div className="relative h-[280px] overflow-hidden">
+      {/* Header Image Area - Fixed height to prevent layout shifts */}
+      <div className="relative h-[180px] flex-shrink-0 overflow-hidden w-full">
         <div className="absolute inset-0 bg-gradient-to-b from-[rgba(0,0,0,0.3)] to-[rgba(0,0,0,0.7)]"></div>
         <img 
           src={`${BASE_URL}${service.serviceImage}`}
@@ -202,7 +324,9 @@ const ServiceDetailsModal = ({
           </div>
         </div>
       </div>
-      <div className="flex border-b border-gray-200">
+
+      {/* Tabs Navigation - Keep compact and consistent */}
+      <div className="flex border-b border-gray-200 bg-white flex-shrink-0 w-full">
         <button 
           className={`px-6 py-4 font-medium text-sm flex items-center transition-colors ${activeTab === 'overview' ? 'text-[#495E57] border-b-2 border-[#F4CE14]' : 'text-gray-500 hover:text-gray-700'}`}
           onClick={() => setActiveTab('overview')}
@@ -231,9 +355,11 @@ const ServiceDetailsModal = ({
           Reviews
         </button>
       </div>
-      <div className="p-6">
+
+      {/* Content Area - Make this scrollable with fixed width */}
+      <div className="overflow-y-auto p-4 flex-grow w-full">
         {activeTab === 'overview' && (
-          <div className="flex flex-col md:flex-row gap-8">
+          <div className="flex flex-col md:flex-row gap-4 w-full">
             <div className="md:w-2/3">
               <div className="mb-6">
                 <h3 className="text-xl font-bold text-[#495E57] mb-4 flex items-center">
@@ -310,7 +436,7 @@ const ServiceDetailsModal = ({
                 <div className="mb-6 text-sm text-gray-500">
                   <p className="flex items-center gap-2 mb-2">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#F4CE14]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     Book now to secure your preferred time slot
                   </p>
@@ -321,21 +447,13 @@ const ServiceDetailsModal = ({
                     Professional and reliable service
                   </p>
                 </div>
-                <button
-                  onClick={onBookService}
-                  className="w-full bg-[#F4CE14] hover:bg-[#e5c013] text-[#495E57] font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Book Now
-                </button>
               </div>
             </div>
           </div>
         )}
+        
         {activeTab === 'provider' && (
-          <div className="md:flex gap-8">
+          <div className="md:flex gap-4 w-full">
             <div className="md:w-1/3 mb-6 md:mb-0">
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col items-center">
                 <img
@@ -376,7 +494,7 @@ const ServiceDetailsModal = ({
                   <div className="flex items-center justify-between bg-white p-3 rounded-lg shadow-sm">
                     <div className="flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#495E57] mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2-2h-1C9.716 21 3 14.284 3 6V5z" />
                       </svg>
                       <span className="text-sm">Contact</span>
                     </div>
@@ -437,95 +555,164 @@ const ServiceDetailsModal = ({
                     <span className="text-lg font-bold text-[#495E57]">₱{service.price}</span>
                   </div>
                 </div>
-                <button
-                  onClick={onBookService}
-                  className="w-full mt-5 bg-[#F4CE14] hover:bg-[#e5c013] text-[#495E57] font-bold py-3 rounded-lg transition-colors"
-                >
-                  Book This Service
-                </button>
               </div>
             </div>
           </div>
         )}
+        
         {activeTab === 'reviews' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold text-[#495E57] flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-                Customer Reviews
-              </h3>
-              <div className="flex items-center bg-[#495E57]/10 px-3 py-1 rounded-lg">
-                <span className="font-medium text-[#495E57] mr-2">
-                  {serviceRatings[service.serviceId]?.averageRating?.toFixed(1) || "0.0"}
-                </span>
-                <div className="flex">
-                  {renderStars(serviceRatings[service.serviceId]?.averageRating || 0)}
-                </div>
-                <span className="ml-2 text-sm text-gray-500">
-                  ({serviceRatings[service.serviceId]?.reviewCount || 0} reviews)
-                </span>
-              </div>
-            </div>
-            {loadingReviews ? (
-              <div className="flex justify-center items-center py-12">
-                <div className="w-12 h-12 rounded-full border-b-2 border-[#495E57] animate-spin"></div>
-              </div>
-            ) : reviewError ? (
-              <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg">
-                <p className="font-medium">Error loading reviews</p>
-                <p>{reviewError}</p>
-              </div>
-            ) : reviews.length > 0 ? (
-              <div className="space-y-6">
-                {reviews.map((review) => (
-                  <div key={review.reviewId} className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-start space-x-4">
-                        <div className="w-10 h-10 bg-[#F4CE14]/20 rounded-full flex items-center justify-center text-[#495E57] font-medium">
-                          {review.customer?.firstName?.charAt(0) || 'U'}
+          <div className="w-full">
+            {reviews && reviews.length > 0 ? (
+              <motion.div 
+                className="space-y-6"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4 }}
+              >
+                <motion.div 
+                  className="bg-gradient-to-r from-gray-50 to-white p-4 rounded-lg border border-gray-100 shadow-sm mb-6"
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.4, delay: 0.1 }}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between">
+                    <div className="mb-4 sm:mb-0">
+                      <h3 className="text-lg font-semibold text-gray-800">Customer Reviews</h3>
+                      <div className="flex items-center mt-1">
+                        <div className="flex">
+                          {[...Array(5)].map((_, i) => {
+                            const avgRating = reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length;
+                            return (
+                              <svg 
+                                key={i} 
+                                className={`w-5 h-5 ${i < Math.round(avgRating) ? 'text-yellow-400' : 'text-gray-300'}`}
+                                fill="currentColor" 
+                                viewBox="0 0 20 20"
+                              >
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              </svg>
+                            );
+                          })}
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-800">
-                            {review.customer?.firstName} {review.customer?.lastName || ''}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {formatReviewDate(review.reviewDate)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center">
-                        {renderStars(review.rating || 0)}
-                        <span className="ml-2 text-[#495E57] font-medium">{review.rating.toFixed(1)}</span>
+                        <span className="ml-2 text-sm text-gray-600">
+                          <span className="font-medium text-gray-800">{reviews.length}</span> {reviews.length === 1 ? 'review' : 'reviews'}
+                        </span>
                       </div>
                     </div>
-                    <p className="mt-3 text-gray-700">{review.comment || "No comment provided"}</p>
+                    
+                    <div className="flex gap-1">
+                      <select className="text-sm border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-[#F4CE14] focus:border-[#F4CE14]">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                        <option value="highest">Highest Rated</option>
+                        <option value="lowest">Lowest Rated</option>
+                      </select>
+                    </div>
                   </div>
+                </motion.div>
+                
+                {reviews.map((review, index) => (
+                  <motion.div 
+                    key={index} 
+                    className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 + index * 0.05, duration: 0.4 }}
+                    whileHover={{ y: -2, transition: { duration: 0.2 } }}
+                  >
+                    <div className="flex items-start">
+                      <div className="mr-4">
+                        {customerImages[review.customer?.customerId] ? (
+                          <img 
+                            src={customerImages[review.customer.customerId]}
+                            alt={`${review.customer?.firstName || 'Customer'}`}
+                            className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              setCustomerImages(prev => {
+                                const updated = {...prev};
+                                delete updated[review.customer.customerId];
+                                return updated;
+                              });
+                            }}
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-gradient-to-br from-[#495E57] to-[#3e4f49] rounded-full flex items-center justify-center text-white text-lg font-semibold uppercase shadow-sm">
+                            {review.customer?.firstName?.charAt(0) || '?'}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex-1">
+                        <div className="flex flex-wrap justify-between items-start">
+                          <div>
+                            <h4 className="font-semibold text-[#495E57]">
+                              {review.customer?.firstName || 'Anonymous'} {review.customer?.lastName || ''}
+                            </h4>
+                            
+                            <div className="flex items-center mt-1">
+                              <div className="flex">
+                                {[...Array(5)].map((_, i) => (
+                                  <svg 
+                                    key={i} 
+                                    className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400' : 'text-gray-300'}`}
+                                    fill="currentColor" 
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                  </svg>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <span className="text-xs text-gray-500 mt-1">
+                            {formatTimeAgo(review.reviewDate)}
+                          </span>
+                        </div>
+                        
+                        <div className="mt-3">
+                          <p className="text-gray-700 leading-relaxed">
+                            {review.comment}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             ) : (
-              <div className="bg-gray-50 p-8 rounded-lg text-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                </svg>
-                <p className="text-gray-600 font-medium">No reviews yet for this service</p>
-                <p className="text-gray-500 mt-1 text-sm">Be the first to review after booking!</p>
-              </div>
-            )}
-            <div className="flex justify-center pt-4">
-              <button 
-                onClick={onBookService}
-                className="bg-[#F4CE14] hover:bg-[#e5c013] text-[#495E57] font-bold px-8 py-3 rounded-lg transition-colors shadow-sm flex items-center gap-2"
+              <motion.div 
+                className="text-center py-12 bg-gray-50 rounded-xl shadow-sm flex flex-col items-center"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                Book This Service
-              </button>
-            </div>
+                <div className="mx-auto w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-medium text-gray-800 mb-2">No Reviews Yet</h3>
+                <p className="text-gray-500 max-w-xs mx-auto mb-6">This service hasn't received any reviews from customers yet.</p>
+                <p className="text-sm text-[#495E57]">Be the first to book this service and share your experience!</p>
+              </motion.div>
+            )}
           </div>
         )}
+      </div>
+
+      {/* Footer with Book Button - Fixed position */}
+      <div className="p-3 border-t border-gray-200 bg-white flex-shrink-0 w-full">
+        <button 
+          onClick={onBookService}
+          className="bg-[#F4CE14] hover:bg-[#e5c013] text-[#495E57] font-bold px-8 py-3 rounded-lg transition-colors shadow-sm flex items-center gap-2 w-full"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          Book This Service
+        </button>
       </div>
     </BaseModal>
   );
