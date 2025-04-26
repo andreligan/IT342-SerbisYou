@@ -149,7 +149,27 @@ class BookingHistoryFragment : Fragment() {
             try {
                 val date = dateFormat.parse(booking.bookingDate ?: "") ?: Date()
                 holder.tvBookingDate.text = "Date: ${outputDateFormat.format(date)}"
-                holder.tvBookingTime.text = "Time: Not available" // No time in booking model
+                
+                // Display booking time if available
+                if (!booking.bookingTime.isNullOrEmpty()) {
+                    // Try to format time if it's in a standard format
+                    try {
+                        val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+                        val outputTimeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+                        val time = timeFormat.parse(booking.bookingTime)
+                        
+                        if (time != null) {
+                            holder.tvBookingTime.text = "Time: ${outputTimeFormat.format(time)}"
+                        } else {
+                            holder.tvBookingTime.text = "Time: ${booking.bookingTime}"
+                        }
+                    } catch (e: Exception) {
+                        Log.d(TAG, "Unable to parse time format, using raw value")
+                        holder.tvBookingTime.text = "Time: ${booking.bookingTime}"
+                    }
+                } else {
+                    holder.tvBookingTime.text = "Time: Not available"
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error parsing date", e)
                 holder.tvBookingDate.text = "Date: Not available"
@@ -178,8 +198,14 @@ class BookingHistoryFragment : Fragment() {
                 else -> holder.tvStatus.setTextColor(resources.getColor(android.R.color.darker_gray))
             }
             
-            // Set price
-            holder.tvPrice.text = "Price: ${booking.service?.priceRange ?: "Not specified"}"
+            // Display total cost if available
+            if (booking.totalCost > 0) {
+                holder.tvPrice.text = "Price: ₱${booking.totalCost.toInt()}"
+            } else if (booking.service?.effectivePrice != null) {
+                holder.tvPrice.text = "Price: ${booking.service.effectivePrice}"
+            } else {
+                holder.tvPrice.text = "Price: Not specified"
+            }
         }
         
         override fun getItemCount() = bookings.size

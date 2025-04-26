@@ -1,6 +1,8 @@
 package com.example.serbisyo_it342_g3
 
+import android.app.AlertDialog
 import android.app.Dialog
+import android.app.ProgressDialog
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
@@ -44,6 +46,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import com.example.serbisyo_it342_g3.MainActivity
+import com.example.serbisyo_it342_g3.data.Booking
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -808,38 +811,9 @@ class BrowseServicesActivity : AppCompatActivity() {
                     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                     val formattedDate = dateFormat.format(selectedDateObj)
                     
-                    // Create booking
-                    val customerId = userId
-                    val serviceId = service.serviceId
-                    
-                    bookingApiClient.createBooking(serviceId, customerId, formattedDate, token) { booking, error ->
-                        runOnUiThread {
-                            if (error != null) {
-                                Log.e(tag, "Error creating booking", error)
-                                Toast.makeText(
-                                    this@BrowseServicesActivity,
-                                    "Error creating booking: ${error.message}",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                                return@runOnUiThread
-                            }
-                            
-                            if (booking != null) {
-                                Toast.makeText(
-                                    this@BrowseServicesActivity,
-                                    "Booking created successfully! Status: ${booking.status}",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                                dialog.dismiss()
-                            } else {
-                                Toast.makeText(
-                                    this@BrowseServicesActivity,
-                                    "Unknown error occurred while creating booking",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
-                        }
-                    }
+                    // Show booking review dialog
+                    showBookingReviewDialog(service, formattedDate, selectedTimeSlot!!, customerAddress)
+                    dialog.dismiss()
                 } else {
                     Toast.makeText(this@BrowseServicesActivity, "Please select a date and time", Toast.LENGTH_SHORT).show()
                 }
@@ -1028,6 +1002,302 @@ class BrowseServicesActivity : AppCompatActivity() {
             Log.e("BrowseServices", "Error converting time format: ${e.message}")
             return time
         }
+    }
+    
+    /**
+     * Shows a dialog for reviewing booking details before confirming
+     */
+    private fun showBookingReviewDialog(
+        service: Service,
+        bookingDate: String,
+        timeSlot: String,
+        customerAddress: Address?
+    ) {
+        val dialog = Dialog(this, android.R.style.Theme_Material_Light_Dialog_NoActionBar_MinWidth)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_booking_review)
+        
+        // Make dialog full width with rounded corners
+        dialog.window?.apply {
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        }
+        
+        // Get user data
+        val sharedPrefs = getSharedPreferences("UserPrefs", MODE_PRIVATE)
+        val userId = try {
+            sharedPrefs.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            val userIdStr = sharedPrefs.getString("userId", "0")
+            userIdStr?.toLongOrNull() ?: 0
+        }
+        
+        // Format date for display
+        val parsedDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(bookingDate)
+        val displayDateFormat = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault())
+        val formattedDisplayDate = parsedDate?.let { displayDateFormat.format(it) } ?: bookingDate
+        
+        // Format time for display
+        val timeSlotParts = timeSlot.split("-")
+        var formattedDisplayTime = timeSlot
+        if (timeSlotParts.size == 2) {
+            val startTime = formatTimeDisplay(timeSlotParts[0])
+            val endTime = formatTimeDisplay(timeSlotParts[1])
+            formattedDisplayTime = "$startTime - $endTime"
+        }
+        
+        // Calculate price and fees
+        val servicePrice = parsePrice(service.effectivePrice)
+        val paymongoFee = (servicePrice * 0.025).roundToInt()
+        val appFee = (servicePrice * 0.025).roundToInt()
+        val totalPrice = servicePrice.roundToInt() + paymongoFee + appFee
+        
+        with(dialog) {
+            // Service details
+            findViewById<TextView>(R.id.tvServiceName).text = service.serviceName
+            findViewById<TextView>(R.id.tvServiceDescription).text = service.serviceDescription
+            findViewById<TextView>(R.id.tvServiceCategory).text = "Category: ${service.category?.categoryName ?: "General"}"
+            findViewById<TextView>(R.id.tvProviderName).text = "Provider: ${service.provider?.firstName} ${service.provider?.lastName}"
+            
+            // Service image
+            val serviceImageView = findViewById<ImageView>(R.id.ivServiceImage)
+            if (!service.imageUrl.isNullOrEmpty()) {
+                ImageUtils.loadImageAsync(
+                    ImageUtils.getFullImageUrl(service.imageUrl, this@BrowseServicesActivity),
+                    serviceImageView
+                )
+            }
+            
+            // Booking details
+            findViewById<TextView>(R.id.tvBookingDate).text = formattedDisplayDate
+            findViewById<TextView>(R.id.tvBookingTime).text = formattedDisplayTime
+            
+            // Service location (customer address)
+            val tvServiceLocation = findViewById<TextView>(R.id.tvServiceLocation)
+            
+            // If we don't have a customer address, show loading and fetch it
+            if (customerAddress == null) {
+                tvServiceLocation.text = getString(R.string.loading_address)
+                
+                // Fetch customer profile to get address
+                val userApiClient = UserApiClient(this@BrowseServicesActivity)
+                userApiClient.getCustomerProfile(userId, token) { customer, error ->
+                    runOnUiThread {
+                        if (error != null) {
+                            Log.e(tag, "Error loading customer profile", error)
+                            tvServiceLocation.text = getString(R.string.error_loading_address)
+                            return@runOnUiThread
+                        }
+                        
+                        if (customer != null && customer.address != null) {
+                            // Use the address from customer profile
+                            val address = customer.address
+                            val streetDisplay = when {
+                                !address.streetName.isNullOrBlank() -> address.streetName
+                                !address.street.isNullOrBlank() -> address.street
+                                else -> ""
+                            }
+                            
+                            val formattedAddress = listOfNotNull(
+                                streetDisplay,
+                                address.barangay?.takeIf { it.isNotEmpty() },
+                                address.city?.takeIf { it.isNotEmpty() },
+                                address.province?.takeIf { it.isNotEmpty() }
+                            ).joinToString(", ")
+                            
+                            tvServiceLocation.text = formattedAddress
+                        } else {
+                            // Try fetching addresses from the API
+                            fetchAddressesForBookingReview(userId, tvServiceLocation)
+                        }
+                    }
+                }
+            } else {
+                // Use the address that was passed in
+                val streetDisplay = when {
+                    !customerAddress.streetName.isNullOrBlank() -> customerAddress.streetName
+                    !customerAddress.street.isNullOrBlank() -> customerAddress.street
+                    else -> ""
+                }
+                
+                val formattedAddress = listOfNotNull(
+                    streetDisplay,
+                    customerAddress.barangay?.takeIf { it.isNotEmpty() },
+                    customerAddress.city?.takeIf { it.isNotEmpty() },
+                    customerAddress.province?.takeIf { it.isNotEmpty() }
+                ).joinToString(", ")
+                
+                tvServiceLocation.text = formattedAddress
+            }
+            
+            // Change address link
+            findViewById<TextView>(R.id.tvChangeAddress).setOnClickListener {
+                // Navigate to address management page
+                val intent = Intent(this@BrowseServicesActivity, ProfileManagementActivity::class.java)
+                intent.putExtra("tab_index", 1) // Address tab
+                startActivityForResult(intent, ADDRESS_UPDATE_REQUEST_CODE)
+            }
+            
+            // Payment details
+            val tvServiceNamePrice = findViewById<TextView>(R.id.tvServiceNamePrice)
+            tvServiceNamePrice.text = "${service.serviceName} Price:"
+            findViewById<TextView>(R.id.tvServicePrice).text = getString(R.string.service_price_format, servicePrice.roundToInt())
+            findViewById<TextView>(R.id.tvPayMongoFee).text = getString(R.string.service_price_format, paymongoFee)
+            findViewById<TextView>(R.id.tvAppFee).text = getString(R.string.service_price_format, appFee)
+            findViewById<TextView>(R.id.tvTotalPrice).text = getString(R.string.service_price_format, totalPrice)
+            
+            // Payment method radio group
+            val rgPaymentMethod = findViewById<RadioGroup>(R.id.rgPaymentMethod)
+            
+            // Close button
+            findViewById<ImageButton>(R.id.btnCloseDialog).setOnClickListener {
+                dialog.dismiss()
+            }
+            
+            // Back button
+            findViewById<Button>(R.id.btnBack).setOnClickListener {
+                dialog.dismiss()
+                // Go back to the service booking dialog
+                showServiceBookingDialog(service)
+            }
+            
+            // Confirm booking button
+            findViewById<Button>(R.id.btnProceedToPayment).setOnClickListener {
+                // Get special instructions
+                val specialInstructions = findViewById<EditText>(R.id.etSpecialInstructions).text.toString()
+                
+                // Get selected payment method
+                val paymentMethod = if (rgPaymentMethod.checkedRadioButtonId == R.id.rbGCash) "GCash" else "Cash"
+                
+                // Show confirmation progress
+                val progressDialog = ProgressDialog(this@BrowseServicesActivity)
+                progressDialog.setMessage("Creating your booking...")
+                progressDialog.setCancelable(false)
+                progressDialog.show()
+                
+                // Create booking with API
+                val bookingApiClient = BookingApiClient(this@BrowseServicesActivity)
+
+                // Extract only the start time from the time slot (e.g., "01:30:00" from "01:30:00-01:45:00")
+                val startTime = timeSlot.split("-").firstOrNull() ?: timeSlot
+
+                bookingApiClient.createBooking(
+                    serviceId = service.serviceId,
+                    customerId = userId,
+                    bookingDate = bookingDate,
+                    token = token,
+                    note = specialInstructions,
+                    paymentMethod = paymentMethod,
+                    bookingTime = startTime, // Use only the start time
+                    totalCost = totalPrice.toDouble()
+                ) { booking, error ->
+                    runOnUiThread {
+                        progressDialog.dismiss()
+                        
+                        if (error != null) {
+                            Log.e(tag, "Error creating booking", error)
+                            Toast.makeText(
+                                this@BrowseServicesActivity,
+                                "Error creating booking: ${error.message}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@runOnUiThread
+                        }
+                        
+                        if (booking != null) {
+                            Toast.makeText(
+                                this@BrowseServicesActivity,
+                                "Booking created successfully! Status: ${booking.status}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            dialog.dismiss()
+                            
+                            // Show success dialog or navigate to bookings screen
+                            showBookingSuccessDialog(booking)
+                        } else {
+                            Toast.makeText(
+                                this@BrowseServicesActivity,
+                                "Unknown error occurred while creating booking",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                }
+            }
+        }
+        
+        dialog.show()
+    }
+    
+    /**
+     * Function to fetch addresses specifically for the booking review dialog
+     */
+    private fun fetchAddressesForBookingReview(customerId: Long, tvServiceLocation: TextView) {
+        // Use the address API client
+        val addressApiClient = AddressApiClient(this)
+        addressApiClient.getAddressesByUserId(customerId, token) { addresses, error ->
+            runOnUiThread {
+                if (error != null) {
+                    Log.e(tag, "Error fetching addresses for booking review", error)
+                    tvServiceLocation.text = getString(R.string.error_loading_address)
+                    return@runOnUiThread
+                }
+                
+                if (addresses.isNullOrEmpty()) {
+                    Log.d(tag, "No addresses found for customer $customerId in booking review")
+                    tvServiceLocation.text = getString(R.string.no_address_found)
+                    return@runOnUiThread
+                }
+                
+                // First try to find the main address
+                var selectedAddress = addresses.find { it.main }
+                
+                // If no main address, use the first one
+                if (selectedAddress == null && addresses.isNotEmpty()) {
+                    selectedAddress = addresses[0]
+                }
+                
+                if (selectedAddress != null) {
+                    val streetDisplay = when {
+                        !selectedAddress.streetName.isNullOrBlank() -> selectedAddress.streetName
+                        !selectedAddress.street.isNullOrBlank() -> selectedAddress.street
+                        else -> ""
+                    }
+                    
+                    val formattedAddress = listOfNotNull(
+                        streetDisplay,
+                        selectedAddress.barangay?.takeIf { it.isNotEmpty() },
+                        selectedAddress.city?.takeIf { it.isNotEmpty() },
+                        selectedAddress.province?.takeIf { it.isNotEmpty() }
+                    ).joinToString(", ")
+                    
+                    tvServiceLocation.text = formattedAddress
+                } else {
+                    tvServiceLocation.text = getString(R.string.no_address_found)
+                }
+            }
+        }
+    }
+    
+    /**
+     * Shows a dialog confirming successful booking
+     */
+    private fun showBookingSuccessDialog(booking: Booking) {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Booking Successful!")
+        builder.setMessage("Your booking has been created successfully. You can view and manage it in your bookings history.")
+        builder.setPositiveButton("View Bookings") { _, _ ->
+            // Navigate to bookings history
+            val intent = Intent(this, ProfileManagementActivity::class.java)
+            intent.putExtra("tab_index", 2) // Booking history tab
+            startActivity(intent)
+            finish()
+        }
+        builder.setNegativeButton("Continue Browsing") { _, _ ->
+            // Do nothing, stay on browse services
+        }
+        builder.setCancelable(false)
+        builder.show()
     }
     
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

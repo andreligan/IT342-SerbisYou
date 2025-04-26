@@ -74,14 +74,24 @@ class BookingApiClient(private val context: Context) {
     }
 
     // Create a new booking
-    fun createBooking(serviceId: Long, customerId: Long, bookingDate: String, token: String, callback: (Booking?, Exception?) -> Unit) {
+    fun createBooking(
+        serviceId: Long, 
+        customerId: Long, 
+        bookingDate: String, 
+        token: String, 
+        note: String? = null,
+        paymentMethod: String? = "Cash",
+        bookingTime: String? = null,
+        totalCost: Double? = null,
+        callback: (Booking?, Exception?) -> Unit
+    ) {
         if (token.isBlank()) {
             Log.e(TAG, "Token is empty or blank")
             callback(null, Exception("Authentication token is required"))
             return
         }
 
-        Log.d(TAG, "Creating booking for service: $serviceId, customer: $customerId, date: $bookingDate")
+        Log.d(TAG, "Creating booking for service: $serviceId, customer: $customerId, date: $bookingDate, time: $bookingTime")
 
         val jsonObject = JSONObject().apply {
             // Match the expected format from BookingController in the backend
@@ -91,9 +101,24 @@ class BookingApiClient(private val context: Context) {
             put("customer", JSONObject().apply {
                 put("customerId", customerId)
             })
-            put("bookingDate", bookingDate) // Already date part only
+            put("bookingDate", bookingDate) // Date part only
             put("status", "Pending")
-            put("totalCost", 0) // This will be calculated by the backend based on service price
+            
+            // Add booking time if provided
+            if (!bookingTime.isNullOrBlank()) {
+                put("bookingTime", bookingTime)
+            }
+            
+            // Add total cost if provided, otherwise default to 0
+            put("totalCost", totalCost ?: 0.0)
+            
+            // Add note if not null or empty
+            if (!note.isNullOrBlank()) {
+                put("note", note)
+            }
+            
+            // Add payment method information (can be used for future payment integration)
+            put("paymentMethod", paymentMethod ?: "Cash")
         }
 
         Log.d(TAG, "Booking JSON: ${jsonObject.toString()}")
