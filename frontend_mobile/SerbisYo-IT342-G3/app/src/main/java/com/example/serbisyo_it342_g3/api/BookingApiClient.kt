@@ -15,7 +15,7 @@ class BookingApiClient(private val context: Context) {
     private val baseApiClient = BaseApiClient(context)
     private val client = baseApiClient.client
     private val gson = baseApiClient.gson
-    
+
     private val TAG = "BookingApiClient"
 
     // Get bookings by customer ID
@@ -27,7 +27,7 @@ class BookingApiClient(private val context: Context) {
         }
 
         Log.d(TAG, "Getting bookings for customer: $customerId with token: $token")
-        
+
         val request = Request.Builder()
             .url("${baseApiClient.getBaseUrl()}/api/bookings/getAll")
             .get()
@@ -44,7 +44,7 @@ class BookingApiClient(private val context: Context) {
                 val responseBody = response.body?.string()
                 Log.d(TAG, "Response code: ${response.code}")
                 Log.d(TAG, "Response body: $responseBody")
-                
+
                 if (response.isSuccessful) {
                     Log.d(TAG, "Bookings response: $responseBody")
                     try {
@@ -58,7 +58,7 @@ class BookingApiClient(private val context: Context) {
                 } else {
                     Log.e(TAG, "Error getting bookings: ${response.code}")
                     Log.e(TAG, "Error response body: $responseBody")
-                    
+
                     // Try to extract error message from response if available
                     val errorMessage = try {
                         val errorJson = JSONObject(responseBody ?: "{}")
@@ -66,13 +66,13 @@ class BookingApiClient(private val context: Context) {
                     } catch (e: Exception) {
                         "Failed to get bookings: ${response.code}"
                     }
-                    
+
                     callback(null, Exception(errorMessage))
                 }
             }
         })
     }
-    
+
     // Create a new booking
     fun createBooking(serviceId: Long, customerId: Long, bookingDate: String, token: String, callback: (Booking?, Exception?) -> Unit) {
         if (token.isBlank()) {
@@ -82,7 +82,7 @@ class BookingApiClient(private val context: Context) {
         }
 
         Log.d(TAG, "Creating booking for service: $serviceId, customer: $customerId, date: $bookingDate")
-        
+
         val jsonObject = JSONObject().apply {
             // Match the expected format from BookingController in the backend
             put("service", JSONObject().apply {
@@ -95,11 +95,11 @@ class BookingApiClient(private val context: Context) {
             put("status", "Pending")
             put("totalCost", 0) // This will be calculated by the backend based on service price
         }
-        
+
         Log.d(TAG, "Booking JSON: ${jsonObject.toString()}")
-        
+
         val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
-        
+
         val request = Request.Builder()
             .url("${baseApiClient.getBaseUrl()}/api/bookings/postBooking")
             .post(requestBody)
@@ -117,7 +117,7 @@ class BookingApiClient(private val context: Context) {
                 val responseBody = response.body?.string()
                 Log.d(TAG, "Response code: ${response.code}")
                 Log.d(TAG, "Response body: $responseBody")
-                
+
                 if (response.isSuccessful) {
                     Log.d(TAG, "Create booking response: $responseBody")
                     try {
@@ -130,7 +130,7 @@ class BookingApiClient(private val context: Context) {
                 } else {
                     Log.e(TAG, "Error creating booking: ${response.code}")
                     Log.e(TAG, "Error response body: $responseBody")
-                    
+
                     // Try to extract error message from response if available
                     val errorMessage = try {
                         val errorJson = JSONObject(responseBody ?: "{}")
@@ -138,13 +138,13 @@ class BookingApiClient(private val context: Context) {
                     } catch (e: Exception) {
                         "Failed to create booking: ${response.code}"
                     }
-                    
+
                     callback(null, Exception(errorMessage))
                 }
             }
         })
     }
-    
+
     // Cancel a booking
     fun cancelBooking(bookingId: Long, token: String, callback: (Boolean, Exception?) -> Unit) {
         if (token.isBlank()) {
@@ -154,7 +154,7 @@ class BookingApiClient(private val context: Context) {
         }
 
         Log.d(TAG, "Cancelling booking: $bookingId")
-        
+
         val request = Request.Builder()
             .url("${baseApiClient.getBaseUrl()}/api/bookings/cancel/$bookingId")
             .put("".toRequestBody(null))
@@ -171,14 +171,14 @@ class BookingApiClient(private val context: Context) {
                 val responseBody = response.body?.string()
                 Log.d(TAG, "Response code: ${response.code}")
                 Log.d(TAG, "Response body: $responseBody")
-                
+
                 if (response.isSuccessful) {
                     Log.d(TAG, "Cancel booking response: $responseBody")
                     callback(true, null)
                 } else {
                     Log.e(TAG, "Error cancelling booking: ${response.code}")
                     Log.e(TAG, "Error response body: $responseBody")
-                    
+
                     // Try to extract error message from response if available
                     val errorMessage = try {
                         val errorJson = JSONObject(responseBody ?: "{}")
@@ -186,7 +186,7 @@ class BookingApiClient(private val context: Context) {
                     } catch (e: Exception) {
                         "Failed to cancel booking: ${response.code}"
                     }
-                    
+
                     callback(false, Exception(errorMessage))
                 }
             }

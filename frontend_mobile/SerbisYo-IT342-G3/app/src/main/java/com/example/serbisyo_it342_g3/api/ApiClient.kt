@@ -36,6 +36,11 @@ object ApiClient {
 
     val apiService: ApiService = retrofit.create(ApiService::class.java)
     
+    // Public method to get the base URL
+    fun getBaseUrl(): String {
+        return Constants.BASE_URL
+    }
+    
     // Helper class to handle errors when JSON isn't a list but needs to be
     class SafeListDeserializer<T> : com.google.gson.JsonDeserializer<List<T>> {
         override fun deserialize(

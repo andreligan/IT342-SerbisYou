@@ -47,7 +47,7 @@ class SerbisYoApplication : Application() {
         if (network != null && capabilities != null && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
             try {
                 // For this specific app, we know the server should be at this IP and port
-                val serverIpAddress = "192.168.254.116" // Current server IP
+                val serverIpAddress = "192.168.1.102" // Current server IP
                 Log.d(TAG, "Connected to WiFi, setting server to: $serverIpAddress")
                 BaseApiClient.setBaseUrl("http://$serverIpAddress:8080")
             } catch (e: Exception) {

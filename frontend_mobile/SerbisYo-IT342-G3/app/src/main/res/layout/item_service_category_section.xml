@@ -40,17 +40,30 @@
             tools:text="1" />
     </LinearLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvCategoryServices"
+    <!-- We'll use a FrameLayout to have both horizontal and vertical options -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:clipToPadding="false"
-        android:orientation="horizontal"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="8dp"
-        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-        tools:itemCount="3"
-        tools:listitem="@layout/item_service_card" />
+        android:padding="8dp">
+
+        <!-- Horizontal RecyclerView for multiple services -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvCategoryServices"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipToPadding="false"
+            android:orientation="horizontal"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:itemCount="3"
+            tools:listitem="@layout/item_service_card" />
+
+        <!-- Container for single service that will match parent width -->
+        <FrameLayout
+            android:id="@+id/singleServiceContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+
+    </FrameLayout>
 
 </LinearLayout> 

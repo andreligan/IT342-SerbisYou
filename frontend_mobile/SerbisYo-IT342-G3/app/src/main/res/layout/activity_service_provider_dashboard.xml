@@ -326,8 +326,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:clipToPadding="false"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
                 android:scrollbars="none"
                 app:layout_constraintTop_toBottomOf="@+id/buttonContainer">
 
@@ -336,7 +336,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:paddingBottom="16dp">
+                    android:paddingBottom="16dp"
+                    android:paddingTop="4dp"
+                    android:gravity="center_vertical">
 
                     <!-- Services will be added here dynamically -->
                 </LinearLayout>

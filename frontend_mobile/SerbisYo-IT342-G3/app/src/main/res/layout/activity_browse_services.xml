@@ -20,7 +20,7 @@
             app:titleTextColor="@android:color/white" />
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- Header Section -->
+    <!-- Main Content -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -53,6 +53,40 @@
                 android:textSize="14sp" />
         </LinearLayout>
 
+        <!-- Filter Toggle and Count Bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="8dp"
+            android:background="#F5F5F5"
+            android:elevation="2dp">
+
+            <Button
+                android:id="@+id/btnToggleFilters"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Show Filters"
+                android:textSize="12sp"
+                android:backgroundTint="@color/primary_green"
+                android:textColor="@android:color/white"
+                android:drawableStart="@android:drawable/ic_menu_sort_by_size"
+                android:drawablePadding="4dp"
+                android:drawableTint="@android:color/white" />
+
+            <TextView
+                android:id="@+id/tvServicesCount"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="services found"
+                android:textColor="@color/primary_green"
+                android:textSize="14sp"
+                android:gravity="end|center_vertical"
+                android:layout_gravity="center_vertical"
+                android:textStyle="bold" />
+        </LinearLayout>
+
         <!-- Main Content with Filters and Services -->
         <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
@@ -62,16 +96,17 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="vertical">
 
-                <!-- Left Panel - Filters -->
+                <!-- Filter Panel - Initially Hidden -->
                 <androidx.cardview.widget.CardView
-                    android:layout_width="0dp"
+                    android:id="@+id/filterCardView"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_margin="8dp"
-                    android:layout_weight="1"
                     app:cardCornerRadius="8dp"
-                    app:cardElevation="4dp">
+                    app:cardElevation="4dp"
+                    android:visibility="gone">
 
                     <LinearLayout
                         android:id="@+id/filterLayout"
@@ -102,12 +137,14 @@
                             android:textSize="16sp"
                             android:textStyle="bold" />
 
-                        <LinearLayout
-                            android:id="@+id/categoryContainer"
+                        <Spinner
+                            android:id="@+id/categorySpinner"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:paddingVertical="8dp" />
+                            android:layout_marginTop="8dp"
+                            android:layout_marginBottom="8dp"
+                            android:background="@android:drawable/btn_dropdown"
+                            android:spinnerMode="dropdown" />
 
                         <!-- Price Range Section -->
                         <TextView
@@ -144,9 +181,9 @@
                             android:id="@+id/priceRangeSlider"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:stepSize="50"
-                            android:valueFrom="10"
-                            android:valueTo="2000" />
+                            android:stepSize="10"
+                            android:valueFrom="10.0"
+                            android:valueTo="2000.0" />
 
                         <!-- Minimum Rating Section -->
                         <TextView
@@ -162,9 +199,9 @@
                             android:id="@+id/ratingSlider"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:stepSize="1"
-                            android:valueFrom="0"
-                            android:valueTo="5" />
+                            android:stepSize="0.5"
+                            android:valueFrom="0.0"
+                            android:valueTo="5.0" />
 
                         <!-- Experience Years Section -->
                         <TextView
@@ -180,9 +217,9 @@
                             android:id="@+id/experienceSlider"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:stepSize="1"
-                            android:valueFrom="0"
-                            android:valueTo="10" />
+                            android:stepSize="1.0"
+                            android:valueFrom="0.0"
+                            android:valueTo="10.0" />
 
                         <!-- Sort By Section -->
                         <TextView
@@ -262,44 +299,18 @@
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
 
-                <!-- Right Panel - Services -->
-                <LinearLayout
-                    android:layout_width="0dp"
+                <!-- Services Grid -->
+                <RelativeLayout
+                    android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:layout_weight="2"
-                    android:orientation="vertical"
-                    android:padding="8dp">
-
-                    <!-- Services Count and Sort -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:padding="8dp">
-
-                        <TextView
-                            android:id="@+id/tvServicesCount"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="8 services found"
-                            android:textColor="@color/primary_green"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-
-                        <Spinner
-                            android:id="@+id/spinnerSort"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:minWidth="150dp" />
-                    </LinearLayout>
+                    android:padding="4dp">
 
                     <!-- Progress Bar -->
                     <ProgressBar
                         android:id="@+id/progressBar"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_gravity="center"
+                        android:layout_centerInParent="true"
                         android:visibility="gone" />
 
                     <!-- Services Grid -->
@@ -310,7 +321,7 @@
                         app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
                         app:spanCount="2"
                         tools:listitem="@layout/item_browse_service" />
-                </LinearLayout>
+                </RelativeLayout>
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
     </LinearLayout>

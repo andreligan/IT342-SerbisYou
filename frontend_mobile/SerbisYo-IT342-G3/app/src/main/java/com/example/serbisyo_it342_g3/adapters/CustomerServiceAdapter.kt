@@ -1,19 +1,24 @@
 package com.example.serbisyo_it342_g3.adapters
 
 import android.graphics.Color
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.serbisyo_it342_g3.R
 import com.example.serbisyo_it342_g3.data.Service
+import com.example.serbisyo_it342_g3.utils.ImageUtils
 
 class CustomerServiceAdapter(
     private val services: List<Service>,
     private val onServiceClick: (Service) -> Unit
 ) : RecyclerView.Adapter<CustomerServiceAdapter.ServiceViewHolder>() {
+    
+    private val TAG = "CustomerServiceAdapter"
 
     // Category colors for the indicator bar
     private val categoryColors = mapOf(
@@ -43,6 +48,10 @@ class CustomerServiceAdapter(
         val tvProviderName: TextView = view.findViewById(R.id.tvProviderName)
         val categoryIndicator: View = view.findViewById(R.id.categoryIndicator)
         val btnBookService: Button = view.findViewById(R.id.btnBookService)
+        // Add reference to image container and image view
+        val imageContainer: View = view.findViewById(R.id.imageContainer)
+        val serviceImage: ImageView? = view.findViewById(R.id.ivServiceImage)
+        val tvNoImage: TextView? = view.findViewById(R.id.tvNoImage)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ServiceViewHolder {
@@ -68,6 +77,36 @@ class CustomerServiceAdapter(
         // Set category indicator color
         val color = categoryColors[categoryName] ?: "#4CAF50"  // Default to green if category not found
         holder.categoryIndicator.setBackgroundColor(Color.parseColor(color))
+        
+        // Load service image if available
+        if (holder.serviceImage != null && !service.imageUrl.isNullOrEmpty()) {
+            Log.d(TAG, "Loading service image for ${service.serviceName}: ${service.imageUrl}")
+            val imageUrl = ImageUtils.getFullImageUrl(service.imageUrl, holder.itemView.context)
+            
+            // Add timestamp to prevent caching issues
+            val finalUrl = if (imageUrl != null) {
+                imageUrl + (if (imageUrl.contains("?")) "&" else "?") + "t=${System.currentTimeMillis()}"
+            } else {
+                null
+            }
+            
+            ImageUtils.loadImageAsync(finalUrl, holder.serviceImage)
+            
+            // Hide the category indicator completely when we have an image
+            holder.categoryIndicator.visibility = View.GONE
+            
+            // Hide the "No Image" text
+            holder.tvNoImage?.visibility = View.GONE
+        } else {
+            // No image - show category indicator with good visibility
+            holder.categoryIndicator.visibility = View.VISIBLE
+            holder.categoryIndicator.alpha = 0.7f
+            
+            // Show the "No Image" text
+            holder.tvNoImage?.visibility = View.VISIBLE
+            
+            Log.d(TAG, "No image for service: ${service.serviceName}")
+        }
         
         // Set click listeners
         holder.btnBookService.setOnClickListener {

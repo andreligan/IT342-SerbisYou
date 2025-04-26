@@ -16,6 +16,7 @@ import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
@@ -24,6 +25,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.serbisyo_it342_g3.adapters.CustomerServiceAdapter
 import com.example.serbisyo_it342_g3.api.BookingApiClient
 import com.example.serbisyo_it342_g3.api.NotificationApiClient
+import com.example.serbisyo_it342_g3.api.ScheduleApiClient
 import com.example.serbisyo_it342_g3.api.ServiceApiClient
 import com.example.serbisyo_it342_g3.api.UserApiClient
 import com.example.serbisyo_it342_g3.data.Booking
@@ -40,6 +42,9 @@ import com.google.android.material.imageview.ShapeableImageView
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import android.widget.FrameLayout
+import android.widget.TextView
+import android.net.ConnectivityManager
 
 class CustomerDashboardActivity : AppCompatActivity() {
     // Existing view variables
@@ -366,6 +371,16 @@ class CustomerDashboardActivity : AppCompatActivity() {
                     allServices.clear()
                     allServices.addAll(servicesList)
                     
+                    // Log services with images for debugging
+                    Log.d(TAG, "Loaded ${servicesList.size} services")
+                    servicesList.forEach { service ->
+                        if (!service.imageUrl.isNullOrEmpty()) {
+                            Log.d(TAG, "Service ${service.serviceName} has image: ${service.imageUrl}")
+                        } else {
+                            Log.d(TAG, "Service ${service.serviceName} has no image")
+                        }
+                    }
+                    
                     // Display all services
                     filteredServices.clear()
                     filteredServices.addAll(allServices)
@@ -450,6 +465,9 @@ class CustomerDashboardActivity : AppCompatActivity() {
     }
     
     private fun viewServiceDetails(service: Service) {
+        // Ensure API URL is correctly initialized
+        ensureApiUrlIsSet()
+        
         val dialog = Dialog(this)
         dialog.setContentView(R.layout.dialog_service_details)
         dialog.window?.setLayout(
@@ -459,50 +477,193 @@ class CustomerDashboardActivity : AppCompatActivity() {
         
         // Provider information
         val tvProviderName = dialog.findViewById<TextView>(R.id.tvProviderName)
-        val tvProviderType = dialog.findViewById<TextView>(R.id.tvProviderType)
-        val tvVerification = dialog.findViewById<TextView>(R.id.tvVerification)
-        val tvContact = dialog.findViewById<TextView>(R.id.tvContact)
+        val tvProviderUsername = dialog.findViewById<TextView>(R.id.tvProviderUsername)
+        val tvRatingInfo = dialog.findViewById<TextView>(R.id.tvRatingInfo)
+        val tvPhoneNumber = dialog.findViewById<TextView>(R.id.tvPhoneNumber)
         val tvAvailability = dialog.findViewById<TextView>(R.id.tvAvailability)
         val tvExperience = dialog.findViewById<TextView>(R.id.tvExperience)
+        val ivProviderProfile = dialog.findViewById<ImageView>(R.id.ivProviderProfile)
         
         // Service information
-        val tvServiceName = dialog.findViewById<TextView>(R.id.tvServiceName)
+        val tvServiceHeader = dialog.findViewById<TextView>(R.id.tvServiceHeader)
         val tvServiceDescription = dialog.findViewById<TextView>(R.id.tvServiceDescription)
         val tvCategory = dialog.findViewById<TextView>(R.id.tvCategory)
         val tvDuration = dialog.findViewById<TextView>(R.id.tvDuration)
         val tvPrice = dialog.findViewById<TextView>(R.id.tvPrice)
+        val ivServiceImage = dialog.findViewById<ImageView>(R.id.ivServiceImage)
         
         // Buttons
-        val btnClose = dialog.findViewById<Button>(R.id.btnClose)
-        val btnBookService = dialog.findViewById<Button>(R.id.btnBookService)
+        val btnCloseDialog = dialog.findViewById<ImageButton>(R.id.btnCloseDialog)
+        val bookButton = dialog.findViewById<Button>(R.id.btnBookService)
         
         // Set provider information
-        tvProviderName.text = service.provider?.businessName ?: 
-                              "${service.provider?.firstName} ${service.provider?.lastName}"
-        tvProviderType.text = "Business" // No businessType in model
-        tvVerification.text = "Verification: Not Verified" // No verified field in model
-        tvContact.text = "Contact: ${service.provider?.phoneNumber ?: "Not provided"}"
-        tvAvailability.text = "Available: Mon-Fri, 9AM-5PM" // Default or could be from provider
-        tvExperience.text = "Years of Experience: ${service.provider?.yearsOfExperience ?: "N/A"}"
+        val providerName = service.provider?.businessName ?: 
+                          "${service.provider?.firstName} ${service.provider?.lastName}"
+        tvProviderName.text = providerName
+        // Use userAuth's userName if available, or default to Business
+        val username = if (service.provider?.userAuth != null) {
+            service.provider.userAuth.userName ?: "Business"
+        } else {
+            "Business"
+        }
+        tvProviderUsername.text = username
+        tvRatingInfo.text = "No reviews yet" // Use proper rating info field
+        tvPhoneNumber.text = service.provider?.phoneNumber ?: "Not provided"
+        tvExperience.text = "${service.provider?.yearsOfExperience ?: "N/A"} years experience"
+        
+        // Load provider profile image with improved debugging
+        if (service.provider?.profileImage != null && service.provider.profileImage.isNotEmpty()) {
+            try {
+                Log.d(TAG, "Raw profile image path: ${service.provider.profileImage}")
+                
+                // Force load from network and avoid cache issues
+                val profileImageUrl = service.provider.profileImage
+                val fullUrl = if (profileImageUrl.startsWith("http")) {
+                    profileImageUrl  // Already a full URL
+                } else {
+                    // Explicitly construct URL with base URL
+                    "${com.example.serbisyo_it342_g3.api.BaseApiClient.BASE_URL}${
+                        if (!profileImageUrl.startsWith("/")) "/$profileImageUrl" else profileImageUrl
+                    }"
+                }
+                
+                Log.d(TAG, "Final profile image URL: $fullUrl")
+                
+                // Use ImageUtils to load the image
+                com.example.serbisyo_it342_g3.utils.ImageUtils.loadImageAsync(
+                    fullUrl, ivProviderProfile)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading provider profile image", e)
+                ivProviderProfile.setImageResource(R.drawable.ic_person)
+            }
+        } else {
+            Log.d(TAG, "No profile image path available: ${service.provider?.profileImage}")
+            ivProviderProfile.setImageResource(R.drawable.ic_person)
+        }
+        
+        // Fetch provider schedule with provider ID
+        if (service.provider?.providerId != null) {
+            Log.d(TAG, "Provider ID for schedule: ${service.provider.providerId}")
+            fetchProviderScheduleDirectly(service.provider.providerId, tvAvailability)
+        } else {
+            Log.d(TAG, "No provider ID available for schedules")
+            tvAvailability.text = "Schedule information unavailable"
+        }
         
         // Set service information
-        tvServiceName.text = service.serviceName
+        tvServiceHeader.text = service.serviceName
         tvServiceDescription.text = service.serviceDescription
-        tvCategory.text = "Category: ${service.category?.categoryName ?: "Uncategorized"}"
-        tvDuration.text = "Duration: ${service.durationEstimate}"
+        tvCategory.text = service.category?.categoryName ?: "Uncategorized"
+        tvDuration.text = service.durationEstimate
         tvPrice.text = service.priceRange
         
+        // Load service image with improved handling
+        if (!service.imageUrl.isNullOrEmpty()) {
+            try {
+                Log.d(TAG, "Raw service image path: ${service.imageUrl}")
+                
+                // Similar URL construction as profile image
+                val serviceImageUrl = service.imageUrl
+                val fullUrl = if (serviceImageUrl.startsWith("http")) {
+                    serviceImageUrl  // Already a full URL
+                } else {
+                    // Explicitly construct URL with base URL
+                    "${com.example.serbisyo_it342_g3.api.BaseApiClient.BASE_URL}${
+                        if (!serviceImageUrl.startsWith("/")) "/$serviceImageUrl" else serviceImageUrl
+                    }"
+                }
+                
+                Log.d(TAG, "Final service image URL: $fullUrl")
+                
+                // Use ImageUtils to load the image
+                com.example.serbisyo_it342_g3.utils.ImageUtils.loadImageAsync(
+                    fullUrl, ivServiceImage)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading service image", e)
+                ivServiceImage.setImageResource(R.drawable.ic_image_placeholder)
+            }
+        } else {
+            Log.d(TAG, "No service image path available")
+            ivServiceImage.setImageResource(R.drawable.ic_image_placeholder)
+        }
+        
         // Set button listeners
-        btnClose.setOnClickListener {
+        btnCloseDialog.setOnClickListener {
             dialog.dismiss()
         }
         
-        btnBookService.setOnClickListener {
+        bookButton.setOnClickListener {
             showDateTimePicker(service)
             dialog.dismiss()
         }
         
         dialog.show()
+    }
+    
+    // Direct approach to fetch provider schedules
+    private fun fetchProviderScheduleDirectly(providerId: Long, tvAvailability: TextView) {
+        val scheduleApiClient = ScheduleApiClient(this)
+        
+        Log.d(TAG, "Starting direct schedule fetch for provider ID: $providerId with token: ${token.take(10)}...")
+        progressBar.visibility = View.VISIBLE
+        
+        // Show loading message
+        tvAvailability.text = "Loading schedule..."
+        
+        // Make the API call to get schedules
+        scheduleApiClient.getProviderSchedules(providerId, token) { schedules, error ->
+            runOnUiThread {
+                progressBar.visibility = View.GONE
+                
+                if (error != null) {
+                    Log.e(TAG, "Error fetching schedules: ${error.message}", error)
+                    tvAvailability.text = "Could not load schedule information"
+                    return@runOnUiThread
+                }
+                
+                Log.d(TAG, "Received ${schedules?.size ?: 0} schedules")
+                
+                if (schedules.isNullOrEmpty()) {
+                    tvAvailability.text = "No schedule information available"
+                    return@runOnUiThread
+                }
+                
+                // Debug log every schedule
+                schedules.forEach { schedule ->
+                    Log.d(TAG, "Schedule: Day=${schedule.dayOfWeek}, " +
+                        "Time=${schedule.startTime}-${schedule.endTime}, " +
+                        "Available=${schedule.isAvailable}")
+                }
+                
+                // Filter to only available schedules
+                val availableSchedules = schedules.filter { it.isAvailable }
+                
+                if (availableSchedules.isEmpty()) {
+                    tvAvailability.text = "No available schedules"
+                    return@runOnUiThread
+                }
+                
+                // Group by day
+                val schedulesByDay = availableSchedules.groupBy { it.dayOfWeek }
+                
+                // Format the schedule information
+                val formattedSchedule = StringBuilder()
+                
+                schedulesByDay.forEach { (day, daySchedules) ->
+                    formattedSchedule.append("$day: ")
+                    
+                    val timeRanges = daySchedules.map { "${it.startTime} - ${it.endTime}" }
+                    formattedSchedule.append(timeRanges.joinToString(", "))
+                    
+                    formattedSchedule.append("\n")
+                }
+                
+                // Set the text, removing trailing newline if present
+                val scheduleText = formattedSchedule.toString().trimEnd()
+                Log.d(TAG, "Setting schedule text: $scheduleText")
+                tvAvailability.text = if (scheduleText.isNotEmpty()) scheduleText else "No schedule information"
+            }
+        }
     }
     
     private fun showDateTimePicker(service: Service) {
@@ -563,7 +724,7 @@ class CustomerDashboardActivity : AppCompatActivity() {
         
         progressBar.visibility = View.VISIBLE
         
-        bookingApiClient.createBooking(serviceId, customerId, bookingDate, token) { booking, error -> 
+        bookingApiClient.createBooking(serviceId, customerId, bookingDate, token) { booking, error ->
             runOnUiThread {
                 progressBar.visibility = View.GONE
                 
@@ -849,5 +1010,47 @@ class CustomerDashboardActivity : AppCompatActivity() {
             onServiceClick = { service -> viewServiceDetails(service) }
         )
         rvServices.adapter = serviceAdapter
+    }
+
+    private fun setupListeners() {
+        // ... existing code ...
+    }
+
+    private fun onSuccessLoadProfile(firstName: String, lastName: String, imageUrl: String?) {
+        // If we can't find the ID, create a temporary fallback solution
+        // that doesn't crash but logs the issue
+        try {
+            val fullNameTextView = findViewById<TextView>(R.id.tvWelcome) // Using tvWelcome as fallback
+            val userProfileImage = findViewById<ShapeableImageView>(R.id.ivProfileImage) // Using ivProfileImage as fallback
+            
+            fullNameTextView.text = "$firstName $lastName"
+            
+            if (!imageUrl.isNullOrEmpty()) {
+                // Load profile image from URL code would go here
+                Log.d(TAG, "Would load image from URL: $imageUrl")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in onSuccessLoadProfile", e)
+        }
+    }
+
+    private fun loadProfileData() {
+        // ... existing code ...
+    }
+
+    // Add a method to directly set the BaseApiClient URL if needed
+    private fun ensureApiUrlIsSet() {
+        // Set the BaseApiClient URL based on device (you can customize this based on your environment)
+        // This ensures the URL is set correctly for image and API calls
+        try {
+            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            com.example.serbisyo_it342_g3.api.BaseApiClient.initializeUrl(connectivityManager)
+            
+            // Log the base URL for debugging
+            val baseUrl = com.example.serbisyo_it342_g3.api.BaseApiClient.BASE_URL
+            Log.d(TAG, "Using API base URL: $baseUrl")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing API URL", e)
+        }
     }
 }

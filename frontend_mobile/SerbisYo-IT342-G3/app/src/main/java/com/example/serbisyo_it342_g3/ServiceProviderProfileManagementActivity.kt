@@ -24,6 +24,9 @@ class ServiceProviderProfileManagementActivity : AppCompatActivity() {
     private var providerId: Long = 0
     private var userId: Long = 0
     private var token: String = ""
+    
+    // Save current tab to handle lifecycle events
+    private var currentTab = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,6 +81,33 @@ class ServiceProviderProfileManagementActivity : AppCompatActivity() {
                 else -> null
             }
         }.attach()
+        
+        // Check if we need to show a specific tab (from intent)
+        val selectedTab = intent.getIntExtra("SELECTED_TAB", -1)
+        if (selectedTab in 0..5) {
+            viewPager.setCurrentItem(selectedTab, false)
+            currentTab = selectedTab
+        }
+        
+        // Save the tab position when it changes
+        viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                super.onPageSelected(position)
+                currentTab = position
+            }
+        })
+        
+        // If restoring from saved state, get the previously selected tab
+        if (savedInstanceState != null) {
+            currentTab = savedInstanceState.getInt("CURRENT_TAB", 0)
+            viewPager.setCurrentItem(currentTab, false)
+        }
+    }
+    
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        // Save the current tab position to restore it later
+        outState.putInt("CURRENT_TAB", currentTab)
     }
     
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -86,6 +116,15 @@ class ServiceProviderProfileManagementActivity : AppCompatActivity() {
             return true
         }
         return super.onOptionsItemSelected(item)
+    }
+    
+    override fun onBackPressed() {
+        if (currentTab != 0) {
+            // If not on the first tab, go to the first tab instead of closing the activity
+            viewPager.setCurrentItem(0, true)
+        } else {
+            super.onBackPressed()
+        }
     }
     
     inner class ProviderProfilePagerAdapter(fragmentManager: FragmentManager, lifecycle: Lifecycle) :
@@ -127,12 +166,7 @@ class ServiceProviderProfileManagementActivity : AppCompatActivity() {
                 }
                 3 -> {
                     // My Services Fragment
-                    val fragment = ServiceProviderServicesFragment()
-                    val args = Bundle()
-                    args.putLong("userId", userId)
-                    args.putString("token", token)
-                    args.putLong("providerId", providerId)
-                    fragment.arguments = args
+                    val fragment = ServiceProviderServicesFragment.newInstance(userId, token, providerId)
                     fragment
                 }
                 4 -> {
@@ -157,5 +191,9 @@ class ServiceProviderProfileManagementActivity : AppCompatActivity() {
                 else -> throw IllegalArgumentException("Invalid position: $position")
             }
         }
+    }
+    
+    companion object {
+        const val SERVICES_TAB = 3
     }
 }

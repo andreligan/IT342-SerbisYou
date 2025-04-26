@@ -30,6 +30,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.example.serbisyo_it342_g3.api.NotificationApiClient
 import com.example.serbisyo_it342_g3.api.UserApiClient
+import com.example.serbisyo_it342_g3.utils.ImageUtils
 
 class ServiceProviderDashboardActivity : AppCompatActivity() {
     private lateinit var tvProviderName: TextView
@@ -167,9 +168,7 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         
         // Setup "Manage All" link
         tvManageAll.setOnClickListener {
-            val intent = Intent(this, ManageServicesActivity::class.java)
-            intent.putExtra("PROVIDER_ID", providerId)
-            startActivity(intent)
+            navigateToMyServices()
         }
 
         // Check for notifications
@@ -224,10 +223,15 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         
         // Manage services button click
         btnManageServices.setOnClickListener {
-            val intent = Intent(this, ManageServicesActivity::class.java)
-            intent.putExtra("PROVIDER_ID", providerId)
-            startActivity(intent)
+            navigateToMyServices()
         }
+    }
+    
+    // Helper function to navigate to the My Services tab
+    private fun navigateToMyServices() {
+        val intent = Intent(this, ServiceProviderProfileManagementActivity::class.java)
+        intent.putExtra("SELECTED_TAB", ServiceProviderProfileManagementActivity.SERVICES_TAB)
+        startActivity(intent)
     }
     
     private fun setupSlideshow() {
@@ -493,6 +497,14 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         val inflater = LayoutInflater.from(this)
         val cardView = inflater.inflate(R.layout.item_service_card, servicesContainer, false)
         
+        // Add proper layout parameters for consistent display
+        val layoutParams = LinearLayout.LayoutParams(
+            resources.getDimensionPixelSize(R.dimen.service_card_width),
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        layoutParams.marginEnd = resources.getDimensionPixelSize(R.dimen.service_card_margin)
+        cardView.layoutParams = layoutParams
+        
         // Find views in card
         val serviceImage = cardView.findViewById<ImageView>(R.id.ivServiceImage)
         val serviceName = cardView.findViewById<TextView>(R.id.tvServiceName)
@@ -500,6 +512,11 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         val servicePrice = cardView.findViewById<TextView>(R.id.tvPrice)
         val btnEdit = cardView.findViewById<ImageButton>(R.id.btnEdit)
         val btnDelete = cardView.findViewById<ImageButton>(R.id.btnDelete)
+        val btnAddImage = cardView.findViewById<Button>(R.id.btnAddImage)
+        val tvNoImage = cardView.findViewById<TextView>(R.id.tvNoImage)
+        
+        // Hide the "ADD IMAGE" button - we don't need it in dashboard
+        btnAddImage.visibility = View.GONE
         
         // Set service data
         serviceName.text = service.serviceName
@@ -539,12 +556,30 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         val tvDescription = cardView.findViewById<TextView>(R.id.tvDescription)
         tvDescription.text = service.serviceDescription
         
-        // Set service image based on category
-        val imageResource = getCategoryImage(service.category?.categoryName)
-        serviceImage.setImageResource(imageResource)
+        // Always hide the "No Image" text
+        tvNoImage.visibility = View.GONE
+        serviceImage.visibility = View.VISIBLE
         
-        // Hide the "No Image" text since we're showing an image
-        cardView.findViewById<TextView>(R.id.tvNoImage).visibility = View.GONE
+        // Check if service has an image URL and use ImageUtils to load it
+        if (!service.imageUrl.isNullOrEmpty()) {
+            Log.d(TAG, "Loading image from URL: ${service.imageUrl}")
+            
+            // Get the full image URL
+            val fullImageUrl = ImageUtils.getFullImageUrl(service.imageUrl, this)
+            if (fullImageUrl != null) {
+                // Load image using ImageUtils
+                ImageUtils.loadImageAsync(fullImageUrl, serviceImage)
+            } else {
+                // Fallback to category image if URL processing fails
+                val imageResource = getCategoryImage(service.category?.categoryName)
+                serviceImage.setImageResource(imageResource)
+            }
+        } else {
+            // If no image URL, use a category-based placeholder
+            Log.d(TAG, "No image URL, using placeholder for category: ${service.category?.categoryName}")
+            val imageResource = getCategoryImage(service.category?.categoryName)
+            serviceImage.setImageResource(imageResource)
+        }
         
         // Set category color (applying to the category TextView background color)
         // Instead of replacing the background drawable, we're just tinting the existing background

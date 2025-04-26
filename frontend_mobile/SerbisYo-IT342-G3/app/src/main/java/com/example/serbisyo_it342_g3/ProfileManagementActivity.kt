@@ -63,6 +63,12 @@ class ProfileManagementActivity : AppCompatActivity() {
                 else -> null
             }
         }.attach()
+        
+        // Check if a specific tab was requested
+        val tabIndex = intent.getIntExtra("tab_index", -1)
+        if (tabIndex >= 0 && tabIndex < pagerAdapter.itemCount) {
+            viewPager.setCurrentItem(tabIndex, false)
+        }
     }
     
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

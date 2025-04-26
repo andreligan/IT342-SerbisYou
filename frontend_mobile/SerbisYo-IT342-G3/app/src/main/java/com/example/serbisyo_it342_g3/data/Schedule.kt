@@ -23,4 +23,8 @@ data class Schedule(
     
     @SerializedName("serviceProvider")
     val serviceProvider: Any? = null
-) 
+) {
+    override fun toString(): String {
+        return "Schedule(day=$dayOfWeek, time=$startTime-$endTime, available=$isAvailable)"
+    }
+} 

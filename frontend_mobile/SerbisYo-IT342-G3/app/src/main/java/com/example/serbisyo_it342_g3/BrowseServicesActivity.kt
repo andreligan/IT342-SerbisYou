@@ -1,21 +1,53 @@
 package com.example.serbisyo_it342_g3
 
+import android.app.Dialog
+import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
+import android.view.Window
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import androidx.cardview.widget.CardView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.serbisyo_it342_g3.adapters.BrowseServiceAdapter
+import com.example.serbisyo_it342_g3.api.AddressApiClient
+import com.example.serbisyo_it342_g3.api.ApiClient
+import com.example.serbisyo_it342_g3.api.BookingApiClient
+import com.example.serbisyo_it342_g3.api.ScheduleApiClient
 import com.example.serbisyo_it342_g3.api.ServiceApiClient
+import com.example.serbisyo_it342_g3.api.UserApiClient
+import com.example.serbisyo_it342_g3.data.Address
+import com.example.serbisyo_it342_g3.data.Customer
+import com.example.serbisyo_it342_g3.data.Schedule
 import com.example.serbisyo_it342_g3.data.Service
 import com.example.serbisyo_it342_g3.data.ServiceCategory
+import com.example.serbisyo_it342_g3.utils.Constants
+import com.example.serbisyo_it342_g3.utils.ImageUtils
+import com.example.serbisyo_it342_g3.utils.NetworkUtils
 import com.google.android.material.slider.RangeSlider
 import java.text.NumberFormat
+import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.roundToInt
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.IOException
+import com.example.serbisyo_it342_g3.MainActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class BrowseServicesActivity : AppCompatActivity() {
     private lateinit var rvServices: RecyclerView
@@ -24,7 +56,9 @@ class BrowseServicesActivity : AppCompatActivity() {
     private lateinit var serviceAdapter: BrowseServiceAdapter
     private lateinit var serviceApiClient: ServiceApiClient
     private lateinit var filterLayout: LinearLayout
-    private lateinit var categoryContainer: LinearLayout
+    private lateinit var filterCardView: CardView
+    private lateinit var btnToggleFilters: Button
+    private lateinit var categorySpinner: Spinner
     private lateinit var priceRangeSlider: RangeSlider
     private lateinit var tvMinPrice: TextView
     private lateinit var tvMaxPrice: TextView
@@ -37,16 +71,31 @@ class BrowseServicesActivity : AppCompatActivity() {
     private val allServices = mutableListOf<Service>()
     private val filteredServices = mutableListOf<Service>()
     private val categories = mutableListOf<ServiceCategory>()
-    private val selectedCategories = mutableSetOf<String>()
+    private var selectedCategory: String? = null
     
     private var minPrice = 10f
     private var maxPrice = 2000f
+    private var dynamicMinPrice = 10f
+    private var dynamicMaxPrice = 2000f
     private var minRating = 0f
+    private var maxRating = 5f
     private var minExperience = 0f
+    private var maxExperience = 10f
+    private var dynamicMaxExperience = 10f
     private var sortOption = "recommended"
+    private var isFilterVisible = false
     
     private val tag = "BrowseServicesActivity"
     private var token: String = ""
+
+    // Add constants at class level, add this near the top before onCreate
+    companion object {
+        private const val ADDRESS_UPDATE_REQUEST_CODE = 100
+    }
+
+    // Add a reference to the current active booking dialog
+    private var activeBookingDialog: Dialog? = null
+    private var activeAddressTextView: TextView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,7 +119,9 @@ class BrowseServicesActivity : AppCompatActivity() {
         tvServicesCount = findViewById(R.id.tvServicesCount)
         progressBar = findViewById(R.id.progressBar)
         filterLayout = findViewById(R.id.filterLayout)
-        categoryContainer = findViewById(R.id.categoryContainer)
+        filterCardView = findViewById(R.id.filterCardView)
+        btnToggleFilters = findViewById(R.id.btnToggleFilters)
+        categorySpinner = findViewById(R.id.categorySpinner)
         priceRangeSlider = findViewById(R.id.priceRangeSlider)
         tvMinPrice = findViewById(R.id.tvMinPrice)
         tvMaxPrice = findViewById(R.id.tvMaxPrice)
@@ -83,63 +134,71 @@ class BrowseServicesActivity : AppCompatActivity() {
         // Setup RecyclerView
         setupRecyclerView()
         
-        // Setup filters
-        setupFilters()
+        // Initialize filter sliders with default values
+        initializeSliders()
+        
+        // Setup toggle button for filters
+        setupFilterToggle()
         
         // Load data
         loadData()
     }
     
-    private fun setupRecyclerView() {
-        serviceAdapter = BrowseServiceAdapter(filteredServices) { service ->
-            // Handle service click - show details/booking
-            Toast.makeText(this, "Selected: ${service.serviceName}", Toast.LENGTH_SHORT).show()
-            // Could open ServiceDetailsActivity here in the future
+    private fun initializeSliders() {
+        // Initialize price range slider
+        try {
+            priceRangeSlider.valueFrom = minPrice
+            priceRangeSlider.valueTo = maxPrice
+            priceRangeSlider.setValues(minPrice, maxPrice)
+            tvMinPrice.text = "₱${minPrice.toInt()}"
+            tvMaxPrice.text = "₱${maxPrice.toInt()}"
+            
+            priceRangeSlider.addOnChangeListener { slider, _, _ ->
+                val values = slider.values
+                minPrice = values[0]
+                maxPrice = values[1]
+                
+                // Update text views
+                tvMinPrice.text = "₱${minPrice.toInt()}"
+                tvMaxPrice.text = "₱${maxPrice.toInt()}"
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Error setting up price range slider: ${e.message}")
         }
         
-        rvServices.layoutManager = GridLayoutManager(this, 2)
-        rvServices.adapter = serviceAdapter
-    }
-    
-    private fun setupFilters() {
-        // Price Range Slider
-        priceRangeSlider.valueFrom = 10f
-        priceRangeSlider.valueTo = 2000f
-        priceRangeSlider.values = listOf(10f, 2000f)
-        priceRangeSlider.stepSize = 10f
-        
-        val formatter = NumberFormat.getCurrencyInstance(Locale.getDefault())
-        formatter.currency = Currency.getInstance("PHP")
-        formatter.maximumFractionDigits = 0
-        
-        priceRangeSlider.addOnChangeListener { slider, _, _ ->
-            minPrice = slider.values[0]
-            maxPrice = slider.values[1]
-            tvMinPrice.text = formatter.format(minPrice).replace("PHP", "₱")
-            tvMaxPrice.text = formatter.format(maxPrice).replace("PHP", "₱")
+        // Initialize rating slider
+        try {
+            ratingSlider.valueFrom = 0f
+            ratingSlider.valueTo = 5f
+            ratingSlider.setValues(minRating)
+            
+            ratingSlider.addOnChangeListener { slider, _, _ ->
+                minRating = slider.values[0]
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Error setting up rating slider: ${e.message}")
         }
         
-        // Set initial values
-        tvMinPrice.text = formatter.format(minPrice).replace("PHP", "₱")
-        tvMaxPrice.text = formatter.format(maxPrice).replace("PHP", "₱")
+        // Initialize experience slider
+        try {
+            experienceSlider.valueFrom = 0f
+            experienceSlider.valueTo = maxExperience
+            experienceSlider.setValues(minExperience)
+            
+            experienceSlider.addOnChangeListener { slider, _, _ ->
+                minExperience = slider.values[0]
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Error setting up experience slider: ${e.message}")
+        }
         
-        // Configure rating and experience sliders
-        ratingSlider.valueFrom = 0f
-        ratingSlider.valueTo = 5f
-        ratingSlider.stepSize = 0.5f
-        ratingSlider.values = listOf(0f)
-        
-        experienceSlider.valueFrom = 0f
-        experienceSlider.valueTo = 20f
-        experienceSlider.stepSize = 1f
-        experienceSlider.values = listOf(0f)
-        
-        // Apply filters button
+        // Set up filter buttons
         btnApplyFilters.setOnClickListener {
             applyFilters()
+            // Hide filters after applying on mobile
+            toggleFilters()
         }
         
-        // Reset filters button
         btnResetFilters.setOnClickListener {
             resetFilters()
         }
@@ -153,6 +212,40 @@ class BrowseServicesActivity : AppCompatActivity() {
                 R.id.rbHighestRating -> sortOption = "rating"
                 R.id.rbMostExperienced -> sortOption = "experience"
             }
+        }
+    }
+    
+    private fun setupRecyclerView() {
+        // Set up with a 2-column grid layout
+        val layoutManager = GridLayoutManager(this, 2)
+        rvServices.layoutManager = layoutManager
+        
+        // Create and set adapter
+        serviceAdapter = BrowseServiceAdapter(
+            filteredServices,
+            onServiceClick = { service ->
+                // Show service details dialog
+                showServiceDetailsDialog(service)
+            }
+        )
+        rvServices.adapter = serviceAdapter
+    }
+    
+    private fun setupFilterToggle() {
+        btnToggleFilters.setOnClickListener {
+            toggleFilters()
+        }
+    }
+    
+    private fun toggleFilters() {
+        isFilterVisible = !isFilterVisible
+        
+        if (isFilterVisible) {
+            filterCardView.visibility = View.VISIBLE
+            btnToggleFilters.text = "Hide Filters"
+        } else {
+            filterCardView.visibility = View.GONE
+            btnToggleFilters.text = "Show Filters"
         }
     }
     
@@ -175,30 +268,42 @@ class BrowseServicesActivity : AppCompatActivity() {
                     categories.clear()
                     categories.addAll(categoryList)
                     
-                    // Populate category checkboxes
-                    setupCategoryCheckboxes()
+                    // Setup category spinner
+                    setupCategorySpinner()
                 }
             }
         }
     }
     
-    private fun setupCategoryCheckboxes() {
-        categoryContainer.removeAllViews()
+    private fun setupCategorySpinner() {
+        // Create a list with "All" as the first option followed by all category names
+        val categoryNames = mutableListOf<String>("All")
+        categories.forEach { category ->
+            categoryNames.add(category.categoryName)
+        }
         
-        for (category in categories) {
-            val checkBox = CheckBox(this)
-            checkBox.text = category.categoryName
-            checkBox.id = View.generateViewId()
-            
-            checkBox.setOnCheckedChangeListener { _, isChecked ->
-                if (isChecked) {
-                    selectedCategories.add(category.categoryName)
-                } else {
-                    selectedCategories.remove(category.categoryName)
-                }
+        // Create an ArrayAdapter using the string array and a default spinner layout
+        val adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            categoryNames
+        )
+        
+        // Specify the layout to use when the list of choices appears
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        
+        // Apply the adapter to the spinner
+        categorySpinner.adapter = adapter
+        
+        // Set listener for item selection
+        categorySpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
+                selectedCategory = if (position == 0) null else categoryNames[position]
             }
             
-            categoryContainer.addView(checkBox)
+            override fun onNothingSelected(parent: AdapterView<*>) {
+                selectedCategory = null
+            }
         }
     }
     
@@ -219,6 +324,9 @@ class BrowseServicesActivity : AppCompatActivity() {
                     allServices.clear()
                     allServices.addAll(servicesList)
                     
+                    // Update filters based on loaded data
+                    updateDynamicFilters(servicesList)
+                    
                     // Display all services initially
                     applyFilters()
                     
@@ -230,15 +338,76 @@ class BrowseServicesActivity : AppCompatActivity() {
         }
     }
     
+    private fun updateDynamicFilters(services: List<Service>) {
+        if (services.isEmpty()) return
+        
+        // Find the highest price in all services
+        var highestPrice = 0f
+        var highestExperience = 0f
+        
+        services.forEach { service ->
+            // Update price range
+            val price = parsePrice(service.effectivePrice)
+            if (price > highestPrice) {
+                highestPrice = price
+            }
+            
+            // For future implementation - experience years
+            // Assuming there will be a yearsOfExperience field in the service provider
+            // service.serviceProvider?.yearsOfExperience?.let { years ->
+            //     if (years > highestExperience) {
+            //         highestExperience = years.toFloat()
+            //     }
+            // }
+        }
+        
+        // Update dynamic price range (add a little buffer)
+        if (highestPrice > 0) {
+            dynamicMaxPrice = (highestPrice * 1.1f).coerceAtLeast(2000f)
+            
+            // Update the slider
+            try {
+                priceRangeSlider.valueTo = dynamicMaxPrice
+                
+                // Only set max value if it's the first load or reset
+                if (maxPrice == 2000f) {
+                    maxPrice = dynamicMaxPrice
+                    priceRangeSlider.setValues(minPrice, maxPrice)
+                    tvMaxPrice.text = "₱${maxPrice.toInt()}"
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "Error updating price slider range: ${e.message}")
+            }
+        }
+        
+        // Update dynamic experience range
+        if (highestExperience > 0) {
+            dynamicMaxExperience = (highestExperience * 1.2f).coerceAtLeast(10f)
+            
+            // Update the slider
+            try {
+                experienceSlider.valueTo = dynamicMaxExperience
+                
+                // Only set max value if it's the first load or reset
+                if (maxExperience == 10f) {
+                    maxExperience = dynamicMaxExperience
+                    experienceSlider.setValues(minExperience)
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "Error updating experience slider range: ${e.message}")
+            }
+        }
+    }
+    
     private fun applyFilters() {
         filteredServices.clear()
         
         // Apply category filter
-        var tempList = if (selectedCategories.isEmpty()) {
+        var tempList = if (selectedCategory == null) {
             allServices
         } else {
             allServices.filter { service ->
-                selectedCategories.contains(service.category?.categoryName)
+                service.category?.categoryName == selectedCategory
             }
         }
         
@@ -268,6 +437,46 @@ class BrowseServicesActivity : AppCompatActivity() {
         tvServicesCount.text = "${filteredServices.size} services found"
     }
     
+    private fun resetFilters() {
+        // Reset category selection to "All"
+        categorySpinner.setSelection(0)
+        selectedCategory = null
+        
+        // Reset price range to dynamic values
+        minPrice = dynamicMinPrice
+        maxPrice = dynamicMaxPrice
+        try {
+            priceRangeSlider.setValues(minPrice, maxPrice)
+            tvMinPrice.text = "₱${minPrice.toInt()}"
+            tvMaxPrice.text = "₱${maxPrice.toInt()}"
+        } catch (e: Exception) {
+            Log.e(tag, "Error resetting price slider: ${e.message}")
+        }
+        
+        // Reset rating
+        minRating = 0f
+        try {
+            ratingSlider.setValues(minRating)
+        } catch (e: Exception) {
+            Log.e(tag, "Error resetting rating slider: ${e.message}")
+        }
+        
+        // Reset experience to dynamic value
+        minExperience = 0f
+        try {
+            experienceSlider.setValues(minExperience)
+        } catch (e: Exception) {
+            Log.e(tag, "Error resetting experience slider: ${e.message}")
+        }
+        
+        // Reset sort option
+        sortGroup.check(R.id.rbRecommended)
+        sortOption = "recommended"
+        
+        // Apply filters (this will show all services)
+        applyFilters()
+    }
+    
     private fun parsePrice(priceString: String): Float {
         return try {
             // Try to extract numeric value from price string
@@ -277,34 +486,591 @@ class BrowseServicesActivity : AppCompatActivity() {
         }
     }
     
-    private fun resetFilters() {
-        // Reset category selection
-        selectedCategories.clear()
-        for (i in 0 until categoryContainer.childCount) {
-            val checkbox = categoryContainer.getChildAt(i) as? CheckBox
-            checkbox?.isChecked = false
+    /**
+     * Shows a dialog with detailed information about the selected service
+     */
+    private fun showServiceDetailsDialog(service: Service) {
+        val dialog = Dialog(this, android.R.style.Theme_Material_Light_Dialog_NoActionBar_MinWidth)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_service_details)
+        
+        // Make dialog full width with rounded corners
+        dialog.window?.apply {
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         }
         
-        // Reset price range
-        priceRangeSlider.values = listOf(10f, 2000f)
+        // Set service details
+        with(dialog) {
+            // Header info
+            findViewById<TextView>(R.id.tvServiceHeader).text = service.serviceName
+            
+            // Close button
+            findViewById<ImageButton>(R.id.btnCloseDialog).setOnClickListener {
+                dialog.dismiss()
+            }
+            
+            // Service description
+            findViewById<TextView>(R.id.tvServiceDescription).text = service.serviceDescription
+            
+            // Provider details
+            service.provider?.let { provider ->
+                findViewById<TextView>(R.id.tvProviderName).text = "${provider.firstName} ${provider.lastName}"
+                findViewById<TextView>(R.id.tvProviderUsername).text = provider.userAuth?.userName ?: "User"
+                findViewById<TextView>(R.id.tvExperience).text = "${provider.yearsOfExperience ?: 0} years experience"
+                findViewById<TextView>(R.id.tvPhoneNumber).text = provider.phoneNumber ?: "No phone number"
+                findViewById<TextView>(R.id.tvAvailability).text = provider.availabilitySchedule ?: "Contact provider for availability"
+                
+                // Provider profile image
+                provider.profileImage?.let { imageUrl ->
+                    val profileImageView = findViewById<ImageView>(R.id.ivProviderProfile)
+                    ImageUtils.loadImageAsync(
+                        ImageUtils.getFullImageUrl(imageUrl, this@BrowseServicesActivity),
+                        profileImageView
+                    )
+                }
+            }
+            
+            // Service category and duration
+            findViewById<TextView>(R.id.tvCategory).text = service.category?.categoryName ?: "General"
+            findViewById<TextView>(R.id.tvDuration).text = service.durationEstimate
+            
+            // Service rating (placeholder for future functionality)
+            findViewById<RatingBar>(R.id.ratingBar).rating = 0f
+            findViewById<TextView>(R.id.tvRatingInfo).text = getString(R.string.no_reviews_yet)
+            
+            // Price
+            findViewById<TextView>(R.id.tvPrice).text = getString(R.string.service_price_format, parsePrice(service.effectivePrice).roundToInt())
+            
+            // Service image
+            val serviceImageView = findViewById<ImageView>(R.id.ivServiceImage)
+            if (!service.imageUrl.isNullOrEmpty()) {
+                ImageUtils.loadImageAsync(
+                    ImageUtils.getFullImageUrl(service.imageUrl, this@BrowseServicesActivity),
+                    serviceImageView
+                )
+            }
+            
+            // Book button action
+            findViewById<Button>(R.id.btnBookService).setOnClickListener {
+                // Show the new booking dialog with schedule selection
+                showServiceBookingDialog(service)
+                dialog.dismiss()
+            }
+        }
         
-        // Reset rating and experience
-        ratingSlider.values = listOf(0f)
-        experienceSlider.values = listOf(0f)
+        dialog.show()
+    }
+    
+    /**
+     * Shows a dialog for booking a service with calendar date selection and time slots
+     */
+    private fun showServiceBookingDialog(service: Service) {
+        val dialog = Dialog(this, android.R.style.Theme_Material_Light_Dialog_NoActionBar_MinWidth)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_service_booking)
         
-        // Reset sort option
-        sortGroup.check(R.id.rbRecommended)
-        sortOption = "recommended"
+        // Store reference to active dialog
+        activeBookingDialog = dialog
         
-        // Apply reset filters
-        applyFilters()
+        // Make dialog full width with rounded corners
+        dialog.window?.apply {
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        }
+        
+        // Initialize API clients
+        val scheduleApiClient = ScheduleApiClient(this)
+        val addressApiClient = AddressApiClient(this)
+        val userApiClient = UserApiClient(this)
+        val bookingApiClient = BookingApiClient(this)
+        
+        // Get user data
+        val sharedPrefs = getSharedPreferences("UserPrefs", MODE_PRIVATE)
+        val userId = try {
+            sharedPrefs.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            val userIdStr = sharedPrefs.getString("userId", "0")
+            userIdStr?.toLongOrNull() ?: 0
+        }
+        
+        // Variables to store selected date and time
+        var selectedDate: Calendar? = null
+        var selectedTimeSlot: String? = null
+        var customerAddress: Address? = null
+        
+        // Set up dialog views
+        with(dialog) {
+            // Header
+            findViewById<TextView>(R.id.tvServiceHeader).text = "Book ${service.serviceName}"
+            
+            // Close button
+            findViewById<ImageButton>(R.id.btnCloseDialog).setOnClickListener {
+                activeBookingDialog = null
+                activeAddressTextView = null
+                dialog.dismiss()
+            }
+            
+            // Debug info
+            val tvDebugInfo = findViewById<TextView>(R.id.tvDebugInfo)
+            tvDebugInfo.text = "Provider ID: ${service.provider?.providerId ?: "unknown"}"
+            
+            // Get references to views
+            val calendarView = findViewById<CalendarView>(R.id.calendarView)
+            val timeSlotContainer = findViewById<LinearLayout>(R.id.timeSlotContainer)
+            val tvNoTimeSlots = findViewById<TextView>(R.id.tvNoTimeSlots)
+            val btnRetryLoading = findViewById<Button>(R.id.btnRetryLoading)
+            val tvAddress = findViewById<TextView>(R.id.tvAddress)
+            val tvChangeAddress = findViewById<TextView>(R.id.tvChangeAddress)
+            val btnContinue = findViewById<Button>(R.id.btnContinue)
+            
+            // Store reference to address TextView
+            activeAddressTextView = tvAddress
+            
+            // Set price information
+            val servicePrice = parsePrice(service.effectivePrice)
+            val tvServicePrice = findViewById<TextView>(R.id.tvServicePrice)
+            val tvPaymongoFee = findViewById<TextView>(R.id.tvPaymongoFee)
+            val tvAppFee = findViewById<TextView>(R.id.tvAppFee)
+            val tvTotalPrice = findViewById<TextView>(R.id.tvTotalPrice)
+            
+            tvServicePrice.text = getString(R.string.service_price_format, servicePrice.roundToInt())
+            
+            // Calculate fees (2.5% each)
+            val paymongoFee = (servicePrice * 0.025).roundToInt()
+            val appFee = (servicePrice * 0.025).roundToInt()
+            val totalPrice = servicePrice.roundToInt() + paymongoFee + appFee
+            
+            tvPaymongoFee.text = getString(R.string.service_price_format, paymongoFee)
+            tvAppFee.text = getString(R.string.service_price_format, appFee)
+            tvTotalPrice.text = getString(R.string.service_price_format, totalPrice)
+            
+            // Set minimum date to tomorrow for the calendar
+            val tomorrow = Calendar.getInstance()
+            tomorrow.add(Calendar.DAY_OF_MONTH, 1)
+            calendarView.minDate = tomorrow.timeInMillis
+            
+            // Load customer's address
+            userApiClient.getCustomerProfile(userId, token) { customer, error ->
+                runOnUiThread {
+                    if (error != null) {
+                        Log.e(tag, "Error loading customer profile", error)
+                        tvAddress.text = getString(R.string.error_loading_address)
+                        return@runOnUiThread
+                    }
+                    
+                    if (customer != null) {
+                        customerAddress = customer.address
+                        
+                        // Log customer ID for debugging
+                        Log.d(tag, "Customer ID: ${customer.customerId}")
+                        
+                        // First try to use the existing address if available
+                        if (customer.address != null) {
+                            val formattedAddress = "${customer.address.street}, ${customer.address.barangay ?: ""}, ${customer.address.city}, ${customer.address.province}"
+                            tvAddress.text = formattedAddress
+                        } else {
+                            // If no address directly in customer object, fetch from addresses API like in web app
+                            fetchAddressesForCustomer(customer.customerId, tvAddress)
+                        }
+                    } else {
+                        tvAddress.text = getString(R.string.no_address_found)
+                    }
+                }
+            }
+            
+            // Calendar date selection listener
+            calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
+                // Update selected date
+                val newSelectedDate = Calendar.getInstance()
+                newSelectedDate.set(year, month, dayOfMonth)
+                selectedDate = newSelectedDate
+                
+                // Reset time slot selection
+                selectedTimeSlot = null
+                btnContinue.isEnabled = false
+                
+                // IMPORTANT: Get day of week as a number from 1-7 (Sunday=1, Monday=2, etc.)
+                val dayOfWeekNumber = newSelectedDate.get(Calendar.DAY_OF_WEEK)
+                
+                // Map day number to API expected format
+                val dayNames = arrayOf("", "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY")
+                val dayOfWeek = dayNames[dayOfWeekNumber]
+                
+                // Also get the human-readable day name for debug info
+                val dateFormat = SimpleDateFormat("EEEE", Locale.getDefault())
+                val dayOfWeekDisplay = dateFormat.format(newSelectedDate.time).uppercase()
+                
+                // Show detailed debug info
+                tvDebugInfo.text = "Provider ID: ${service.provider?.providerId}, Selected day: $dayOfWeekDisplay ($dayOfWeek), Date: ${year}-${month+1}-${dayOfMonth}"
+                Log.d(tag, "Selected date: ${year}-${month+1}-${dayOfMonth}, Day: $dayOfWeek ($dayOfWeekNumber)")
+                
+                // Clear previous time slots
+                timeSlotContainer.removeAllViews()
+                
+                // Show loading indicator or message
+                tvNoTimeSlots.visibility = View.GONE
+                btnRetryLoading.visibility = View.GONE
+                
+                // Create a temporary TextView for "Loading..."
+                val loadingText = TextView(this@BrowseServicesActivity)
+                loadingText.text = "Loading available time slots..."
+                loadingText.gravity = android.view.Gravity.CENTER
+                loadingText.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                timeSlotContainer.addView(loadingText)
+                
+                // Get provider's available schedules for this day of week
+                service.provider?.providerId?.let { providerId ->
+                    // Make a direct API call to get schedules for the specific day
+                    val url = "${Constants.BASE_URL}schedules/provider/${providerId}/day/${dayOfWeek}"
+                    Log.d(tag, "Fetching schedules from URL: $url")
+                    
+                    // Clear previous time slots and show loading
+                    timeSlotContainer.removeAllViews()
+                    tvNoTimeSlots.visibility = View.GONE
+                    btnRetryLoading.visibility = View.GONE
+                    
+                    // Create a temporary TextView for "Loading..."
+                    val loadingText = TextView(this@BrowseServicesActivity)
+                    loadingText.text = "Loading available time slots..."
+                    loadingText.gravity = android.view.Gravity.CENTER
+                    loadingText.layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                    timeSlotContainer.addView(loadingText)
+                    
+                    // Use the scheduleApiClient instead of direct OkHttp call
+                    scheduleApiClient.getProviderSchedulesByDay(providerId, dayOfWeek, token) { schedulesList, error ->
+                        runOnUiThread {
+                            // Remove loading text
+                            timeSlotContainer.removeAllViews()
+                            
+                            if (error != null) {
+                                Log.e(tag, "Error loading provider schedules: ${error.message}")
+                                tvNoTimeSlots.text = "Error loading schedules: ${error.message}"
+                                tvNoTimeSlots.visibility = View.VISIBLE
+                                btnRetryLoading.visibility = View.VISIBLE
+                                return@runOnUiThread
+                            }
+                            
+                            if (schedulesList.isNullOrEmpty()) {
+                                Log.d(tag, "No available schedules found")
+                                tvNoTimeSlots.text = "No available time slots for $dayOfWeekDisplay"
+                                tvNoTimeSlots.visibility = View.VISIBLE
+                            } else {
+                                // Sort by start time
+                                val sortedSchedules = schedulesList.sortedBy { it.startTime }
+                                Log.d(tag, "Creating time slots for ${sortedSchedules.size} schedules")
+                                
+                                // Create time slot buttons
+                                createTimeSlots(timeSlotContainer, sortedSchedules) { timeSlot ->
+                                    selectedTimeSlot = timeSlot
+                                    btnContinue.isEnabled = true
+                                    Log.d(tag, "Selected time slot: $timeSlot")
+                                }
+                            }
+                        }
+                    }
+                } ?: run {
+                    timeSlotContainer.removeAllViews()
+                    tvNoTimeSlots.text = "Could not find provider information"
+                    tvNoTimeSlots.visibility = View.VISIBLE
+                }
+            }
+            
+            // Handle retry button
+            btnRetryLoading.setOnClickListener {
+                // Trigger date selection listener again
+                selectedDate?.let { date ->
+                    calendarView.setDate(date.timeInMillis, true, true)
+                }
+            }
+            
+            // Change address click
+            tvChangeAddress.setOnClickListener {
+                // Navigate directly to the Profile Management Activity's Address tab
+                val intent = Intent(this@BrowseServicesActivity, ProfileManagementActivity::class.java)
+                // Pass the tab index for Address (which is 1)
+                intent.putExtra("tab_index", 1)
+                // Use startActivityForResult to get notified when returning
+                startActivityForResult(intent, ADDRESS_UPDATE_REQUEST_CODE)
+            }
+            
+            // Continue button click
+            btnContinue.setOnClickListener {
+                // Format selected date and time for booking
+                val selectedDateObj = selectedDate?.time
+                if (selectedDateObj != null && selectedTimeSlot != null) {
+                    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                    val formattedDate = dateFormat.format(selectedDateObj)
+                    
+                    // Create booking
+                    val customerId = userId
+                    val serviceId = service.serviceId
+                    
+                    bookingApiClient.createBooking(serviceId, customerId, formattedDate, token) { booking, error ->
+                        runOnUiThread {
+                            if (error != null) {
+                                Log.e(tag, "Error creating booking", error)
+                                Toast.makeText(
+                                    this@BrowseServicesActivity,
+                                    "Error creating booking: ${error.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                return@runOnUiThread
+                            }
+                            
+                            if (booking != null) {
+                                Toast.makeText(
+                                    this@BrowseServicesActivity,
+                                    "Booking created successfully! Status: ${booking.status}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                dialog.dismiss()
+                            } else {
+                                Toast.makeText(
+                                    this@BrowseServicesActivity,
+                                    "Unknown error occurred while creating booking",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
+                } else {
+                    Toast.makeText(this@BrowseServicesActivity, "Please select a date and time", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        
+        dialog.show()
+    }
+    
+    /**
+     * Function to fetch addresses for customer from API
+     */
+    private fun fetchAddressesForCustomer(customerId: Long, tvAddress: TextView) {
+        // Set loading text while fetching
+        tvAddress.text = getString(R.string.loading_address)
+        
+        // Use the address API client instead of direct OkHttp call
+        val addressApiClient = AddressApiClient(this)
+        addressApiClient.getAddressesByUserId(customerId, token) { addresses, error ->
+            runOnUiThread {
+                if (error != null) {
+                    Log.e(tag, "Error fetching addresses", error)
+                    tvAddress.text = getString(R.string.error_loading_address)
+                    return@runOnUiThread
+                }
+                
+                if (addresses.isNullOrEmpty()) {
+                    Log.d(tag, "No addresses found for customer $customerId")
+                    tvAddress.text = getString(R.string.no_address_found)
+                    return@runOnUiThread
+                }
+                
+                Log.d(tag, "Found ${addresses.size} addresses for customer $customerId")
+                
+                // First try to find the main address
+                var selectedAddress = addresses.find { it.main }
+                Log.d(tag, "Main address found: ${selectedAddress != null}")
+                
+                // If no main address, use the first one
+                if (selectedAddress == null && addresses.isNotEmpty()) {
+                    selectedAddress = addresses[0]
+                    Log.d(tag, "No main address found, using first address")
+                }
+                
+                if (selectedAddress != null) {
+                    // Use streetName if available, otherwise use street
+                    val streetDisplay = when {
+                        !selectedAddress.streetName.isNullOrBlank() -> selectedAddress.streetName
+                        !selectedAddress.street.isNullOrBlank() -> selectedAddress.street
+                        else -> ""
+                    }
+                        
+                    Log.d(tag, "Building address display, street: $streetDisplay, barangay: ${selectedAddress.barangay}, city: ${selectedAddress.city}")
+                    
+                    val parts = listOfNotNull(
+                        streetDisplay,
+                        selectedAddress.barangay?.takeIf { it.isNotEmpty() },
+                        selectedAddress.city?.takeIf { it.isNotEmpty() },
+                        selectedAddress.province?.takeIf { it.isNotEmpty() }
+                    )
+                    
+                    val formattedAddress = parts.joinToString(", ")
+                    Log.d(tag, "Final address display: $formattedAddress")
+                    tvAddress.text = formattedAddress
+                } else {
+                    Log.d(tag, "No address found for customer")
+                    tvAddress.text = getString(R.string.no_address_found)
+                }
+            }
+        }
+    }
+    
+    /**
+     * Creates time slot buttons based on provider's schedule
+     */
+    private fun createTimeSlots(container: LinearLayout, schedules: List<Schedule>, onTimeSlotSelected: (String) -> Unit) {
+        container.removeAllViews()
+        
+        if (schedules.isEmpty()) {
+            val noTimesText = TextView(this)
+            noTimesText.text = "No available time slots on this date"
+            noTimesText.textSize = 16f
+            noTimesText.gravity = android.view.Gravity.CENTER
+            noTimesText.setPadding(16, 16, 16, 16)
+            container.addView(noTimesText)
+            return
+        }
+        
+        // Create a linear layout for holding time slots
+        val timeSlotContainer = LinearLayout(this)
+        timeSlotContainer.orientation = LinearLayout.HORIZONTAL
+        timeSlotContainer.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        container.addView(timeSlotContainer)
+        
+        // Log for debugging
+        Log.d(tag, "Creating time slots for ${schedules.size} schedules")
+        
+        // Add time slots for each schedule
+        schedules.forEach { schedule ->
+            // Create time slot button
+            val timeSlotButton = Button(this)
+            val params = LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1.0f
+            )
+            params.setMargins(8, 8, 8, 8)
+            timeSlotButton.layoutParams = params
+            
+            // Format times for display
+            val startTime = formatTimeDisplay(schedule.startTime)
+            val endTime = formatTimeDisplay(schedule.endTime)
+            
+            // Log for debugging
+            Log.d(tag, "Creating time slot: $startTime - $endTime (${schedule.startTime} - ${schedule.endTime})")
+            
+            timeSlotButton.text = "$startTime -\n$endTime"
+            timeSlotButton.setBackgroundResource(R.drawable.selector_time_slot)
+            timeSlotButton.setTextColor(getColorStateList(R.color.selector_text_color))
+            
+            // Set click listener
+            timeSlotButton.setOnClickListener {
+                // Deselect all buttons in the container
+                for (i in 0 until container.childCount) {
+                    val childLayout = container.getChildAt(i) as? LinearLayout
+                    childLayout?.let { layout ->
+                        for (j in 0 until layout.childCount) {
+                            val button = layout.getChildAt(j) as? Button
+                            button?.isSelected = false
+                        }
+                    }
+                }
+                
+                // Select this button
+                timeSlotButton.isSelected = true
+                
+                // Log selected time slot for debugging
+                Log.d(tag, "Selected time slot: ${schedule.startTime} - ${schedule.endTime}")
+                
+                // Notify with time slot data
+                onTimeSlotSelected("${schedule.startTime}-${schedule.endTime}")
+            }
+            
+            // Add to the container
+            timeSlotContainer.addView(timeSlotButton)
+        }
+    }
+    
+    /**
+     * Format time string for display (handles both HH:mm:ss and HH:mm formats)
+     */
+    private fun formatTimeDisplay(timeString: String): String {
+        return try {
+            var format = "HH:mm:ss"
+            if (!timeString.contains(":")) {
+                return timeString // No formatting needed
+            } else if (timeString.split(":").size == 2) {
+                format = "HH:mm"
+            }
+            
+            val inputFormat = SimpleDateFormat(format, Locale.getDefault())
+            val outputFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+            
+            val date = inputFormat.parse(timeString)
+            date?.let { outputFormat.format(it) } ?: timeString
+        } catch (e: Exception) {
+            Log.e(tag, "Error formatting time: $timeString", e)
+            timeString // Return original if parsing fails
+        }
+    }
+    
+    /**
+     * Converts time from 24-hour format to 12-hour format
+     */
+    private fun convertTo12HourFormat(time: String): String {
+        try {
+            val inputFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+            val outputFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+            
+            val date = inputFormat.parse(time)
+            return date?.let { outputFormat.format(it) } ?: time
+        } catch (e: Exception) {
+            Log.e("BrowseServices", "Error converting time format: ${e.message}")
+            return time
+        }
     }
     
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == android.R.id.home) {
-            onBackPressed()
-            return true
+        return when (item.itemId) {
+            android.R.id.home -> {
+                onBackPressed()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
-        return super.onOptionsItemSelected(item)
+    }
+
+    // Replace the deprecated onBackPressed with the recommended approach
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        super.onBackPressed()
+    }
+
+    // Handle result from ProfileManagementActivity
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        if (requestCode == ADDRESS_UPDATE_REQUEST_CODE) {
+            // If there's an active dialog and address TextView, refresh it
+            if (activeBookingDialog != null && activeBookingDialog?.isShowing == true 
+                && activeAddressTextView != null) {
+                
+                // Get current user ID
+                val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
+                val userId = try {
+                    sharedPref.getLong("userId", 0)
+                } catch (e: ClassCastException) {
+                    val userIdStr = sharedPref.getString("userId", "0")
+                    userIdStr?.toLongOrNull() ?: 0
+                }
+                
+                // Fetch updated address
+                Log.d(tag, "Refreshing address after returning from profile management")
+                activeAddressTextView?.let { tvAddress ->
+                    fetchAddressesForCustomer(userId, tvAddress)
+                }
+            }
+        }
     }
 } 

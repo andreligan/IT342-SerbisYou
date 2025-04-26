@@ -106,4 +106,12 @@
     <string name="schedule_update_success">Schedule updated successfully</string>
     <string name="schedule_update_failed">Failed to update schedule</string>
     <string name="error_schedule_update">Error updating schedule: %1$s</string>
+    
+    <!-- Service Booking -->
+    <string name="time_slot_format">%1$s - %2$s</string>
+    <string name="no_reviews_yet">No reviews yet</string>
+    <string name="loading_address">Loading address...</string>
+    <string name="no_address_found">No address found. Please add an address.</string>
+    <string name="error_loading_address">Error loading address</string>
+    <string name="service_price_format">₱%d</string>
 </resources>
