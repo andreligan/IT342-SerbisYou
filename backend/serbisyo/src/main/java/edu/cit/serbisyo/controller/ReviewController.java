@@ -1,6 +1,7 @@
 package edu.cit.serbisyo.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import edu.cit.serbisyo.entity.ReviewEntity;
@@ -65,5 +66,11 @@ public class ReviewController {
     @GetMapping("/getServiceRating/{serviceId}")
     public Map<String, Object> getServiceRating(@PathVariable Long serviceId) {
         return reviewService.getServiceRating(serviceId);
+    }
+
+    @GetMapping("/can-review")
+    public ResponseEntity<Boolean> canReviewBooking(@RequestParam Long customerId, @RequestParam Long bookingId) {
+        boolean hasAlreadyReviewed = reviewService.hasCustomerReviewedBooking(customerId, bookingId);
+        return ResponseEntity.ok(!hasAlreadyReviewed);
     }
 }

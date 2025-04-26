@@ -171,4 +171,18 @@ public class ReviewService {
         
         return result;
     }
+
+    /**
+     * Check if a customer has already reviewed a specific booking
+     * 
+     * @param customerId The ID of the customer
+     * @param bookingId The ID of the booking
+     * @return true if the customer has already reviewed this booking, false otherwise
+     */
+    public boolean hasCustomerReviewedBooking(Long customerId, Long bookingId) {
+        List<ReviewEntity> reviewsForBooking = reviewRepository.findByBookingBookingId(bookingId);
+        return reviewsForBooking.stream()
+                .anyMatch(review -> review.getCustomer() != null && 
+                        review.getCustomer().getCustomerId().equals(customerId));
+    }
 }

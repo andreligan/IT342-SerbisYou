@@ -24,4 +24,6 @@ public interface ReviewRepository extends JpaRepository<ReviewEntity, Long> {
     // Custom query to count reviews for a service
     @Query("SELECT COUNT(r) FROM ReviewEntity r WHERE r.booking.service.serviceId = :serviceId")
     Long countReviewsForService(@Param("serviceId") Long serviceId);
+    
+    boolean existsByCustomerCustomerIdAndBookingBookingId(Long customerId, Long bookingId);
 }
