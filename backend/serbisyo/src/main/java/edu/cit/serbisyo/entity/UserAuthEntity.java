@@ -29,6 +29,7 @@ public class UserAuthEntity {
     @OneToOne(mappedBy = "userAuth", cascade = CascadeType.ALL)
     private ServiceProviderEntity serviceProvider;
 
+    @JsonIgnore
     @OneToOne(mappedBy = "userAuth", cascade = CascadeType.ALL)
     private AdminEntity admin;
 

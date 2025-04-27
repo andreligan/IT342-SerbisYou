@@ -5,6 +5,9 @@ import org.springframework.stereotype.Repository;
 
 import edu.cit.serbisyo.entity.CustomerEntity;
 
+import java.util.Optional;
+
 @Repository
 public interface CustomerRepository extends JpaRepository<CustomerEntity, Long> {
+    Optional<CustomerEntity> findByUserAuthUserName(String userName);
 }

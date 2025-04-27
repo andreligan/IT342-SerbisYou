@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { motion } from "framer-motion"; // Add framer motion import
 import ServiceFilters from "./filters/ServiceFilters";
 import ServiceDetailsModal from "./modals/ServiceDetailsModal";
 
@@ -22,7 +23,51 @@ const BrowseServicesPage = () => {
   });
   const [serviceRatings, setServiceRatings] = useState({});
   const [clickPosition, setClickPosition] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [popularCategories, setPopularCategories] = useState([]); // New state for popular categories
   const navigate = useNavigate();
+
+  // Define animation variants
+  const fadeIn = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { duration: 0.6 } }
+  };
+
+  const fadeInUp = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { 
+        type: "spring",
+        stiffness: 100,
+        damping: 15
+      }
+    }
+  };
+
+  const staggerContainer = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { 
+        type: "spring",
+        stiffness: 70,
+        damping: 14
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchServicesAndRatings = async () => {
@@ -41,6 +86,18 @@ const BrowseServicesPage = () => {
         });
 
         const services = servicesResponse.data;
+
+        // Extract categories for popular tags
+        const categoriesSet = new Set();
+        services.forEach(service => {
+          if (service.category && service.category.categoryName) {
+            categoriesSet.add(service.category.categoryName);
+          }
+        });
+        
+        // Convert to array and take only up to 5 categories for the popular tags
+        const uniqueCategories = Array.from(categoriesSet);
+        setPopularCategories(uniqueCategories.slice(0, 5));
 
         const ratingsMap = {};
         const servicesWithImages = await Promise.all(
@@ -115,6 +172,19 @@ const BrowseServicesPage = () => {
     if (!services) return [];
     
     let result = services.filter(service => {
+      // Search filter (by service name, description, or provider name)
+      if (searchTerm.trim() !== "") {
+        const searchLower = searchTerm.toLowerCase();
+        const nameMatch = service.serviceName?.toLowerCase().includes(searchLower);
+        const descMatch = service.serviceDescription?.toLowerCase().includes(searchLower);
+        const providerMatch = 
+          `${service.provider?.firstName || ''} ${service.provider?.lastName || ''}`.toLowerCase().includes(searchLower);
+        
+        if (!nameMatch && !descMatch && !providerMatch) {
+          return false;
+        }
+      }
+      
       if (filters.categories.length > 0 && !filters.categories.includes(service.categoryName)) {
         return false;
       }
@@ -167,7 +237,7 @@ const BrowseServicesPage = () => {
     }
     
     return result;
-  }, [serviceRatings]);
+  }, [serviceRatings, searchTerm]);
   
   useEffect(() => {
     setFilteredServices(applyFilters(services, activeFilters));
@@ -176,6 +246,15 @@ const BrowseServicesPage = () => {
   const handleFilterChange = useCallback((newFilters) => {
     setActiveFilters(newFilters);
   }, []);
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    setFilteredServices(applyFilters(services, activeFilters));
+  };
 
   const handleOpenModal = useCallback((service, event) => {
     console.log("Selected Service:", service);
@@ -220,103 +299,304 @@ const BrowseServicesPage = () => {
   }, []);
 
   const serviceCards = useMemo(() => {
-    return filteredServices.map((service) => (
-      <div
+    return filteredServices.map((service, index) => (
+      <motion.div
         key={service.serviceId}
+        variants={cardVariants}
+        custom={index}
         onClick={(e) => handleOpenModal(service, e)}
-        className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer flex flex-col h-full relative overflow-hidden border border-gray-100"
+        className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col h-full relative overflow-hidden border border-gray-100 transform hover:-translate-y-1"
+        whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
       >
         <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
           <img
             src={service.serviceImage ? `${BASE_URL}${service.serviceImage}` : "/default-service.jpg"}
             alt={service.serviceName}
-            className="w-full h-52 object-cover"
+            className="w-full h-56 object-cover"
             loading="lazy"
           />
-          <div className="absolute top-0 left-0 bg-[#495E57] bg-opacity-75 text-white text-xs font-semibold px-2 py-1 rounded-br-md">
+          <div className="absolute top-3 left-3 bg-[#495E57]/80 text-white text-xs font-semibold px-3 py-1.5 rounded-full backdrop-blur-sm z-20 shadow-sm">
             {service.categoryName}
           </div>
           {service.provider?.verified && (
-            <div className="absolute top-0 right-0 bg-[#F4CE14] text-[#495E57] text-xs font-bold px-2 py-1 rounded-bl-md flex items-center gap-1">
-              <i className="fas fa-check-circle"></i> Verified
+            <div className="absolute top-3 right-3 bg-[#F4CE14]/90 text-[#495E57] text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-sm z-20 shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                <path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
+              </svg>
+              Verified
             </div>
           )}
-        </div>
-
-        <div className="flex flex-col justify-between p-4 h-full">
-          <div>
-            <h2 className="text-lg font-bold text-[#495E57] text-center">{service.serviceName}</h2>
-            <p className="text-sm text-gray-600 text-center mt-2 line-clamp-2">
-              {service.serviceDescription}
-            </p>
-          </div>
-          <div className="mt-4 border-t border-gray-100 pt-3">
-            <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
-              <span>Duration:</span>
-              <span className="font-medium">{service.durationEstimate || "Not specified"}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">Provider:</span>
-              <span className="font-medium text-[#495E57]">
-                {service.provider?.firstName && service.provider?.lastName
-                  ? `${service.provider?.firstName} ${service.provider?.lastName}`
-                  : "Unknown"}
-              </span>
-            </div>
-            <div className="flex items-center justify-left mt-2">
+          <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+            <h2 className="text-xl font-bold text-white drop-shadow-md">
+              {service.serviceName}
+            </h2>
+            <div className="flex items-center mt-1.5">
               {serviceRatings[service.serviceId]?.averageRating > 0 ? (
                 <>
-                  {renderStars(serviceRatings[service.serviceId]?.averageRating || 0)}
-                  <span className="ml-1 text-sm text-gray-600">
-                    ({serviceRatings[service.serviceId]?.averageRating.toFixed(1)})
+                  <div className="flex items-center gap-0.5 text-[#F4CE14] drop-shadow-sm">
+                    {renderStars(serviceRatings[service.serviceId]?.averageRating || 0)}
+                  </div>
+                  <span className="ml-2 text-sm text-white font-medium">
+                    {serviceRatings[service.serviceId]?.averageRating.toFixed(1)}
                   </span>
-                  <span className="ml-1 text-xs text-gray-500">
-                    {serviceRatings[service.serviceId]?.reviewCount} review/s
+                  <span className="ml-1 text-xs text-gray-200">
+                    ({serviceRatings[service.serviceId]?.reviewCount})
                   </span>
                 </>
               ) : (
-                <span className="text-sm text-gray-400 italic">No reviews yet</span>
+                <span className="text-sm text-gray-200 italic">No reviews yet</span>
               )}
             </div>
           </div>
         </div>
 
-        <div className="absolute bottom-0 right-0 bg-[#F4CE14] text-[#495E57] font-bold px-3 py-1.5 rounded-lg shadow-sm">
-          ₱ {service.price}.00
+        <div className="flex flex-col justify-between p-5 h-full">
+          <p className="text-sm text-gray-600 line-clamp-2 mb-4">
+            {service.serviceDescription}
+          </p>
+          
+          <div className="mt-auto space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2 text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{service.durationEstimate || "Not specified"}</span>
+              </div>
+              <div className="px-3 py-1 rounded-full bg-[#F4CE14]/10 text-[#495E57] font-bold text-lg">
+                ₱{service.price}
+              </div>
+            </div>
+            
+            <div className="flex items-center border-t border-gray-100 pt-3">
+              {service.provider?.profileImage ? (
+                <img 
+                  src={`${BASE_URL}${service.provider.profileImage}`} 
+                  alt="Provider"
+                  className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-[#495E57]/10 flex items-center justify-center text-[#495E57]">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                  </svg>
+                </div>
+              )}
+              <div className="ml-2">
+                <span className="text-s font-medium text-[#495E57] leading-tight block">
+                  {service.provider?.firstName && service.provider?.lastName
+                    ? `${service.provider?.firstName} ${service.provider?.lastName}`
+                    : "Unknown"}
+                </span>
+                {service.provider?.yearsOfExperience > 0 && (
+                  <span className="text-xs text-gray-500 -mt-0.5">
+                    {service.provider.yearsOfExperience} {service.provider.yearsOfExperience === 1 ? 'year' : 'years'} experience
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </motion.div>
     ));
   }, [filteredServices, handleOpenModal, renderStars, serviceRatings]);
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      <div className="bg-[#495E57] text-white py-8">
-        <h1 className="text-3xl font-bold text-center">Browse Services</h1>
-        <p className="text-center text-gray-200 mt-2">Find the perfect service for your needs</p>
-      </div>
+      <motion.div 
+        className="relative bg-gradient-to-r from-[#495E57] to-[#3A4A45] overflow-hidden"
+        initial="hidden"
+        animate="visible"
+        variants={fadeIn}
+      >
+        {/* Decorative Elements with subtle animations */}
+        <div className="absolute inset-0 overflow-hidden">
+          <motion.div 
+            className="absolute -top-4 -right-4 w-40 h-40 rounded-full bg-[#F4CE14]/10 blur-2xl"
+            animate={{ 
+              scale: [1, 1.05, 1],
+              opacity: [0.8, 1, 0.8] 
+            }}
+            transition={{ 
+              duration: 6,
+              ease: "easeInOut",
+              repeat: Infinity,
+              repeatType: "reverse"
+            }}
+          />
+          <motion.div 
+            className="absolute top-1/2 left-1/4 w-64 h-64 rounded-full bg-[#F4CE14]/5 blur-3xl"
+            animate={{ 
+              scale: [1, 1.1, 1],
+              x: [0, 10, 0] 
+            }}
+            transition={{ 
+              duration: 8,
+              ease: "easeInOut",
+              repeat: Infinity,
+              repeatType: "reverse"
+            }}
+          />
+          <div className="absolute bottom-0 right-1/3 w-32 h-32 rounded-full bg-white/5 blur-xl"></div>
+          <motion.svg 
+            className="absolute left-0 bottom-0 opacity-10" 
+            width="200" 
+            height="200" 
+            viewBox="0 0 200 200"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 0.1 }}
+            transition={{ duration: 1.5, ease: "easeInOut" }}
+          >
+            <path d="M20,70 Q40,20 80,30 T140,50 T180,30" stroke="#F4CE14" strokeWidth="3" fill="none" />
+            <path d="M0,100 Q65,55 95,85 T160,80 T190,55 T200,70" stroke="#F4CE14" strokeWidth="2" fill="none" />
+          </motion.svg>
+        </div>
+        
+        <div className="container mx-auto px-4 py-16 relative z-10">
+          <motion.div 
+            className="flex flex-col items-center"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+          >
+            {/* <motion.div 
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full mb-4 text-[#F4CE14] shadow-inner"
+              variants={fadeInUp}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <span className="text-sm font-medium tracking-wide">Verified Professional Services</span>
+            </motion.div> */}
+            
+            <motion.h1 
+              className="text-4xl md:text-5xl font-bold text-white mb-4 text-center leading-tight"
+              variants={fadeInUp}
+            >
+              Find the Perfect <span className="text-[#F4CE14]">Service</span> <br className="hidden md:block" />for Your Needs
+            </motion.h1>
+            
+            <motion.p 
+              className="text-center text-gray-200 max-w-xl mx-auto mb-8 text-lg"
+              variants={fadeInUp}
+            >
+              Connect with skilled professionals offering quality services for all your household and personal requirements.
+            </motion.p>
+            
+            {/* Search functionality with animation */}
+            <motion.form 
+              onSubmit={handleSearchSubmit} 
+              className="w-full max-w-2xl mx-auto"
+              variants={fadeInUp}
+            >
+              <div className="flex items-center bg-white/95 backdrop-blur-md p-2 rounded-full shadow-lg">
+                <div className="flex-1 px-4">
+                  <input 
+                    type="text" 
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    placeholder="What service are you looking for?" 
+                    className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-gray-700 placeholder-gray-400"
+                  />
+                </div>
+                <motion.button 
+                  type="submit"
+                  className="flex items-center gap-2 bg-[#F4CE14] text-[#495E57] font-semibold py-2 px-6 rounded-full hover:bg-[#f8dc5a] transition duration-200 shadow-md"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <span>Search</span>
+                </motion.button>
+              </div>
+            </motion.form>
+            
+            {/* Popular categories from actual data */}
+            <motion.div 
+              className="flex flex-wrap justify-center mt-6 gap-2"
+              variants={fadeInUp}
+            >
+              <span className="text-sm text-gray-300 self-center">Popular:</span>
+              {isLoading ? (
+                <span className="text-sm text-gray-300">Loading categories...</span>
+              ) : popularCategories.length > 0 ? (
+                popularCategories.map((category, index) => (
+                  <motion.span 
+                    key={category} 
+                    onClick={() => {
+                      setSearchTerm(category);
+                      setFilteredServices(applyFilters(services, activeFilters));
+                    }}
+                    className="px-3 py-1 bg-white/10 hover:bg-white/20 cursor-pointer text-white text-xs rounded-full transition-colors"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ 
+                      delay: 0.5 + (index * 0.1),
+                      duration: 0.3,
+                      type: "spring",
+                      stiffness: 100
+                    }}
+                    whileHover={{ 
+                      scale: 1.1,
+                      backgroundColor: "rgba(255, 255, 255, 0.3)" 
+                    }}
+                  >
+                    {category}
+                  </motion.span>
+                ))
+              ) : (
+                <span className="text-sm text-gray-300">No categories found</span>
+              )}
+            </motion.div>
+          </motion.div>
+        </div>
+      </motion.div>
       
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row">
-          <div className="md:w-72 lg:w-80 flex-shrink-0 md:pr-6 md:mr-4 md:border-r md:border-gray-200 md:sticky md:top-4 md:self-start" 
-               style={{ maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto' }}>
+          <motion.div 
+            className="md:w-72 lg:w-80 flex-shrink-0 md:pr-6 md:mr-4 md:border-r md:border-gray-200 md:sticky md:top-4 md:self-start" 
+            style={{ maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto' }}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+          >
             <ServiceFilters 
               services={services}
               onFilterChange={handleFilterChange}
               className="w-full mb-6 md:mb-0"
             />
-          </div>
+          </motion.div>
           
           <div className="flex-1 md:pl-2">
             {isLoading ? (
-              <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#495E57]"></div>
-              </div>
-            ) : filteredServices.length === 0 ? (
-              <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                <div className="text-5xl text-gray-300 mb-4">
-                  <i className="fas fa-search"></i>
+              <motion.div 
+                className="flex justify-center items-center h-64"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <div className="flex flex-col items-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#F4CE14]"></div>
+                  <p className="mt-4 text-gray-500">Loading services...</p>
                 </div>
-                <p className="text-gray-600 mb-4">No services match your filters.</p>
+              </motion.div>
+            ) : filteredServices.length === 0 ? (
+              <motion.div 
+                className="bg-white rounded-xl shadow-md p-12 text-center"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-10 h-10 text-gray-400">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75l-2.489-2.489m0 0a3.375 3.375 0 10-4.773-4.773 3.375 3.375 0 004.774 4.774zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">No services found</h3>
+                <p className="text-gray-600 mb-6">We couldn't find any services matching your current filters.</p>
                 <button 
                   onClick={() => setActiveFilters({
                     categories: [],
@@ -326,21 +606,26 @@ const BrowseServicesPage = () => {
                     sortBy: 'recommended',
                     experience: 0
                   })}
-                  className="text-[#495E57] hover:text-[#F4CE14] font-medium transition-colors"
+                  className="px-6 py-2 bg-[#F4CE14] text-[#495E57] font-medium rounded-full hover:bg-[#e5c119] transition-colors duration-300"
                 >
-                  Clear all filters
+                  Reset all filters
                 </button>
-              </div>
+              </motion.div>
             ) : (
               <>
-                <div className="flex justify-between items-center mb-6">
+                <motion.div 
+                  className="flex justify-between items-center mb-8 bg-white p-3 px-5 rounded-full shadow-sm"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                >
                   <p className="text-gray-600">
                     <span className="font-semibold text-[#495E57]">{filteredServices.length}</span> services found
                   </p>
-                  <div className="text-sm text-gray-500">
-                    <span>Sort by: </span>
+                  <div className="flex items-center">
+                    <label className="text-sm text-gray-500 mr-2">Sort by:</label>
                     <select 
-                      className="bg-transparent border-b border-gray-300 focus:outline-none focus:border-[#495E57] cursor-pointer ml-1"
+                      className="bg-gray-50 border border-gray-200 rounded-full px-4 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F4CE14]/50 cursor-pointer"
                       value={activeFilters.sortBy}
                       onChange={(e) => setActiveFilters({...activeFilters, sortBy: e.target.value})}
                     >
@@ -351,10 +636,16 @@ const BrowseServicesPage = () => {
                       <option value="experience">Most Experienced</option>
                     </select>
                   </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                </motion.div>
+                
+                <motion.div 
+                  className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                  variants={staggerContainer}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {serviceCards}
-                </div>
+                </motion.div>
               </>
             )}
           </div>

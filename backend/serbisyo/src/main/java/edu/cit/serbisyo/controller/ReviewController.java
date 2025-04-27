@@ -18,7 +18,28 @@ public class ReviewController {
 
     @PostMapping("/create")
     public ReviewEntity createReview(@RequestBody ReviewEntity review) {
+        // Log what's being received
+        System.out.println("Received review in controller: " + review);
+        if (review.getCustomer() != null) {
+            System.out.println("Customer ID in controller: " + review.getCustomer().getCustomerId());
+        } else {
+            System.out.println("Customer object is null in controller!");
+        }
+        
         return reviewService.createReview(review);
+    }
+    
+    // Add a new endpoint to handle review creation with direct IDs
+    @PostMapping("/createWithIDs")
+    public ReviewEntity createReviewWithIDs(
+            @RequestParam Long customerId,
+            @RequestParam Long providerId, 
+            @RequestParam Long bookingId,
+            @RequestParam int rating,
+            @RequestParam String comment,
+            @RequestParam String reviewDate) {
+        
+        return reviewService.createReviewWithIds(customerId, providerId, bookingId, rating, comment, reviewDate);
     }
 
     @GetMapping("/getByProvider/{providerId}")

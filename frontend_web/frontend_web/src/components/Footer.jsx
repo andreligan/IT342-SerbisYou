@@ -1,89 +1,56 @@
-import React from "react";
-import { Box, Typography, Avatar, Button } from "@mui/material";
-import { styled } from "@mui/system";
-import serbisyoLogo from "../assets/SerbisYo Logo.png";
-
-const FooterContainer = styled(Box)({
-  backgroundColor: "#495E57", // Footer background color
-  color: "white", // Text color
-  padding: "40px 40px", // Add padding on left and right
-  display: "flex", // Flexbox for layout
-  justifyContent: "space-between", // Space between columns
-  flexWrap: "wrap", // Wrap columns on smaller screens
-  gap: "20px", // Gap between columns
-});
-
-const FooterColumn = styled(Box)({
-  flex: "1", // Each column takes equal space
-  minWidth: "200px", // Minimum width for responsiveness
-});
-
-const FooterLogo = styled(Box)({
-  display: "flex",
-  alignItems: "center", // Align logo and subtitle vertically
-  marginBottom: "16px", // Space below the logo
-});
-
-const FooterLogoImage = styled(Avatar)({
-  width: "40px",
-  height: "40px",
-  marginRight: "10px", // Space between logo and subtitle
-});
-
-const FooterSubtitle = styled(Typography)({
-  fontSize: "18px",
-  fontWeight: "bold",
-  color: "#F4CE14", // Set subtitle color to #F4CE14
-  lineHeight: "40px", // Match the height of the logo for perfect vertical alignment
-});
-
-const FooterText = styled(Typography)({
-  fontSize: "14px",
-  marginBottom: "8px", // Space below each text
-});
-
-const FooterButton = styled(Button)({
-  backgroundColor: "#F4CE14", // Button background color
-  color: "black", // Button text color
-  padding: "10px 20px",
-  borderRadius: "4px",
-  fontSize: "14px",
-  fontWeight: "bold",
-  "&:hover": {
-    backgroundColor: "#e0b813", // Darker yellow on hover
-  },
-});
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import serbisyoLogo from "../assets/Serbisyo_Logo_New.png";
 
 function Footer() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if the user is authenticated
+    const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+    setIsAuthenticated(!!token);
+  }, []);
+
+  const handleSignUpClick = () => {
+    navigate("/signup");
+  };
+
   return (
-    <FooterContainer>
+    <div className="bg-[#495E57] text-white px-10 py-10 flex justify-between flex-wrap gap-5">
       {/* First Column */}
-      <FooterColumn>
-        <FooterLogo>
-          <FooterLogoImage src={serbisyoLogo} alt="SerbisYo Logo" />
-          <FooterSubtitle>SerbisYo</FooterSubtitle>
-        </FooterLogo>
-        <FooterText>Find trusted professionals for any home service you need.</FooterText>
-      </FooterColumn>
+      <div className="flex-1 min-w-[200px]">
+        <div className="flex items-center mb-4">
+          <img src={serbisyoLogo} alt="SerbisYo Logo" className="mr-3 w-80 h-30" />
+        </div>
+        <p className="text-sm mb-2">Find trusted professionals for any home service you need.</p>
+      </div>
 
       {/* Second Column */}
-      <FooterColumn>
-        <FooterSubtitle>Quick Links</FooterSubtitle>
-        <FooterText>About Us</FooterText>
-        <FooterText>Services</FooterText>
-        <FooterText>How It Works</FooterText>
-        <FooterText>Contact</FooterText>
-      </FooterColumn>
+      <div className="flex-1 min-w-[200px]">
+        <h2 className="text-lg font-bold text-[#F4CE14] leading-10 mb-2">Quick Links</h2>
+        <p className="text-sm mb-2 hover:text-[#F4CE14] cursor-pointer transition-colors">About Us</p>
+        <p className="text-sm mb-2 hover:text-[#F4CE14] cursor-pointer transition-colors">Services</p>
+        <p className="text-sm mb-2 hover:text-[#F4CE14] cursor-pointer transition-colors">How It Works</p>
+        <p className="text-sm mb-2 hover:text-[#F4CE14] cursor-pointer transition-colors">Contact</p>
+      </div>
 
       {/* Third Column */}
-      <FooterColumn>
-        <FooterSubtitle>Ready to Get Started</FooterSubtitle>
-        <FooterText>
+      <div className="flex-1 min-w-[200px]">
+        <h2 className="text-lg font-bold text-[#F4CE14] leading-10 mb-2">Ready to Get Started</h2>
+        <p className="text-sm mb-4">
           Join thousands of satisfied customers who found their perfect home service providers.
-        </FooterText>
-        <FooterButton>Sign Up</FooterButton>
-      </FooterColumn>
-    </FooterContainer>
+        </p>
+        {!isAuthenticated && (
+          <button 
+            onClick={handleSignUpClick}
+            className="bg-[#F4CE14] text-black px-5 py-2.5 rounded font-light text-sm hover:bg-[#e0b813] transition-colors"
+          >
+            Sign Up
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 

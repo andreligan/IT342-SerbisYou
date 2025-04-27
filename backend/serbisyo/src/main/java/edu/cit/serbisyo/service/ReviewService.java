@@ -1,10 +1,14 @@
 package edu.cit.serbisyo.service;
 
 import edu.cit.serbisyo.entity.BookingEntity;
+import edu.cit.serbisyo.entity.CustomerEntity;
 import edu.cit.serbisyo.entity.ReviewEntity;
 import edu.cit.serbisyo.entity.ServiceEntity;
+import edu.cit.serbisyo.entity.ServiceProviderEntity;
 import edu.cit.serbisyo.repository.BookingRepository;
+import edu.cit.serbisyo.repository.CustomerRepository;
 import edu.cit.serbisyo.repository.ReviewRepository;
+import edu.cit.serbisyo.repository.ServiceProviderRepository;
 import edu.cit.serbisyo.repository.ServiceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,9 +30,74 @@ public class ReviewService {
     
     @Autowired
     private ServiceRepository serviceRepository;
+    
+    @Autowired
+    private CustomerRepository customerRepository;
+    
+    @Autowired
+    private ServiceProviderRepository serviceProviderRepository;
 
     public ReviewEntity createReview(ReviewEntity review) {
+        // Log the received review details
+        System.out.println("=== Creating New Review ===");
+        System.out.println("Review Object: " + review);
+        
+        if (review.getCustomer() != null) {
+            System.out.println("Customer ID: " + review.getCustomer().getCustomerId());
+        } else {
+            System.out.println("Customer is null!");
+        }
+        
+        if (review.getProvider() != null) {
+            System.out.println("Provider ID: " + review.getProvider().getProviderId());
+        } else {
+            System.out.println("Provider is null!");
+        }
+        
+        if (review.getBooking() != null) {
+            System.out.println("Booking ID: " + review.getBooking().getBookingId());
+        } else {
+            System.out.println("Booking is null!");
+        }
+        
+        System.out.println("Rating: " + review.getRating());
+        System.out.println("Comment: " + review.getComment());
+        System.out.println("Date: " + review.getReviewDate());
+        System.out.println("=== End Review Details ===");
+        
         return reviewRepository.save(review);
+    }
+
+    public ReviewEntity createReviewWithIds(Long customerId, Long providerId, Long bookingId, int rating, String comment, String reviewDateStr) {
+        System.out.println("Creating review with IDs - Customer: " + customerId + ", Provider: " + providerId + ", Booking: " + bookingId);
+        
+        // Get entities from repositories
+        CustomerEntity customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found with id: " + customerId));
+        
+        ServiceProviderEntity provider = serviceProviderRepository.findById(providerId)
+                .orElseThrow(() -> new RuntimeException("Provider not found with id: " + providerId));
+        
+        BookingEntity booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found with id: " + bookingId));
+        
+        // Create and populate review entity
+        ReviewEntity review = new ReviewEntity();
+        review.setCustomer(customer);
+        review.setProvider(provider);
+        review.setBooking(booking);
+        review.setRating(rating);
+        review.setComment(comment);
+        
+        // Parse date
+        try {
+            review.setReviewDate(new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").parse(reviewDateStr));
+        } catch (Exception e) {
+            review.setReviewDate(new java.util.Date());
+            System.out.println("Could not parse date, using current time instead: " + e.getMessage());
+        }
+        
+        return createReview(review);
     }
 
     public List<ReviewEntity> getReviewsByProvider(Long providerId) {

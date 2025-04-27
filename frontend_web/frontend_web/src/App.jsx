@@ -8,6 +8,10 @@ import CustomerHomePage from "./components/CustomerHomePage";
 import BrowseServicesPage from "./components/BrowseServicesPage";
 import BookServicePage from "./components/BookServicePage";
 import ServiceProviderHomePage from "./components/service_provider/ServiceProviderHomePage";
+import AdminHomePage from "./components/admin/AdminHomePage"; // Import AdminHomePage
+import UserManagement from "./components/admin/UserManagement"; // Import UserManagement
+import CategoryManagement from "./components/admin/CategoryManagement"; // Import CategoryManagement
+import ProviderVerification from "./components/admin/ProviderVerification"; // Import ProviderVerification
 import PlumbingServicesPage from "./components/PlumbingServicesPage";
 import AddServicePage from "./components/service_provider/AddServicePage";
 import LogoutConfirmationPopup from "./components/LogoutConfirmationPopup";
@@ -16,6 +20,8 @@ import ServiceProviderProfile from "./components/service_provider/ServiceProvide
 import CustomerProfilePage from "./components/customer/CustomerProfilePage";
 import ServiceDetails from "./components/service_provider/ServiceDetails";
 import ServiceProviderDetails from "./components/customer/ServiceProviderDetails";
+import BookingDetailPage from "./components/customer/profile/BookingDetailPage"; // Import BookingDetailPage
+import ServiceProviderBookings from "./components/service_provider/ServiceProviderBookings"; // Import ServiceProviderBookings
 import serbisyoLogo from "./assets/Serbisyo_Logo_New.png";
 import API from "./utils/API";
 import axios from "axios";
@@ -45,6 +51,8 @@ const ProtectedRoute = ({ element, allowedRoles }) => {
       return <Navigate to="/customerHomePage" replace />;
     } else if (userRole?.toLowerCase() === "service provider") {
       return <Navigate to="/serviceProviderHomePage" replace />;
+    } else if (userRole?.toLowerCase() === "admin") {
+      return <Navigate to="/adminHomePage" replace />;
     } else {
       return <Navigate to="/" replace />;
     }
@@ -62,8 +70,13 @@ function App() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSignupPopupVisible, setIsSignupPopupVisible] = useState(false); // Add state for signup popup visibility
+  const [profileImage, setProfileImage] = useState(null); // Add new state for profile image
+  const [userFirstName, setUserFirstName] = useState(""); // Add state for user's first name
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Update this line to also check if we're on the add service page
+  const isHeaderHidden = location.pathname === "/bookService" || location.pathname === "/addService";
 
   useEffect(() => {
     const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
@@ -73,6 +86,86 @@ function App() {
     setUserRole(role);
     console.log("Authentication check. isAuthenticated:", !!token, "Role:", role);
   }, [location]);
+
+  // Fetch user's profile image - updated to also fetch first name
+  useEffect(() => {
+    const fetchProfileImage = async () => {
+      try {
+        const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+        const userId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
+        const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
+        
+        if (!token || !userId || !role) return;
+        
+        let entityId;
+        
+        if (role.toLowerCase() === "customer") {
+          // Get all customers to find the one matching this user
+          const customersResponse = await axios.get("/api/customers/getAll", {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          // Find the customer that matches this user ID
+          const customer = customersResponse.data.find(c => 
+            c.userAuth && c.userAuth.userId == userId
+          );
+          
+          if (!customer) return;
+          entityId = customer.customerId;
+          
+          // Store the customer's first name
+          setUserFirstName(customer.firstName || "");
+          
+          // Now fetch image with the correct customer ID
+          const imageResponse = await axios.get(`/api/customers/getProfileImage/${entityId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          if (imageResponse.data) {
+            // Prepend base URL to make a complete image path
+            const baseURL = "http://localhost:8080"; // Backend base URL
+            const fullImageURL = `${baseURL}${imageResponse.data}`;
+            setProfileImage(fullImageURL);
+          }
+        } 
+        else if (role.toLowerCase() === "service provider") {
+          // Get all providers to find the one matching this user
+          const providersResponse = await axios.get("/api/service-providers/getAll", {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          // Find the provider that matches this user ID
+          const provider = providersResponse.data.find(p => 
+            p.userAuth && p.userAuth.userId == userId
+          );
+          
+          if (!provider) return;
+          entityId = provider.providerId;
+          
+          // Store the provider's first name
+          setUserFirstName(provider.firstName || "");
+          
+          // Now fetch image with the correct provider ID
+          const imageResponse = await axios.get(`/api/service-providers/getServiceProviderImage/${entityId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          if (imageResponse.data) {
+            // Prepend base URL to make a complete image path
+            const baseURL = "http://localhost:8080"; // Backend base URL
+            const fullImageURL = `${baseURL}${imageResponse.data}`;
+            setProfileImage(fullImageURL);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching profile image:", error);
+      }
+    };
+    
+    if (isAuthenticated) {
+      fetchProfileImage();
+    }
+  }, [isAuthenticated]);
 
   const confirmLogout = () => {
     console.log("User has logged out.");
@@ -104,105 +197,147 @@ function App() {
     if (!isAuthenticated) return null;
 
     return (
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-6 mr-6">
+        {/* Home Icon with SVG glow effect */}
         <button
-          onClick={() => navigate(userRole === "customer" ? "/customerHomePage" : "/serviceProviderHomePage")}
-          className="p-2 rounded-full hover:bg-gray-200"
+          onClick={() => navigate(userRole === "customer" ? "/customerHomePage" : userRole === "admin" ? "/adminHomePage" : "/serviceProviderHomePage")}
+          className="p-2.5 rounded-full flex items-center justify-center"
+          aria-label="Home"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            className="h-6 w-6 text-[#495E57] hover:text-[#F4CE14] transition-colors duration-200"
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V10z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 21V9h6v12" />
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
           </svg>
         </button>
 
-        {userRole !== "admin" && (
-          <button
-            onClick={() => navigate("/messages")}
-            className="p-2 rounded-full hover:bg-gray-200"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 10h.01M12 10h.01M16 10h.01M21 16.5a2.5 2.5 0 01-2.5 2.5H5.5A2.5 2.5 0 013 16.5V5.5A2.5 2.5 0 015.5 3h13a2.5 2.5 0 012.5 2.5v11z"
-              />
-            </svg>
-          </button>
-        )}
+        {/* Notification Icon Wrapper with SVG glow effect */}
+        <div className="relative">
+          <div className="p-2.5 rounded-full flex items-center justify-center">
+            <NotificationIcon glowEffect={true} />
+          </div>
+        </div>
 
-        {/* Replace the notification button with our new NotificationIcon component */}
-        <NotificationIcon />
-
+        {/* Enhanced User Profile Dropdown */}
         <div className="relative">
           <button
             onMouseEnter={() => setDropdownOpen(true)}
             onMouseLeave={() => setTimeout(() => {
-              // Small timeout to allow cursor to move to dropdown
               if (!document.querySelector('.dropdown-menu:hover')) {
                 setDropdownOpen(false);
               }
             }, 100)}
-            className="p-2 rounded-full hover:bg-gray-200"
+            className={`rounded-full overflow-hidden transition-all duration-200 transform hover:scale-105 ${
+              dropdownOpen ? 'ring-2 ring-[#F4CE14] shadow-lg' : 'hover:shadow-md'
+            }`}
+            aria-label="User menu"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79-4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
-              />
-            </svg>
+            {profileImage ? (
+              <div className="h-11 w-11 rounded-full overflow-hidden border-2 border-white shadow-inner">
+                <img 
+                  src={profileImage}
+                  alt="Profile"
+                  className="h-full w-full object-cover transform transition-transform duration-500 hover:scale-110"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    setProfileImage(null);
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="h-11 w-11 rounded-full bg-gradient-to-br from-[#e0c03b] to-[#F4CE14] flex items-center justify-center shadow-md">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6 text-white"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+            )}
+            {userFirstName && (
+              <span className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-400 rounded-full border-2 border-white"></span>
+            )}
           </button>
+          
           {dropdownOpen && (
             <div 
-              className="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg z-50 dropdown-menu"
+              className="absolute right-0 mt-3 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-50 dropdown-menu transform transition-all duration-200 ease-in-out"
               onMouseEnter={() => setDropdownOpen(true)}
               onMouseLeave={() => setDropdownOpen(false)}
             >
-              <div className="p-4 border-b border-gray-200">
-                <p className="text-sm font-semibold text-gray-800">User Menu</p>
+              <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-[#f6f2e1] to-white rounded-t-xl">
+                <div className="flex items-center space-x-4">
+                  {profileImage ? (
+                    <div className="h-14 w-14 rounded-full overflow-hidden border-2 border-[#F4CE14] shadow-md">
+                      <img src={profileImage} alt="Profile" className="h-full w-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="h-14 w-14 rounded-full bg-gradient-to-br from-[#e0c03b] to-[#F4CE14] flex items-center justify-center shadow-md">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-8 w-8 text-white"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-medium text-gray-900">{userFirstName || "User"}</p>
+                    <p className="text-xs text-gray-500 mt-1">{userRole?.toLowerCase() || "user"}</p>
+                  </div>
+                </div>
               </div>
-              <button
-                onClick={() => {
-                  const normalizedRole = userRole?.toLowerCase();
-                  setDropdownOpen(false);
-                  if (normalizedRole === "customer") {
-                    navigate("/customerProfile");
-                  } else if (normalizedRole === "service provider") {
-                    navigate("/serviceProviderProfile");
-                  } else {
-                    console.error("Unknown user role:", userRole);
-                  }
-                }}
-                className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100"
-              >
-                Manage Profile
-              </button>
-              <button
-                onClick={() => setIsLogoutPopupVisible(true)}
-                className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100"
-              >
-                Logout
-              </button>
+              
+              <div className="p-2">
+                <button
+                  onClick={() => {
+                    const normalizedRole = userRole?.toLowerCase();
+                    setDropdownOpen(false);
+                    if (normalizedRole === "customer") {
+                      navigate("/customerProfile");
+                    } else if (normalizedRole === "service provider") {
+                      navigate("/serviceProviderProfile");
+                    } else {
+                      console.error("Unknown user role:", userRole);
+                    }
+                  }}
+                  className="w-full flex items-center px-4 py-3 text-left text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-150"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Manage Profile
+                </button>
+                <button
+                  onClick={() => setIsLogoutPopupVisible(true)}
+                  className="w-full flex items-center px-4 py-3 text-left text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-150"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 01-3-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  Logout
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -210,43 +345,68 @@ function App() {
     );
   };
 
+  // Handle logo click to redirect to appropriate homepage
+  const handleLogoClick = () => {
+    if (isAuthenticated) {
+      if (userRole?.toLowerCase() === "customer") {
+        navigate("/customerHomePage");
+      } else if (userRole?.toLowerCase() === "service provider") {
+        navigate("/serviceProviderHomePage");
+      } else if (userRole?.toLowerCase() === "admin") {
+        navigate("/adminHomePage");
+      }
+    } else {
+      navigate("/");
+    }
+  };
+
   return (
     <>
-      <header className="flex justify-between items-center px-3 py-3 bg-white shadow-md">
-        <div className="flex items-center">
-          <img src={serbisyoLogo} alt="SerbisYo Logo" className="h-20 ml-6 mr-4" />
-          {/* <h1 className="text-2xl font-bold text-gray-800">Serbisyo</h1> */}
-        </div>
-        <div>
-          {!isAuthenticated ? (
-            <div className="flex gap-4 mr-6">
-              <button
-                onClick={() => setIsSignupPopupVisible(true)}
-                className="px-4 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500"
-              >
-                Sign Up
-              </button>
-              <button
-                onClick={() => setIsLoginPopupVisible(true)}
-                className="px-4 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500"
-              >
-                Sign In
-              </button>
-            </div>
-          ) : (
-            renderNavigationLinks()
-          )}
-        </div>
-      </header>
+      {/* Only render header when not on booking page or add service page */}
+      {!isHeaderHidden && (
+        <header className="flex justify-between items-center px-4 py-2 bg-white shadow-md sticky top-0 z-30">
+          <div 
+            className="flex items-center cursor-pointer" 
+            onClick={handleLogoClick}
+            aria-label="Go to homepage"
+          >
+            <img src={serbisyoLogo} alt="SerbisYo Logo" className="h-16 ml-4 mr-2" />
+          </div>
+          <div>
+            {!isAuthenticated ? (
+              <div className="flex gap-4 mr-6">
+                <button
+                  onClick={() => setIsSignupPopupVisible(true)}
+                  className="px-5 py-2 bg-[#F4CE14] text-[#495E57] font-medium rounded-lg hover:bg-yellow-500 transition-colors duration-200 shadow-sm"
+                >
+                  Sign Up
+                </button>
+                <button
+                  onClick={() => setIsLoginPopupVisible(true)}
+                  className="px-5 py-2 bg-[#495E57] text-white font-medium rounded-lg hover:bg-[#3a4a45] transition-colors duration-200 shadow-sm"
+                >
+                  Sign In
+                </button>
+              </div>
+            ) : (
+              renderNavigationLinks()
+            )}
+          </div>
+        </header>
+      )}
       <Routes>
         <Route 
           path="/" 
           element={
             isAuthenticated ? 
               <Navigate 
-                to={userRole?.toLowerCase() === "customer" 
-                  ? "/customerHomePage" 
-                  : "/serviceProviderHomePage"} 
+                to={
+                  userRole?.toLowerCase() === "customer" 
+                    ? "/customerHomePage" 
+                    : userRole?.toLowerCase() === "admin"
+                      ? "/adminHomePage"
+                      : "/serviceProviderHomePage"
+                } 
                 replace 
               /> 
               : <LandingPage />
@@ -309,6 +469,31 @@ function App() {
         />
         <Route path="/payment-success" element={<PaymentSuccessPage />} />
         <Route path="/payment-cancel" element={<PaymentCancelPage />} />
+        <Route path="/booking-details/:bookingId" element={<BookingDetailPage />} /> {/* Add BookingDetailPage route */}
+        <Route
+          path="/serviceProviderBookings"
+          element={<ProtectedRoute element={<ServiceProviderBookings />} allowedRoles={["service provider"]} />}
+        />
+        <Route
+          path="/provider-booking-details/:bookingId"
+          element={<ProtectedRoute element={<BookingDetailPage />} allowedRoles={["service provider"]} />}
+        />
+        <Route
+          path="/adminHomePage"
+          element={<ProtectedRoute element={<AdminHomePage />} allowedRoles={["admin"]} />}
+        />
+        <Route
+          path="/adminHomePage/users"
+          element={<ProtectedRoute element={<UserManagement />} allowedRoles={["admin"]} />}
+        />
+        <Route
+          path="/adminHomePage/categories"
+          element={<ProtectedRoute element={<CategoryManagement />} allowedRoles={["admin"]} />}
+        />
+        <Route
+          path="/adminHomePage/verification"
+          element={<ProtectedRoute element={<ProviderVerification />} allowedRoles={["admin"]} />}
+        />
       </Routes>
 
       <SignupOptionsPopup

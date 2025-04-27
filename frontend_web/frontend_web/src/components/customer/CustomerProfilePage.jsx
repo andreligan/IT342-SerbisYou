@@ -57,7 +57,7 @@ function CustomerProfilePage() {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
           {/* Sidebar */}
           <div className="md:col-span-3">
-            <div className="bg-white p-2 rounded shadow">
+            <div className="bg-white pt-8 pb-8 pl-5 rounded shadow">
               <div className="flex items-center gap-1 mb-2">
                 <User size={20} />
                 <h2 className="text-lg font-semibold">My Account</h2>
@@ -65,28 +65,28 @@ function CustomerProfilePage() {
               <nav>
                 <ul>
                   <li 
-                    className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'profile' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
+                    className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'profile' ? 'bg-yellow-50 text-[#F4CE14]' : 'hover:bg-gray-100'}`}
                     onClick={() => handleTabChange('profile')}
                   >
                     <span className="w-10"><Home size={18} /></span>
                     <span>Profile</span>
                   </li>
                   <li 
-                    className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'address' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
+                    className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'address' ? 'bg-yellow-50 text-[#F4CE14]' : 'hover:bg-gray-100'}`}
                     onClick={() => handleTabChange('address')}
                   >
                     <span className="w-10"><MapPin size={18} /></span>
                     <span>Address</span>
                   </li>
                   <li 
-                    className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'bookingHistory' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
+                    className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'bookingHistory' ? 'bg-yellow-50 text-[#F4CE14]' : 'hover:bg-gray-100'}`}
                     onClick={() => handleTabChange('bookingHistory')}
                   >
                     <span className="w-10"><History size={18} /></span>
                     <span>Booking History</span>
                   </li>
                   <li 
-                    className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'password' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
+                    className={`flex items-center p-2 rounded cursor-pointer ${activeSection === 'password' ? 'bg-yellow-50 text-[#F4CE14]' : 'hover:bg-gray-100'}`}
                     onClick={() => handleTabChange('password')}
                   >
                     <span className="w-10"><Lock size={18} /></span>
