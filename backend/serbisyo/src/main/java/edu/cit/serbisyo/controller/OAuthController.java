@@ -53,9 +53,9 @@ public class OAuthController {
             UserAuthEntity userAuth = new UserAuthEntity();
             userAuth.setUserName(userName);
             userAuth.setEmail(email);
-            // Generate random password for OAuth users
-            String randomPassword = UUID.randomUUID().toString();
-            userAuth.setPassword(randomPassword);  // UserAuthService will encode it
+            // Simple default password
+            String defaultPassword = "123456";
+            userAuth.setPassword(defaultPassword);  // UserAuthService will encode it
             userAuth.setRole(role);
             
             // Create profile based on role

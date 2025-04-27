@@ -25,6 +25,16 @@ function OAuthRoleSelection() {
   };
   
   const { firstName, lastName } = extractNames(name);
+
+  // Generate a more personalized username (firstName + lastName or first part of email)
+  const generateUsername = () => {
+    if (firstName && lastName) {
+      return `${firstName.toLowerCase()}${lastName.toLowerCase()}`.substring(0, 15);
+    } else {
+      // If name isn't available, use the part before @ in email
+      return email.split('@')[0];
+    }
+  };
   
   const handleRoleSelection = async (role) => {
     setLoading(true);
@@ -34,7 +44,7 @@ function OAuthRoleSelection() {
       // Create base data structure
       const userData = {
         userAuth: {
-          userName: email,
+          userName: generateUsername(),
           email: email,
           role: role
         }
