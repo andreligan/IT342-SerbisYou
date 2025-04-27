@@ -1,4 +1,5 @@
 import React from "react";
+import { motion } from "framer-motion";
 
 const PaymentConfirmation = ({
   serviceData,
@@ -18,8 +19,23 @@ const PaymentConfirmation = ({
   const amountDue = isGCashPayment && !isFullPayment ? downpaymentAmount : totalPrice;
   const remainingAmount = isGCashPayment && !isFullPayment ? downpaymentAmount : 0;
 
+  // Animation variants
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { type: "spring", stiffness: 100, damping: 15 }
+    }
+  };
+
   return (
-    <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+    <motion.div 
+      className="bg-white rounded-2xl shadow-xl overflow-hidden"
+      initial="hidden"
+      animate="visible"
+      variants={cardVariants}
+    >
       {/* Header with gradient background */}
       <div className="relative bg-gradient-to-r from-[#445954] to-[#495E57] text-white p-6">
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#F4CE14]/10 rounded-full -translate-x-16 -translate-y-32 blur-3xl"></div>
@@ -45,7 +61,14 @@ const PaymentConfirmation = ({
 
       <div className="p-6 md:p-8">
         {/* Service Summary Card */}
-        <div className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden mb-6">
+        <motion.div 
+          className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden mb-6"
+          variants={{
+            hidden: { opacity: 0, y: 20 },
+            visible: { opacity: 1, y: 0 }
+          }}
+          transition={{ delay: 0.1 }}
+        >
           <div className="bg-[#495E57]/5 px-4 py-3 border-b border-gray-100">
             <h3 className="font-semibold text-[#495E57] flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
@@ -73,10 +96,17 @@ const PaymentConfirmation = ({
               )}
             </div>
           </div>
-        </div>
+        </motion.div>
         
         {/* Payment Details Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+        <motion.div 
+          className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6"
+          variants={{
+            hidden: { opacity: 0, y: 20 },
+            visible: { opacity: 1, y: 0 }
+          }}
+          transition={{ delay: 0.2 }}
+        >
           <div className="bg-[#495E57]/5 px-4 py-3 border-b border-gray-100">
             <h3 className="font-semibold text-[#495E57] flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
@@ -186,43 +216,45 @@ const PaymentConfirmation = ({
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
         
-        {/* Payment Security Information */}
-        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg mb-6 flex items-start">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500 mt-0.5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <div>
-            <p className="text-sm text-blue-700 font-medium mb-1">What happens next?</p>
-            <p className="text-sm text-blue-600">
-              After confirming your booking, you'll receive a confirmation email with all the details.
-              The service provider will contact you to coordinate the service delivery.
-            </p>
-          </div>
-        </div>
-        
-        {/* Security Badges */}
-        <div className="flex flex-wrap items-center justify-center gap-3 mb-6 text-gray-400 text-xs">
-          <div className="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+        {/* Security Badges - Enhanced with animation */}
+        <motion.div 
+          className="flex flex-wrap items-center justify-center gap-3 mb-6 text-gray-400 text-xs"
+          variants={{
+            hidden: { opacity: 0, y: 20 },
+            visible: { opacity: 1, y: 0 }
+          }}
+          transition={{ delay: 0.3 }}
+        >
+          <motion.div 
+            className="flex items-center bg-gray-50 px-3 py-2 rounded-lg border border-gray-100"
+            whileHover={{ y: -3, boxShadow: "0 4px 8px rgba(0,0,0,0.05)" }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-green-500" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
             SECURE PAYMENT
-          </div>
-          <div className="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+          </motion.div>
+          <motion.div 
+            className="flex items-center bg-gray-50 px-3 py-2 rounded-lg border border-gray-100"
+            whileHover={{ y: -3, boxShadow: "0 4px 8px rgba(0,0,0,0.05)" }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
             </svg>
             ENCRYPTED DATA
-          </div>
-          <div className="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+          </motion.div>
+          <motion.div 
+            className="flex items-center bg-gray-50 px-3 py-2 rounded-lg border border-gray-100"
+            whileHover={{ y: -3, boxShadow: "0 4px 8px rgba(0,0,0,0.05)" }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-purple-500" viewBox="0 0 20 20" fill="currentColor">
               <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
             </svg>
             TRUSTED PROVIDERS
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
         
         {/* Debug information section - only show in development */}
         {process.env.NODE_ENV !== 'production' && debugInfo && (
@@ -235,22 +267,32 @@ const PaymentConfirmation = ({
         )}
         
         {/* Navigation buttons */}
-        <div className="mt-8 flex justify-between">
-          <button
+        <motion.div 
+          className="mt-8 flex justify-between"
+          variants={{
+            hidden: { opacity: 0, y: 20 },
+            visible: { opacity: 1, y: 0 }
+          }}
+          transition={{ delay: 0.4 }}
+        >
+          <motion.button
             onClick={handleBack}
-            className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center"
+            className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center shadow-sm"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
             </svg>
             Back
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             onClick={handleSubmit}
             disabled={isProcessingPayment}
-            className={`px-6 py-3 bg-[#F4CE14] text-[#495E57] rounded-lg font-medium shadow-md hover:bg-yellow-300 active:bg-yellow-400 transition-all duration-200 transform hover:-translate-y-0.5 flex items-center
-              ${isProcessingPayment ? 'opacity-50 cursor-not-allowed hover:transform-none' : ''}
+            className={`px-6 py-3 bg-gradient-to-r from-[#F4CE14] to-[#eec419] text-[#495E57] rounded-lg font-medium shadow-md transition-all duration-200 transform flex items-center
+              ${isProcessingPayment ? 'opacity-50 cursor-not-allowed hover:transform-none' : 'hover:shadow-lg hover:scale-[1.02]'}
             `}
+            whileTap={{ scale: isProcessingPayment ? 1 : 0.97 }}
           >
             {isProcessingPayment ? (
               <>
@@ -268,10 +310,10 @@ const PaymentConfirmation = ({
                 </svg>
               </>
             )}
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

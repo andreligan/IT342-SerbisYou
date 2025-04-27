@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-function MessageBubble({ message, isCurrentUser, onResend }) {
+function MessageBubble({ message, isCurrentUser, onResend, isSelected, onMessageClick }) {
   const formatTime = (dateTime) => {
     if (!dateTime) return '';
     const date = new Date(dateTime);
@@ -18,7 +18,10 @@ function MessageBubble({ message, isCurrentUser, onResend }) {
         );
       case 'ERROR':
         return (
-          <span className="inline-block ml-1 text-red-500 cursor-pointer" onClick={onResend}>
+          <span className="inline-block ml-1 text-red-500 cursor-pointer" onClick={(e) => {
+            e.stopPropagation();
+            onResend && onResend();
+          }}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
@@ -45,35 +48,47 @@ function MessageBubble({ message, isCurrentUser, onResend }) {
     }
   };
 
-  return (
-    <div className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
-      <div className={`max-w-xs lg:max-w-md rounded-lg py-2 px-3 ${
-        isCurrentUser 
-          ? 'bg-[#F4CE14] text-[#495E57] rounded-br-none' 
-          : 'bg-white border border-gray-200 rounded-bl-none'
-      }`}>
-        <p className="text-sm">{message.messageText}</p>
-        <div className="flex items-center justify-end mt-1">
-          <span className={`text-xs ${
-            isCurrentUser ? 'text-[#495E57]/70' : 'text-gray-500'
-          }`}>
-            {formatTime(message.sentAt)}
-          </span>
-          {isCurrentUser && getStatusIcon()}
-        </div>
-      </div>
+  const handleClick = () => {
+    onMessageClick && onMessageClick(message.messageId || message.id);
+  };
 
-      {/* Retry button for failed messages */}
-      {message.status === 'ERROR' && onResend && (
-        <button 
-          onClick={() => onResend(message.id, message.messageText)}
-          className="ml-2 text-red-500 p-1 rounded-full hover:bg-red-50"
-          title="Retry sending message"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-        </button>
+  return (
+    <div className={`flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'} mb-3`}>
+      <div 
+        className={`max-w-xs lg:max-w-md rounded-lg py-2 px-3 cursor-pointer ${
+          isCurrentUser 
+            ? 'bg-[#F4CE14] text-[#495E57] rounded-br-none' 
+            : 'bg-white border border-gray-200 rounded-bl-none'
+        }`}
+        onClick={handleClick}
+      >
+        <p className="text-sm">{message.messageText}</p>
+      </div>
+      
+      {/* Time and status - only shown when selected */}
+      {isSelected && (
+        <div className="flex justify-between items-center bg-[#FEF9E7]">
+          <div className={`flex items-center mt-1 text-xs ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
+            <span className="text-gray-500">{formatTime(message.sentAt)}</span>
+            {isCurrentUser && getStatusIcon()}
+            
+            {/* Retry button for failed messages - shown inline with time when selected */}
+            {message.status === 'ERROR' && onResend && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onResend(message.id, message.messageText);
+                }}
+                className="ml-2 text-red-500 p-1 rounded-full hover:bg-red-50"
+                title="Retry sending message"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

@@ -11,6 +11,14 @@ const BookingDetailPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [feeBreakdown, setFeeBreakdown] = useState({
+    basePrice: 0,
+    processingFee: 0,
+    platformFee: 0,
+    totalPrice: 0
+  });
+  const [providerImage, setProviderImage] = useState(null); // New state for provider's profile image
 
   const handleOpenReviewModal = () => {
     setIsReviewModalOpen(true);
@@ -42,13 +50,11 @@ const BookingDetailPage = () => {
         return;
       }
 
-      // Log the IDs to help with debugging
       console.log("Review Submission - Detailed ID Logs:");
       console.log("Customer ID:", customer.customerId);
       console.log("Provider ID:", booking.service?.provider?.providerId);
       console.log("Booking ID:", booking.bookingId);
       
-      // Use the new endpoint with URL parameters instead of JSON body
       const params = new URLSearchParams();
       params.append('customerId', customer.customerId);
       params.append('providerId', booking.service.provider.providerId);
@@ -93,6 +99,29 @@ const BookingDetailPage = () => {
         });
 
         setBooking(response.data);
+        
+        // Fetch provider's profile image if provider exists
+        if (response.data && response.data.service && response.data.service.provider) {
+          fetchProviderImage(response.data.service.provider.providerId, token);
+        }
+        
+        if (response.data && response.data.totalCost) {
+          const totalCost = response.data.totalCost;
+          const basePrice = totalCost / 1.05;
+          const processingFee = basePrice * 0.025;
+          const platformFee = basePrice * 0.025;
+          
+          setFeeBreakdown({
+            basePrice: Math.round(basePrice * 100) / 100,
+            processingFee: Math.round(processingFee * 100) / 100,
+            platformFee: Math.round(platformFee * 100) / 100,
+            totalPrice: totalCost
+          });
+        }
+        
+        if (response.data && response.data.customer && response.data.customer.customerId) {
+          await fetchCustomerAddress(response.data.customer.customerId, token);
+        }
       } catch (err) {
         console.error("Error fetching booking details:", err);
         setError("Failed to load booking details.");
@@ -105,6 +134,78 @@ const BookingDetailPage = () => {
       fetchBookingDetails();
     }
   }, [bookingId]);
+  
+  const fetchCustomerAddress = async (customerId, token) => {
+    try {
+      const addressesResponse = await axios.get("/api/addresses/getAll", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const addresses = addressesResponse.data.filter(addr => 
+        addr.customer && addr.customer.customerId == customerId
+      );
+      
+      let selectedAddress = addresses.find(addr => addr.main === true);
+      if (!selectedAddress && addresses.length > 0) {
+        selectedAddress = addresses[0];
+      }
+      
+      if (selectedAddress) {
+        const addressParts = [
+          selectedAddress.streetName, 
+          selectedAddress.barangay, 
+          selectedAddress.city, 
+          selectedAddress.province,
+          selectedAddress.zipCode
+        ].filter(Boolean);
+        
+        setCustomerAddress(addressParts.join(', '));
+      }
+    } catch (err) {
+      console.error("Error fetching customer address:", err);
+    }
+  };
+
+  // New function to fetch provider's profile image
+  const fetchProviderImage = async (providerId, token) => {
+    try {
+      if (!providerId) {
+        console.log("No provider ID available to fetch image");
+        return;
+      }
+      
+      // Fetch the provider's profile image
+      const imageResponse = await axios.get(`/api/service-providers/getServiceProviderImage/${providerId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (imageResponse.data) {
+        // Prepend base URL to make a complete image path
+        const baseURL = "http://localhost:8080"; // Backend base URL
+        const fullImageURL = `${baseURL}${imageResponse.data}`;
+        setProviderImage(fullImageURL);
+      }
+    } catch (error) {
+      console.error("Error fetching provider profile image:", error);
+    }
+  };
+  
+  const handleContactServiceProvider = () => {
+    if (booking?.service?.provider?.userAuth?.userId) {
+      const providerId = booking.service.provider.userAuth.userId;
+      const providerName = `${booking.service.provider.firstName || ''} ${booking.service.provider.lastName || ''}`.trim();
+      
+      localStorage.setItem('pendingChatUser', JSON.stringify({
+        name: providerName,
+        userId: providerId,
+        referenceId: providerId.toString()
+      }));
+      
+      window.dispatchEvent(new CustomEvent('openChatWithUser'));
+    } else {
+      alert("Cannot contact the service provider at this time. Provider information is missing.");
+    }
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -271,7 +372,11 @@ const BookingDetailPage = () => {
                     </svg>
                     <div>
                       <p className="text-sm text-gray-500">Location</p>
-                      <p className="font-medium text-gray-800">Customer Address</p>
+                      {customerAddress ? (
+                        <p className="font-medium text-gray-800">{customerAddress}</p>
+                      ) : (
+                        <p className="font-medium text-gray-800">Customer Address</p>
+                      )}
                     </div>
                   </div>
                   
@@ -292,11 +397,25 @@ const BookingDetailPage = () => {
                   <h2 className="text-lg font-semibold text-gray-800 mb-4">Service Provider</h2>
                   
                   <div className="bg-gray-50 rounded-lg p-4 flex items-center">
-                    {booking.service?.provider?.profileImage ? (
+                    {providerImage ? (
+                      <img 
+                        src={providerImage} 
+                        alt="Provider" 
+                        className="h-14 w-14 rounded-full object-cover mr-4"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          setProviderImage(null);
+                        }}
+                      />
+                    ) : booking.service?.provider?.profileImage ? (
                       <img 
                         src={`http://localhost:8080${booking.service.provider.profileImage}`} 
                         alt="Provider" 
                         className="h-14 w-14 rounded-full object-cover mr-4" 
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = null;
+                        }}
                       />
                     ) : (
                       <div className="h-14 w-14 rounded-full bg-[#495E57]/20 flex items-center justify-center mr-4">
@@ -320,7 +439,7 @@ const BookingDetailPage = () => {
                       {booking.service?.provider?.verified && (
                         <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                           <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a8 8 0 1111.314 0z" clipRule="evenodd" />
                           </svg>
                           Verified
                         </span>
@@ -342,18 +461,43 @@ const BookingDetailPage = () => {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-gray-600">Service Base Price</span>
-                        <span className="font-medium">₱{booking.service?.price?.toLocaleString('en-PH') || booking.totalCost?.toLocaleString('en-PH')}</span>
+                        <span className="font-medium">₱{feeBreakdown.basePrice.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
                       </div>
                       
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Service Fee</span>
-                        <span className="font-medium">Included</span>
+                        <div className="flex items-center">
+                          <span className="text-gray-600">Payment Processing Fee (2.5%)</span>
+                          <div className="group relative ml-2 cursor-help">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                            </svg>
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded-lg pointer-events-none">
+                              Fee charged by our payment processor
+                            </div>
+                          </div>
+                        </div>
+                        <span className="font-medium">₱{feeBreakdown.processingFee.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center">
+                          <span className="text-gray-600">Platform Fee (2.5%)</span>
+                          <div className="group relative ml-2 cursor-help">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                            </svg>
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded-lg pointer-events-none">
+                              Fee to maintain our platform and services
+                            </div>
+                          </div>
+                        </div>
+                        <span className="font-medium">₱{feeBreakdown.platformFee.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
                       </div>
                       
                       <div className="border-t border-gray-200 pt-3 mt-3">
                         <div className="flex justify-between items-center">
                           <span className="font-semibold">Total Amount</span>
-                          <span className="font-bold text-[#495E57]">₱{booking.totalCost?.toLocaleString('en-PH')}</span>
+                          <span className="font-bold text-[#495E57]">₱{feeBreakdown.totalPrice.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
                         </div>
                       </div>
                     </div>
@@ -462,12 +606,13 @@ const BookingDetailPage = () => {
               
               {booking.status?.toLowerCase() !== "cancelled" && booking.status?.toLowerCase() !== "completed" && (
                 <button 
+                  onClick={handleContactServiceProvider}
                   className="px-4 py-2 bg-[#495E57] hover:bg-[#364945] text-white rounded-md transition-colors flex items-center"
                 >
                   <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2-2h-5l-5 5v-5z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 00-2-2h-5l-5 5v-5z" />
                   </svg>
-                  Contact Support
+                  Chat with Service Provider
                 </button>
               )}
             </div>
@@ -475,13 +620,12 @@ const BookingDetailPage = () => {
         </div>
       </div>
       
-      {isReviewModalOpen && (
-        <ReviewModal 
-          booking={booking}
-          onClose={handleCloseReviewModal}
-          onSubmit={handleSubmitReview}
-        />
-      )}
+      <ReviewModal 
+        booking={booking}
+        isOpen={isReviewModalOpen}
+        onClose={handleCloseReviewModal}
+        onSubmit={handleSubmitReview}
+      />
     </div>
   );
 };

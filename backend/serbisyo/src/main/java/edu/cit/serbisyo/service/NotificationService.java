@@ -35,9 +35,20 @@ public class NotificationService {
     public NotificationEntity updateNotification(Long notificationId, NotificationEntity updatedNotification) {
         NotificationEntity existingNotification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new RuntimeException("Notification not found"));
-        existingNotification.setType(updatedNotification.getType());
-        existingNotification.setMessage(updatedNotification.getMessage());
+        
+        // Update only the fields that are provided (not null)
+        if (updatedNotification.getType() != null) {
+            existingNotification.setType(updatedNotification.getType());
+        }
+        
+        // Don't overwrite the message if it's null in the update
+        if (updatedNotification.getMessage() != null) {
+            existingNotification.setMessage(updatedNotification.getMessage());
+        }
+        
+        // Always update the read status
         existingNotification.setRead(updatedNotification.isRead());
+        
         return notificationRepository.save(existingNotification);
     }
 

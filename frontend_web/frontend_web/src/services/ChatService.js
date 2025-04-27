@@ -3,6 +3,7 @@ import NotificationService from './NotificationService';
 
 // Remove absolute URL to use relative URLs with Vite proxy
 const API_URL = ''; 
+const baseURL = "http://localhost:8080"; // Backend base URL for image paths
 
 // Mock data for fallback when API is unavailable
 const MOCK_USERS = [
@@ -74,33 +75,49 @@ const ChatService = {
 
       // Process customer data if request was successful
       const customers = customersResponse.status === 'fulfilled'
-        ? (customersResponse.value?.data || []).map(customer => ({
-            userId: customer.userAuth?.userId,
-            userName: customer.userAuth?.userName,
-            firstName: customer.firstName || '',
-            lastName: customer.lastName || '',
-            phoneNumber: customer.phoneNumber,
-            role: 'Customer',
-            profileImage: customer.profileImage,
-            lastMessage: "No messages yet",
-            lastMessageTime: ""
-          })).filter(user => user.userId)
+        ? (customersResponse.value?.data || []).map(customer => {
+            // Format profile image URL
+            let profileImage = customer.profileImage;
+            if (profileImage && !profileImage.startsWith('http')) {
+              profileImage = `${baseURL}${profileImage}`;
+            }
+            
+            return {
+              userId: customer.userAuth?.userId,
+              userName: customer.userAuth?.userName,
+              firstName: customer.firstName || '',
+              lastName: customer.lastName || '',
+              phoneNumber: customer.phoneNumber,
+              role: 'Customer',
+              profileImage: profileImage,
+              lastMessage: "No messages yet",
+              lastMessageTime: ""
+            };
+          }).filter(user => user.userId)
         : [];
 
       // Process service provider data if request was successful
       const providers = providersResponse.status === 'fulfilled'
-        ? (providersResponse.value?.data || []).map(provider => ({
-            userId: provider.userAuth?.userId,
-            userName: provider.userAuth?.userName,
-            firstName: provider.firstName || '',
-            lastName: provider.lastName || '',
-            phoneNumber: provider.phoneNumber,
-            businessName: provider.businessName,
-            role: 'Service Provider',
-            profileImage: provider.profileImage,
-            lastMessage: "No messages yet",
-            lastMessageTime: ""
-          })).filter(user => user.userId)
+        ? (providersResponse.value?.data || []).map(provider => {
+            // Format profile image URL
+            let profileImage = provider.serviceProviderImage;
+            if (profileImage && !profileImage.startsWith('http')) {
+              profileImage = `${baseURL}${profileImage}`;
+            }
+            
+            return {
+              userId: provider.userAuth?.userId,
+              userName: provider.userAuth?.userName,
+              firstName: provider.firstName || '',
+              lastName: provider.lastName || '',
+              phoneNumber: provider.phoneNumber,
+              businessName: provider.businessName,
+              role: 'Service Provider',
+              profileImage: profileImage,
+              lastMessage: "No messages yet",
+              lastMessageTime: ""
+            };
+          }).filter(user => user.userId)
         : [];
 
       return [...customers, ...providers];
@@ -195,6 +212,12 @@ const ChatService = {
         const matchingCustomer = customers.find(customer => customer.userAuth?.userId === userId);
         
         if (matchingCustomer) {
+          // Format profile image URL
+          let profileImage = matchingCustomer.profileImage;
+          if (profileImage && !profileImage.startsWith('http')) {
+            profileImage = `${baseURL}${profileImage}`;
+          }
+          
           return {
             userId: matchingCustomer.userAuth?.userId,
             userName: matchingCustomer.userAuth?.userName,
@@ -202,7 +225,7 @@ const ChatService = {
             lastName: matchingCustomer.lastName || '',
             phoneNumber: matchingCustomer.phoneNumber,
             role: 'Customer',
-            profileImage: matchingCustomer.profileImage
+            profileImage: profileImage
           };
         }
       }
@@ -213,6 +236,12 @@ const ChatService = {
         const matchingProvider = providers.find(provider => provider.userAuth?.userId === userId);
         
         if (matchingProvider) {
+          // Format profile image URL
+          let profileImage = matchingProvider.serviceProviderImage;
+          if (profileImage && !profileImage.startsWith('http')) {
+            profileImage = `${baseURL}${profileImage}`;
+          }
+          
           return {
             userId: matchingProvider.userAuth?.userId,
             userName: matchingProvider.userAuth?.userName,
@@ -221,7 +250,7 @@ const ChatService = {
             phoneNumber: matchingProvider.phoneNumber,
             businessName: matchingProvider.businessName,
             role: 'Service Provider',
-            profileImage: matchingProvider.profileImage
+            profileImage: profileImage
           };
         }
       }
@@ -268,7 +297,33 @@ const ChatService = {
       // Try to use the dedicated endpoint
       try {
         const response = await axios.get(`/api/messages/conversation-partners/${currentUserId}`, authHeaders);
-        return response.data;
+        
+        // Get the user roles for each partner to help with profile image fetching
+        const partners = response.data || [];
+        
+        if (partners.length > 0) {
+          const enhancedPartners = await Promise.all(partners.map(async (partner) => {
+            try {
+              if (partner.userId) {
+                const userResponse = await axios.get(`/api/user-auth/getById/${partner.userId}`, authHeaders);
+                if (userResponse.data) {
+                  return {
+                    ...partner,
+                    role: userResponse.data.role
+                  };
+                }
+              }
+              return partner;
+            } catch (err) {
+              console.warn(`Could not fetch role for user ${partner.userId}:`, err);
+              return partner;
+            }
+          }));
+          
+          return enhancedPartners;
+        }
+        
+        return partners;
       } catch (error) {
         console.warn('Conversation partners endpoint not available, falling back to alternative method');
         

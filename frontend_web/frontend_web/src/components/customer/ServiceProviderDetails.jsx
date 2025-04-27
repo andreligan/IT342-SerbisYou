@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import ServiceDetailsModal from "../modals/ServiceDetailsModal";
+import Footer from "../Footer";
 
 const BASE_URL = "http://localhost:8080";
 
@@ -323,7 +324,7 @@ const ServiceProviderDetails = () => {
   });
 
   return (
-    <div className="bg-gray-50 min-h-screen pb-12">
+    <div className="bg-gray-50 min-h-screen">
       {/* Hero section with provider details */}
       <div className="relative bg-[#495E57] text-white">
         {/* Background decorative elements */}
@@ -508,7 +509,7 @@ const ServiceProviderDetails = () => {
               </div>
             </div>
           ) : providerServices.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {sortServices(providerServices).map(service => (
                 <div
                   key={service.serviceId}
@@ -610,6 +611,8 @@ const ServiceProviderDetails = () => {
           )}
         </div>
       </div>
+
+      <Footer/>
 
       <ServiceDetailsModal
         isOpen={isModalOpen}

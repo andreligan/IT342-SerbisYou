@@ -1,6 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const NotificationItem = ({ notification, onMarkAsRead }) => {
+  const navigate = useNavigate();
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+
   const getTypeIcon = (type) => {
     switch (type) {
       case 'message':
@@ -61,20 +66,76 @@ const NotificationItem = ({ notification, onMarkAsRead }) => {
     return `${Math.floor(diffInSeconds / 86400)} days ago`;
   };
 
-  const handleClick = () => {
+  const handleClick = async () => {
     // If notification is not read, mark it as read
     if (!notification.read && onMarkAsRead) {
       onMarkAsRead(notification.id);
     }
     
     // Handle navigation based on notification type
-    // You can implement navigation to different parts of the app 
-    // based on referenceType and referenceId
+    if (notification.type === 'message' && notification.referenceId) {
+      // For message notifications, extract sender info and open chat
+      const messageContent = notification.message || '';
+      const senderMatch = messageContent.match(/^([^:]+) sent you a message/);
+      const senderName = senderMatch ? senderMatch[1] : 'Unknown';
+      
+      // Trigger the chat to open with this sender
+      // We'll store the sender info in localStorage for the ChatWindow to pick up
+      localStorage.setItem('pendingChatUser', JSON.stringify({
+        name: senderName,
+        referenceId: notification.referenceId,
+        messageId: notification.id
+      }));
+      
+      // Dispatch a custom event to notify components that need to open the chat
+      window.dispatchEvent(new CustomEvent('openChatWithUser'));
+      
+      // If we're on the notifications page, navigate to home to ensure the chat icon is visible
+      if (window.location.pathname === '/notifications') {
+        const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
+        if (userRole?.toLowerCase() === 'customer') {
+          navigate('/customerHomePage');
+        } else if (userRole?.toLowerCase() === 'service provider') {
+          navigate('/serviceProviderHomePage');
+        }
+      }
+    } else if (notification.type === 'review' && notification.referenceId) {
+      // For review notifications, navigate to the service details page
+      try {
+        setIsLoadingDetails(true);
+        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        
+        // Get the booking information using the referenceId (which is the booking ID)
+        const bookingResponse = await axios.get(`/api/bookings/getById/${notification.referenceId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (bookingResponse.data && bookingResponse.data.service) {
+          // Navigate to the service details page
+          const serviceId = bookingResponse.data.service.serviceId;
+          navigate(`/service/${serviceId}`);
+        } else {
+          console.error('Could not find service associated with this review notification');
+        }
+      } catch (error) {
+        console.error('Failed to fetch service details for review notification:', error);
+      } finally {
+        setIsLoadingDetails(false);
+      }
+    } else if (notification.type === 'booking' && notification.referenceId) {
+      // For booking notifications, navigate to the booking details page
+      navigate(`/booking-details/${notification.referenceId}`);
+    } else if (notification.type === 'transaction' && notification.referenceId) {
+      // For transaction notifications, you could navigate to a transaction page
+      // navigate(`/transaction/${notification.referenceId}`);
+    }
   };
 
   return (
     <div 
-      className={`flex items-start p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${!notification.read ? 'bg-blue-50' : ''}`}
+      className={`flex items-start p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
+        isLoadingDetails ? 'opacity-50 pointer-events-none' : ''
+      } ${!notification.read ? 'bg-blue-50' : ''}`}
       onClick={handleClick}
     >
       <div className="mr-3">
@@ -82,7 +143,7 @@ const NotificationItem = ({ notification, onMarkAsRead }) => {
       </div>
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-medium ${!notification.read ? 'text-blue-600' : 'text-gray-900'}`}>
-          {notification.message}
+          {notification.message || `New ${notification.type?.toLowerCase() || "general"} notification`}
         </p>
         <p className="text-xs text-gray-500 mt-1">{formatTimeAgo(notification.timestamp)}</p>
         {notification.actionLabel && (
@@ -97,6 +158,9 @@ const NotificationItem = ({ notification, onMarkAsRead }) => {
           </button>
         )}
       </div>
+      {isLoadingDetails && (
+        <div className="h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full animate-spin mr-2"></div>
+      )}
       {!notification.read && (
         <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
       )}
