@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 
-const ChangePasswordContent = () => {
+const ChangePasswordContent = ({ interceptSuccessMessage, isMandatory }) => {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -47,7 +47,15 @@ const ChangePasswordContent = () => {
         }
       );
 
-      setSuccessMessage(response.data || "Password updated successfully.");
+      const successMsg = response.data || "Password updated successfully.";
+      
+      // If this is a mandatory change and we have an interceptor, use it
+      if (isMandatory && interceptSuccessMessage) {
+        setSuccessMessage(interceptSuccessMessage(successMsg));
+      } else {
+        setSuccessMessage(successMsg);
+      }
+      
       setErrorMessage("");
       setCurrentPassword("");
       setNewPassword("");
@@ -63,14 +71,18 @@ const ChangePasswordContent = () => {
 
   const renderPasswordField = (label, value, setValue, showPassword, setShowPassword, placeholder) => (
     <div className="mb-4 relative">
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {isMandatory && label === "Current Password" ? "Default Password (123456)" : label}
+      </label>
       <div className="relative">
         <input
           type={showPassword ? "text" : "password"}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           className="w-full border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-[#F4CE14]"
-          placeholder={placeholder}
+          placeholder={isMandatory && label === "Current Password" 
+            ? "Enter default password (123456)" 
+            : placeholder}
         />
         <button
           type="button"
@@ -100,11 +112,15 @@ const ChangePasswordContent = () => {
       {/* Header */}
       <div className="bg-[#495E57] text-white p-6 rounded-t-lg">
         <h2 className="text-2xl font-bold">Change Password</h2>
-        <p className="text-gray-200 mt-1">Update your account password securely</p>
+        <p className="text-gray-200 mt-1">
+          {isMandatory 
+            ? "You need to change your default password before continuing"
+            : "Update your account password securely"}
+        </p>
       </div>
 
       {/* Alerts */}
-      {successMessage && (
+      {successMessage && !isMandatory && (
         <div className="bg-green-50 border-l-4 border-green-500 p-4 mt-4 text-green-700">
           {successMessage}
         </div>
@@ -117,14 +133,28 @@ const ChangePasswordContent = () => {
 
       {/* Form */}
       <div className="mt-6 max-w-2xl mx-auto">
-        {renderPasswordField("Current Password", currentPassword, setCurrentPassword, showCurrentPassword, setShowCurrentPassword, "Enter current password")}
-        {renderPasswordField("New Password", newPassword, setNewPassword, showNewPassword, setShowNewPassword, "Enter new password")}
+        {renderPasswordField(
+          "Current Password",
+          currentPassword,
+          setCurrentPassword,
+          showCurrentPassword,
+          setShowCurrentPassword,
+          "Enter current password"
+        )}
+        {renderPasswordField(
+          "New Password",
+          newPassword,
+          setNewPassword,
+          showNewPassword,
+          setShowNewPassword,
+          "Enter new password"
+        )}
         {renderPasswordField(
           "Confirm New Password",
           confirmPassword,
           setConfirmPassword,
-          showConfirmPassword, // Pass the correct state
-          setShowConfirmPassword, // Pass the correct setter function
+          showConfirmPassword, 
+          setShowConfirmPassword,
           "Confirm new password"
         )}
 

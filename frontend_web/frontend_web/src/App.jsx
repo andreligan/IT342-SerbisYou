@@ -33,6 +33,8 @@ import NotificationsPage from "./components/notifications/NotificationsPage";
 import PaymentSuccessPage from './components/payment/PaymentSuccessPage';
 import PaymentCancelPage from './components/payment/PaymentCancelPage';
 import { motion, AnimatePresence } from 'framer-motion';
+import MandatoryPasswordChange from './components/MandatoryPasswordChange';
+import RouteGuard from './components/RouteGuard';
 
 // Protected Route component for role-based access control
 const ProtectedRoute = ({ element, allowedRoles }) => {
@@ -403,164 +405,167 @@ function App() {
   };
 
   return (
-    <>
-      {/* Only render header when not on booking page or add service page */}
-      {!isHeaderHidden && (
-        <header className="flex justify-between items-center px-4 py-2 bg-white shadow-md sticky top-0 z-30">
-          <div 
-            className="flex items-center cursor-pointer" 
-            onClick={handleLogoClick}
-            aria-label="Go to homepage"
-          >
-            <img src={serbisyoLogo} alt="SerbisYo Logo" className="h-16 ml-4 mr-2" />
-          </div>
-          <div>
-            {!isAuthenticated ? (
-              <div className="flex gap-4 mr-6">
-                <button
-                  onClick={() => setIsSignupPopupVisible(true)}
-                  className="px-5 py-2 bg-[#F4CE14] text-[#495E57] font-medium rounded-lg hover:bg-yellow-500 transition-colors duration-200 shadow-sm"
-                >
-                  Sign Up
-                </button>
-                <button
-                  onClick={() => setIsLoginPopupVisible(true)}
-                  className="px-5 py-2 bg-[#495E57] text-white font-medium rounded-lg hover:bg-[#3a4a45] transition-colors duration-200 shadow-sm"
-                >
-                  Sign In
-                </button>
-              </div>
-            ) : (
-              renderNavigationLinks()
-            )}
-          </div>
-        </header>
-      )}
-      <Routes>
-        <Route 
-          path="/" 
-          element={
-            isAuthenticated ? 
-              <Navigate 
-                to={
-                  userRole?.toLowerCase() === "customer" 
-                    ? "/customerHomePage" 
-                    : userRole?.toLowerCase() === "admin"
-                      ? "/adminHomePage"
-                      : "/serviceProviderHomePage"
-                } 
-                replace 
-              /> 
-              : <LandingPage />
-          } 
-        />
-        <Route path="/signup/*" element={<SignupStepWizard />} />
-        <Route path="/oauth-role-selection" element={<OAuthRoleSelection />} />
-        <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
-        <Route
-          path="/customerHomePage"
-          element={<ProtectedRoute element={<CustomerHomePage />} allowedRoles={["customer"]} />}
-        />
-        <Route
-          path="/customerProfile"
-          element={<ProtectedRoute element={<CustomerProfilePage />} allowedRoles={["customer"]} />}
-        />
-        <Route
-          path="/customerProfile/:tab"
-          element={<ProtectedRoute element={<CustomerProfilePage />} allowedRoles={["customer"]} />}
-        />
-        <Route
-          path="/browseServices"
-          element={<ProtectedRoute element={<BrowseServicesPage />} allowedRoles={["customer"]} />}
-        />
-        <Route
-          path="/bookService"
-          element={<ProtectedRoute element={<BookServicePage />} allowedRoles={["customer"]} />}
-        />
-        <Route
-          path="/serviceProviderHomePage"
-          element={<ProtectedRoute element={<ServiceProviderHomePage />} allowedRoles={["service provider"]} />}
-        />
-        <Route
-          path="/plumbingServices"
-          element={<ProtectedRoute element={<PlumbingServicesPage />} allowedRoles={["customer"]} />}
-        />
-        <Route
-          path="/addService"
-          element={<ProtectedRoute element={<AddServicePage />} allowedRoles={["service provider"]} />}
-        />
-        <Route
-          path="/serviceProviderProfile"
-          element={<ProtectedRoute element={<ServiceProviderProfile />} allowedRoles={["service provider"]} />}
-        />
-        <Route
-          path="/serviceProviderProfile/:tab"
-          element={<ProtectedRoute element={<ServiceProviderProfile />} allowedRoles={["service provider"]} />}
-        />
-        <Route
-          path="/service/:serviceId"
-          element={<ProtectedRoute element={<ServiceDetails />} allowedRoles={["service provider"]} />}
-        />
-        <Route
-          path="/notifications"
-          element={<ProtectedRoute element={<NotificationsPage />} allowedRoles={["customer", "service provider"]} />}
-        />
-        <Route
-          path="/providerDetails/:providerId"
-          element={<ProtectedRoute element={<ServiceProviderDetails />} allowedRoles={["customer"]} />}
-        />
-        <Route path="/payment-success" element={<PaymentSuccessPage />} />
-        <Route path="/payment-cancel" element={<PaymentCancelPage />} />
-        <Route path="/booking-details/:bookingId" element={<BookingDetailPage />} /> {/* Add BookingDetailPage route */}
-        <Route
-          path="/serviceProviderBookings"
-          element={<ProtectedRoute element={<ServiceProviderBookings />} allowedRoles={["service provider"]} />}
-        />
-        <Route
-          path="/provider-booking-details/:bookingId"
-          element={<ProtectedRoute element={<BookingDetailPage />} allowedRoles={["service provider"]} />}
-        />
-        <Route
-          path="/adminHomePage"
-          element={<ProtectedRoute element={<AdminHomePage />} allowedRoles={["admin"]} />}
-        />
-        <Route
-          path="/adminHomePage/users"
-          element={<ProtectedRoute element={<UserManagement />} allowedRoles={["admin"]} />}
-        />
-        <Route
-          path="/adminHomePage/categories"
-          element={<ProtectedRoute element={<CategoryManagement />} allowedRoles={["admin"]} />}
-        />
-        <Route
-          path="/adminHomePage/verification"
-          element={<ProtectedRoute element={<ProviderVerification />} allowedRoles={["admin"]} />}
-        />
-      </Routes>
+    <RouteGuard>
+      <>
+        {/* Only render header when not on booking page or add service page */}
+        {!isHeaderHidden && (
+          <header className="flex justify-between items-center px-4 py-2 bg-white shadow-md sticky top-0 z-30">
+            <div 
+              className="flex items-center cursor-pointer" 
+              onClick={handleLogoClick}
+              aria-label="Go to homepage"
+            >
+              <img src={serbisyoLogo} alt="SerbisYo Logo" className="h-16 ml-4 mr-2" />
+            </div>
+            <div>
+              {!isAuthenticated ? (
+                <div className="flex gap-4 mr-6">
+                  <button
+                    onClick={() => setIsSignupPopupVisible(true)}
+                    className="px-5 py-2 bg-[#F4CE14] text-[#495E57] font-medium rounded-lg hover:bg-yellow-500 transition-colors duration-200 shadow-sm"
+                  >
+                    Sign Up
+                  </button>
+                  <button
+                    onClick={() => setIsLoginPopupVisible(true)}
+                    className="px-5 py-2 bg-[#495E57] text-white font-medium rounded-lg hover:bg-[#3a4a45] transition-colors duration-200 shadow-sm"
+                  >
+                    Sign In
+                  </button>
+                </div>
+              ) : (
+                renderNavigationLinks()
+              )}
+            </div>
+          </header>
+        )}
+        <Routes>
+          <Route 
+            path="/" 
+            element={
+              isAuthenticated ? 
+                <Navigate 
+                  to={
+                    userRole?.toLowerCase() === "customer" 
+                      ? "/customerHomePage" 
+                      : userRole?.toLowerCase() === "admin"
+                        ? "/adminHomePage"
+                        : "/serviceProviderHomePage"
+                  } 
+                  replace 
+                /> 
+                : <LandingPage />
+            } 
+          />
+          <Route path="/signup/*" element={<SignupStepWizard />} />
+          <Route path="/oauth-role-selection" element={<OAuthRoleSelection />} />
+          <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
+          <Route
+            path="/customerHomePage"
+            element={<ProtectedRoute element={<CustomerHomePage />} allowedRoles={["customer"]} />}
+          />
+          <Route
+            path="/customerProfile"
+            element={<ProtectedRoute element={<CustomerProfilePage />} allowedRoles={["customer"]} />}
+          />
+          <Route
+            path="/customerProfile/:tab"
+            element={<ProtectedRoute element={<CustomerProfilePage />} allowedRoles={["customer"]} />}
+          />
+          <Route
+            path="/browseServices"
+            element={<ProtectedRoute element={<BrowseServicesPage />} allowedRoles={["customer"]} />}
+          />
+          <Route
+            path="/bookService"
+            element={<ProtectedRoute element={<BookServicePage />} allowedRoles={["customer"]} />}
+          />
+          <Route
+            path="/serviceProviderHomePage"
+            element={<ProtectedRoute element={<ServiceProviderHomePage />} allowedRoles={["service provider"]} />}
+          />
+          <Route
+            path="/plumbingServices"
+            element={<ProtectedRoute element={<PlumbingServicesPage />} allowedRoles={["customer"]} />}
+          />
+          <Route
+            path="/addService"
+            element={<ProtectedRoute element={<AddServicePage />} allowedRoles={["service provider"]} />}
+          />
+          <Route
+            path="/serviceProviderProfile"
+            element={<ProtectedRoute element={<ServiceProviderProfile />} allowedRoles={["service provider"]} />}
+          />
+          <Route
+            path="/serviceProviderProfile/:tab"
+            element={<ProtectedRoute element={<ServiceProviderProfile />} allowedRoles={["service provider"]} />}
+          />
+          <Route
+            path="/service/:serviceId"
+            element={<ProtectedRoute element={<ServiceDetails />} allowedRoles={["service provider"]} />}
+          />
+          <Route
+            path="/notifications"
+            element={<ProtectedRoute element={<NotificationsPage />} allowedRoles={["customer", "service provider"]} />}
+          />
+          <Route
+            path="/providerDetails/:providerId"
+            element={<ProtectedRoute element={<ServiceProviderDetails />} allowedRoles={["customer"]} />}
+          />
+          <Route path="/payment-success" element={<PaymentSuccessPage />} />
+          <Route path="/payment-cancel" element={<PaymentCancelPage />} />
+          <Route path="/booking-details/:bookingId" element={<BookingDetailPage />} /> {/* Add BookingDetailPage route */}
+          <Route
+            path="/serviceProviderBookings"
+            element={<ProtectedRoute element={<ServiceProviderBookings />} allowedRoles={["service provider"]} />}
+          />
+          <Route
+            path="/provider-booking-details/:bookingId"
+            element={<ProtectedRoute element={<BookingDetailPage />} allowedRoles={["service provider"]} />}
+          />
+          <Route
+            path="/adminHomePage"
+            element={<ProtectedRoute element={<AdminHomePage />} allowedRoles={["admin"]} />}
+          />
+          <Route
+            path="/adminHomePage/users"
+            element={<ProtectedRoute element={<UserManagement />} allowedRoles={["admin"]} />}
+          />
+          <Route
+            path="/adminHomePage/categories"
+            element={<ProtectedRoute element={<CategoryManagement />} allowedRoles={["admin"]} />}
+          />
+          <Route
+            path="/adminHomePage/verification"
+            element={<ProtectedRoute element={<ProviderVerification />} allowedRoles={["admin"]} />}
+          />
+          <Route path="/change-password" element={<MandatoryPasswordChange />} />
+        </Routes>
 
-      <SignupOptionsPopup
-        open={isSignupPopupVisible}
-        onClose={() => setIsSignupPopupVisible(false)}
-      />
+        <SignupOptionsPopup
+          open={isSignupPopupVisible}
+          onClose={() => setIsSignupPopupVisible(false)}
+        />
 
-      <LoginPopup
-        open={isLoginPopupVisible}
-        onClose={() => setIsLoginPopupVisible(false)}
-      />
+        <LoginPopup
+          open={isLoginPopupVisible}
+          onClose={() => setIsLoginPopupVisible(false)}
+        />
 
-      <LogoutConfirmationPopup
-        open={isLogoutPopupVisible}
-        onClose={() => setIsLogoutPopupVisible(false)}
-        onConfirm={confirmLogout}
-      />
+        <LogoutConfirmationPopup
+          open={isLogoutPopupVisible}
+          onClose={() => setIsLogoutPopupVisible(false)}
+          onConfirm={confirmLogout}
+        />
 
-      {isAuthenticated && (
-        <>
-          <ChatIcon isOpen={isChatOpen} onClick={toggleChat} />
-          {isChatOpen && <ChatWindow onClose={toggleChat} />}
-        </>
-      )}
-    </>
+        {isAuthenticated && (
+          <>
+            <ChatIcon isOpen={isChatOpen} onClick={toggleChat} />
+            {isChatOpen && <ChatWindow onClose={toggleChat} />}
+          </>
+        )}
+      </>
+    </RouteGuard>
   );
 }
 

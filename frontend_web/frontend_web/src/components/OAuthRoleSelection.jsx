@@ -89,12 +89,11 @@ function OAuthRoleSelection() {
       localStorage.setItem('userRole', response.data.role);
       localStorage.setItem('isAuthenticated', 'true');
       
-      // Redirect based on role
-      if (role === 'Customer') {
-        navigate('/customerHomePage');
-      } else {
-        navigate('/serviceProviderHomePage');
-      }
+      // Add flag to indicate new OAuth user that needs to change password
+      localStorage.setItem('isOAuthNew', 'true');
+      
+      // Redirect to mandatory password change page instead of homepage
+      navigate('/change-password');
       
     } catch (err) {
       console.error('Registration error:', err);
