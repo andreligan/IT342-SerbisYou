@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import BaseModal from "../shared/BaseModal";
@@ -24,6 +24,26 @@ const ServiceDetailsModal = ({
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [reviewError, setReviewError] = useState(null);
   const [customerImages, setCustomerImages] = useState({}); // State for storing customer profile images
+  const [reviewFilter, setReviewFilter] = useState('newest'); // State for review filter
+
+  const sortedReviews = useMemo(() => {
+    if (!reviews || !reviews.length) return [];
+    
+    const reviewsCopy = [...reviews];
+    
+    switch(reviewFilter) {
+      case 'newest':
+        return reviewsCopy.sort((a, b) => new Date(b.reviewDate) - new Date(a.reviewDate));
+      case 'oldest':
+        return reviewsCopy.sort((a, b) => new Date(a.reviewDate) - new Date(b.reviewDate));
+      case 'highest':
+        return reviewsCopy.sort((a, b) => b.rating - a.rating);
+      case 'lowest':
+        return reviewsCopy.sort((a, b) => a.rating - b.rating);
+      default:
+        return reviewsCopy;
+    }
+  }, [reviews, reviewFilter]);
 
   useEffect(() => {
     if (isOpen) {
@@ -373,14 +393,14 @@ const ServiceDetailsModal = ({
                 </p>
               </div>
               <div className="mb-6">
-                <h3 className="text-lg font-semibold text-[#495E57] mb-3">What's Included</h3>
+                <h3 className="text-lg font-semibold text-[#495E57] mb-3 flex justify-start">What's Included</h3>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <ul className="space-y-2">
                     <li className="flex items-start">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
-                      <span className="text-gray-700">Professional {service.categoryName} service</span>
+                      <span className="text-gray-700">{service.categoryName} service</span>
                     </li>
                     <li className="flex items-start">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
@@ -398,7 +418,7 @@ const ServiceDetailsModal = ({
                 </div>
               </div>
               <div className="mb-6 bg-gray-50 p-4 rounded-lg">
-                <h3 className="text-lg font-semibold text-[#495E57] mb-3">About the Provider</h3>
+                <h3 className="text-lg font-semibold text-[#495E57] mb-3 flex justify-start">About the Provider</h3>
                 <div 
                   className="flex items-center cursor-pointer" 
                   onClick={handleProviderClick}
@@ -418,7 +438,7 @@ const ServiceDetailsModal = ({
                         </svg>
                       )}
                     </h4>
-                    <p className="text-sm text-gray-500">{service.provider?.businessName || "Independent Service Provider"}</p>
+                    <p className="text-sm text-gray-500 flex justify-start">{service.provider?.businessName || "Independent Service Provider"}</p>
                   </div>
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 ml-auto" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
@@ -433,18 +453,24 @@ const ServiceDetailsModal = ({
                   <span className="text-gray-700 font-medium">Service Price</span>
                   <span className="text-[#495E57] font-bold">₱{service.price}</span>
                 </div>
-                <div className="mb-6 text-sm text-gray-500">
+                <div className="mb-2 text-sm text-gray-500">
                   <p className="flex items-center gap-2 mb-2">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#F4CE14]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Book now to secure your preferred time slot
+                    Book now
+                  </p>
+                  <p className="flex items-center gap-2 mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#F4CE14]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Secure preferred time slot
                   </p>
                   <p className="flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#F4CE14]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Professional and reliable service
+                    Reliable service
                   </p>
                 </div>
               </div>
@@ -494,7 +520,7 @@ const ServiceDetailsModal = ({
                   <div className="flex items-center justify-between bg-white p-3 rounded-lg shadow-sm">
                     <div className="flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#495E57] mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2-2h-1C9.716 21 3 14.284 3 6V5z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                       </svg>
                       <span className="text-sm">Contact</span>
                     </div>
@@ -519,12 +545,9 @@ const ServiceDetailsModal = ({
             <div className="md:w-2/3">
               <div className="bg-white p-5 rounded-xl border border-gray-200 mb-6">
                 <h3 className="text-xl font-bold text-[#495E57] mb-4 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
                   About the Provider
                 </h3>
-                <p className="text-gray-600 mb-4 leading-relaxed">
+                <p className="text-gray-600 mb-4 leading-relaxed text-left">
                   {service.provider?.firstName} {service.provider?.lastName} is a professional {service.categoryName} service provider 
                   {service.provider?.yearsOfExperience ? ` with ${service.provider.yearsOfExperience} years of experience` : ''}.
                   They specialize in providing high-quality services and are committed to customer satisfaction.
@@ -541,16 +564,13 @@ const ServiceDetailsModal = ({
               </div>
               <div className="bg-white p-5 rounded-xl border border-gray-200">
                 <h3 className="text-xl font-bold text-[#495E57] mb-4 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                  </svg>
-                  Services by {service.provider?.firstName}
+                  Service by {service.provider?.firstName}
                 </h3>
-                <div className="bg-[#495E57]/5 p-4 rounded-lg">
+                <div className="bg-[#FFFBEB] p-4 rounded-lg ">
                   <div className="flex justify-between items-center">
                     <div>
                       <h4 className="font-medium text-[#495E57]">{service.serviceName}</h4>
-                      <p className="text-sm text-gray-600">{service.categoryName}</p>
+                      <p className="text-sm text-gray-600 text-left">{service.categoryName}</p>
                     </div>
                     <span className="text-lg font-bold text-[#495E57]">₱{service.price}</span>
                   </div>
@@ -601,7 +621,11 @@ const ServiceDetailsModal = ({
                     </div>
                     
                     <div className="flex gap-1">
-                      <select className="text-sm border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-[#F4CE14] focus:border-[#F4CE14]">
+                      <select 
+                        className="text-sm border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-[#F4CE14] focus:border-[#F4CE14]"
+                        value={reviewFilter}
+                        onChange={(e) => setReviewFilter(e.target.value)}
+                      >
                         <option value="newest">Newest First</option>
                         <option value="oldest">Oldest First</option>
                         <option value="highest">Highest Rated</option>
@@ -611,7 +635,7 @@ const ServiceDetailsModal = ({
                   </div>
                 </motion.div>
                 
-                {reviews.map((review, index) => (
+                {sortedReviews.map((review, index) => (
                   <motion.div 
                     key={index} 
                     className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200"
@@ -672,7 +696,7 @@ const ServiceDetailsModal = ({
                         </div>
                         
                         <div className="mt-3">
-                          <p className="text-gray-700 leading-relaxed">
+                          <p className="text-gray-700 leading-relaxed text-left">
                             {review.comment}
                           </p>
                         </div>

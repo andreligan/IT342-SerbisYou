@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios'; // Add this import
 import ChatHeader from './ChatHeader';
 import ChatList from './ChatList';
@@ -114,20 +115,80 @@ function ChatWindow({ onClose }) {
     };
   }, []);
 
+  // Animation variants for the chat window
+  const chatWindowVariants = {
+    hidden: { opacity: 0, y: 20, scale: 0.95 },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      scale: 1,
+      transition: {
+        type: "spring",
+        damping: 25,
+        stiffness: 300
+      }
+    },
+    exit: { 
+      opacity: 0, 
+      y: 20, 
+      scale: 0.95,
+      transition: { 
+        duration: 0.2 
+      }
+    }
+  };
+
+  // Animation variants for view transitions - ONLY for content
+  const contentVariants = {
+    hidden: { opacity: 0, x: 20 },
+    visible: { 
+      opacity: 1, 
+      x: 0,
+      transition: {
+        type: "tween",
+        ease: "easeOut",
+        duration: 0.3
+      }
+    },
+    exit: { 
+      opacity: 0, 
+      x: -20,
+      transition: { 
+        duration: 0.2 
+      }
+    }
+  };
+
   return (
-    <div 
+    <motion.div 
       ref={chatWindowRef}
-      className="fixed bottom-6 right-6 z-10 w-96 h-5/6 bg-white rounded-lg shadow-xl flex flex-col overflow-hidden"
+      className="fixed bottom-6 right-25 z-10 w-105 h-5/6 bg-white rounded-lg shadow-xl flex flex-col overflow-hidden"
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+      variants={chatWindowVariants}
     >
+      {/* The ChatHeader is now OUTSIDE the AnimatePresence to keep it static */}
       {view === 'conversation' ? (
-        <Conversation 
-          user={selectedUser} 
-          messages={selectedUser?.messages?.length > 0 ? selectedUser.messages : []}
-          onBack={handleBackToList}
-          onClose={onClose}
-          onMessageSent={() => setRefreshList(prev => prev + 1)}
-        />
+        // For conversation view, only render Conversation component with its own header
+        <motion.div 
+          key="conversation"
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          variants={contentVariants}
+          className="flex-1 h-full overflow-hidden" // Ensure full height and prevent overflow
+        >
+          <Conversation 
+            user={selectedUser} 
+            messages={selectedUser?.messages?.length > 0 ? selectedUser.messages : []}
+            onBack={handleBackToList}
+            onClose={onClose}
+            onMessageSent={() => setRefreshList(prev => prev + 1)}
+          />
+        </motion.div>
       ) : (
+        // For other views (list/search), keep the current structure
         <>
           <ChatHeader 
             title={view === 'search' ? 'Search Users' : 'Chat'} 
@@ -136,21 +197,41 @@ function ChatWindow({ onClose }) {
             onSearchChange={(e) => setSearchQuery(e.target.value)}
           />
           
-          {view === 'search' ? (
-            <UserSearch 
-              onSelectUser={handleUserSelect}
-              searchQuery={searchQuery}
-            />
-          ) : (
-            <ChatList 
-              onSelectUser={handleUserSelect}
-              searchQuery=""
-              key={refreshList} // Add key to force refresh when sending a message
-            />
-          )}
+          <AnimatePresence mode="wait">
+            {view === 'search' ? (
+              <motion.div
+                key="search"
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                variants={contentVariants}
+                className="flex-1 overflow-hidden"
+              >
+                <UserSearch 
+                  onSelectUser={handleUserSelect}
+                  searchQuery={searchQuery}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="list"
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                variants={contentVariants}
+                className="flex-1 overflow-hidden"
+              >
+                <ChatList 
+                  onSelectUser={handleUserSelect}
+                  searchQuery=""
+                  key={refreshList} // Add key to force refresh when sending a message
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
-    </div>
+    </motion.div>
   );
 }
 

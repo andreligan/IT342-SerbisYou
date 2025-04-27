@@ -42,6 +42,10 @@ function MyServicesContent() {
   // State for service images
   const [serviceImages, setServiceImages] = useState({});
 
+  // State for expanded image modal
+  const [expandedImage, setExpandedImage] = useState(null);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -406,6 +410,14 @@ function MyServicesContent() {
     }
   };
 
+  // Handle image click to expand
+  const handleImageClick = (imageUrl) => {
+    if (imageUrl) {
+      setExpandedImage(imageUrl);
+      setIsImageModalOpen(true);
+    }
+  };
+
   return (
     <motion.div 
       className="max-w-7xl px-4 sm:px-6 lg:px-8 py-8"
@@ -580,7 +592,7 @@ function MyServicesContent() {
                 {servicesByCategory[activeTab].services.map((service, index) => (
                   <motion.div 
                     key={service.serviceId} 
-                    className="bg-white rounded-lg overflow-hidden shadow border border-gray-100"
+                    className="bg-white rounded-lg overflow-hidden shadow border border-gray-100 flex flex-col h-full"
                     variants={cardVariants}
                     whileHover="hover"
                     whileTap="tap"
@@ -594,7 +606,12 @@ function MyServicesContent() {
                           <motion.img
                             src={serviceImages[service.serviceId]}
                             alt={service.serviceName}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover cursor-pointer"
+                            onClick={(e) => {
+                              e.preventDefault(); // Prevent navigation when clicking the image
+                              e.stopPropagation();
+                              handleImageClick(serviceImages[service.serviceId]);
+                            }}
                             initial={{ scale: 1 }}
                             whileHover={{ scale: 1.05 }}
                             transition={{ duration: 0.3 }}
@@ -602,7 +619,7 @@ function MyServicesContent() {
                         ) : (
                           <div className="flex flex-col items-center justify-center w-full h-full bg-gray-100">
                             <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2z"></path>
                             </svg>
                             <span className="text-gray-400 text-sm mt-2">No Image</span>
                           </div>
@@ -625,10 +642,10 @@ function MyServicesContent() {
                       </motion.label>
                     </div>
 
-                    {/* Clickable area for service details */}
+                    {/* Clickable area for service details - make this flex-grow to push buttons to bottom */}
                     <Link
                       to={`/service/${service.serviceId}`}
-                      className="block"
+                      className="block flex-grow"
                     >
                       <div className="p-5">
                         <h3 className="text-lg font-semibold text-[#495E57] mb-2">{service.serviceName}</h3>
@@ -648,8 +665,8 @@ function MyServicesContent() {
                       </div>
                     </Link>
                     
-                    {/* Separate action buttons section (not wrapped in Link) */}
-                    <div className="flex justify-end p-3 bg-gray-50 border-t border-gray-100">
+                    {/* Buttons at bottom */}
+                    <div className="flex justify-end p-3 bg-red-50 border-t border-gray-100 mt-auto">
                       <motion.button
                         className="p-2 mr-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors flex items-center"
                         onClick={(e) => {
@@ -949,6 +966,40 @@ function MyServicesContent() {
               </svg>
               Cancel
             </motion.button>
+          </motion.div>
+        </div>
+      </BaseModal>
+
+      {/* Image Modal */}
+      <BaseModal
+        isOpen={isImageModalOpen}
+        onClose={() => setIsImageModalOpen(false)}
+        maxWidth="max-w-4xl"
+      >
+        <div className="relative bg-black rounded-lg overflow-hidden">
+          {/* Close button */}
+          <motion.button
+            className="absolute top-4 right-4 bg-black bg-opacity-50 text-white p-2 rounded-full z-10"
+            onClick={() => setIsImageModalOpen(false)}
+            whileHover={{ scale: 1.1, backgroundColor: "rgba(0,0,0,0.7)" }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </motion.button>
+          
+          {/* Image */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center justify-center"
+          >
+            <img 
+              src={expandedImage} 
+              alt="Service Preview" 
+              className="max-w-full max-h-[80vh] object-contain"
+            />
           </motion.div>
         </div>
       </BaseModal>

@@ -4,6 +4,7 @@ import axios from "axios";
 import { motion } from "framer-motion"; // Add framer motion import
 import ServiceFilters from "./filters/ServiceFilters";
 import ServiceDetailsModal from "./modals/ServiceDetailsModal";
+import Footer from "./Footer";
 
 const BASE_URL = "http://localhost:8080"; // Define the base URL for the backend
 
@@ -651,6 +652,8 @@ const BrowseServicesPage = () => {
           </div>
         </div>
       </div>
+
+      <Footer/>
 
       <ServiceDetailsModal 
         isOpen={isModalOpen}

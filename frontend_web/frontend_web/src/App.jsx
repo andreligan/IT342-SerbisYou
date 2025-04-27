@@ -32,6 +32,7 @@ import NotificationIcon from "./components/notifications/NotificationIcon";
 import NotificationsPage from "./components/notifications/NotificationsPage";
 import PaymentSuccessPage from './components/payment/PaymentSuccessPage';
 import PaymentCancelPage from './components/payment/PaymentCancelPage';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Protected Route component for role-based access control
 const ProtectedRoute = ({ element, allowedRoles }) => {
@@ -206,6 +207,28 @@ function App() {
     setIsChatOpen(!isChatOpen);
   };
 
+  const dropdownVariants = {
+    hidden: { opacity: 0, y: -20, scale: 0.95 },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      scale: 1,
+      transition: {
+        type: "spring",
+        damping: 25,
+        stiffness: 300
+      }
+    },
+    exit: { 
+      opacity: 0, 
+      y: -10, 
+      scale: 0.95,
+      transition: { 
+        duration: 0.2 
+      }
+    }
+  };
+
   const renderNavigationLinks = () => {
     if (!isAuthenticated) return null;
 
@@ -286,73 +309,79 @@ function App() {
             )}
           </button>
           
-          {dropdownOpen && (
-            <div 
-              className="absolute right-0 mt-3 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-50 dropdown-menu transform transition-all duration-200 ease-in-out"
-              onMouseEnter={() => setDropdownOpen(true)}
-              onMouseLeave={() => setDropdownOpen(false)}
-            >
-              <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-[#f6f2e1] to-white rounded-t-xl">
-                <div className="flex items-center space-x-4">
-                  {profileImage ? (
-                    <div className="h-14 w-14 rounded-full overflow-hidden border-2 border-[#F4CE14] shadow-md">
-                      <img src={profileImage} alt="Profile" className="h-full w-full object-cover" />
+          <AnimatePresence>
+            {dropdownOpen && (
+              <motion.div 
+                className="absolute right-0 mt-3 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-50 dropdown-menu transform transition-all duration-200 ease-in-out"
+                variants={dropdownVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                onMouseEnter={() => setDropdownOpen(true)}
+                onMouseLeave={() => setDropdownOpen(false)}
+              >
+                <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-[#f6f2e1] to-white rounded-t-xl">
+                  <div className="flex items-center space-x-4">
+                    {profileImage ? (
+                      <div className="h-14 w-14 rounded-full overflow-hidden border-2 border-[#F4CE14] shadow-md">
+                        <img src={profileImage} alt="Profile" className="h-full w-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="h-14 w-14 rounded-full bg-gradient-to-br from-[#e0c03b] to-[#F4CE14] flex items-center justify-center shadow-md">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-8 w-8 text-white"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium text-gray-900">{userFirstName || "User"}</p>
+                      <p className="text-xs text-gray-500 mt-1">{userRole?.toLowerCase() || "user"}</p>
                     </div>
-                  ) : (
-                    <div className="h-14 w-14 rounded-full bg-gradient-to-br from-[#e0c03b] to-[#F4CE14] flex items-center justify-center shadow-md">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-8 w-8 text-white"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                  )}
-                  <div>
-                    <p className="font-medium text-gray-900">{userFirstName || "User"}</p>
-                    <p className="text-xs text-gray-500 mt-1">{userRole?.toLowerCase() || "user"}</p>
                   </div>
                 </div>
-              </div>
-              
-              <div className="p-2">
-                <button
-                  onClick={() => {
-                    const normalizedRole = userRole?.toLowerCase();
-                    setDropdownOpen(false);
-                    if (normalizedRole === "customer") {
-                      navigate("/customerProfile");
-                    } else if (normalizedRole === "service provider") {
-                      navigate("/serviceProviderProfile");
-                    } else {
-                      console.error("Unknown user role:", userRole);
-                    }
-                  }}
-                  className="w-full flex items-center px-4 py-3 text-left text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-150"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  Manage Profile
-                </button>
-                <button
-                  onClick={() => setIsLogoutPopupVisible(true)}
-                  className="w-full flex items-center px-4 py-3 text-left text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-150"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 01-3-3h4a3 3 0 013 3v1" />
-                  </svg>
-                  Logout
-                </button>
-              </div>
-            </div>
-          )}
+                
+                <div className="p-2">
+                  <button
+                    onClick={() => {
+                      const normalizedRole = userRole?.toLowerCase();
+                      setDropdownOpen(false);
+                      if (normalizedRole === "customer") {
+                        navigate("/customerProfile");
+                      } else if (normalizedRole === "service provider") {
+                        navigate("/serviceProviderProfile");
+                      } else {
+                        console.error("Unknown user role:", userRole);
+                      }
+                    }}
+                    className="w-full flex items-center px-4 py-3 text-left text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-150"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Manage Profile
+                  </button>
+                  <button
+                    onClick={() => setIsLogoutPopupVisible(true)}
+                    className="w-full flex items-center px-4 py-3 text-left text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-150"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 01-3-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Logout
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     );
