@@ -384,75 +384,95 @@ class ServiceProviderBusinessDetailsFragment : Fragment() {
         progressBar.visibility = View.VISIBLE
         tvErrorMessage.visibility = View.GONE
         
-        // Clear any previous error message
-        tvErrorMessage.visibility = View.GONE
-        
-        // First try to get the service provider profile by direct ID if we have it
-        if (providerId > 0) {
-            directLoadBusinessDetails(providerId)
-        } else {
-            // Otherwise try to get by user auth ID
-            userApiClient.getServiceProviderProfile(userId, token) { provider, error ->
-                requireActivity().runOnUiThread {
-                    progressBar.visibility = View.GONE
-                    
-                    if (error != null) {
-                        Log.e(tag, "Error loading business details", error)
-                        tvErrorMessage.setText(R.string.business_details_not_found)
-                        tvErrorMessage.visibility = View.VISIBLE
-                        return@runOnUiThread
-                    }
-                    
-                    if (provider == null) {
-                        tvErrorMessage.setText(R.string.provider_not_found)
-                        tvErrorMessage.visibility = View.VISIBLE
-                        return@runOnUiThread
-                    }
-                    
-                    // Save providerId if it was not set before
-                    val providerIdValue = provider.providerId ?: 0
-                    if (providerId == 0L && providerIdValue > 0) {
-                        providerId = providerIdValue
-                        val prefs = requireActivity().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
-                        prefs.edit().putLong("providerId", providerId).apply()
-                    }
-                    
-                    updateUIWithProviderData(provider)
-                }
-            }
+        if (providerId <= 0) {
+            Log.e(tag, "Cannot load business details: provider ID is invalid ($providerId)")
+            
+            // For new accounts, don't show error, just show empty form
+            checkIfProviderExists()
+            return
         }
-    }
-    
-    private fun directLoadBusinessDetails(providerId: Long) {
-        // Get all service providers and find the one with matching providerId
-        userApiClient.getAllServiceProviders(token) { providers, error ->
+        
+        Log.d(tag, "Loading business details for provider ID: $providerId")
+        userApiClient.getServiceProviderProfile(providerId, token) { provider, error ->
             requireActivity().runOnUiThread {
                 progressBar.visibility = View.GONE
                 
-                if (error != null || providers == null) {
-                    Log.e(tag, "Error loading all providers", error)
-                    tvErrorMessage.setText(R.string.business_details_not_found)
-                    tvErrorMessage.visibility = View.VISIBLE
+                if (error != null) {
+                    Log.e(tag, "Error loading business details", error)
+                    
+                    // Don't display error message for new accounts
+                    checkIfProviderExists()
                     return@runOnUiThread
                 }
                 
-                // Find the provider with matching providerId
-                val matchingProvider = providers.find { it.providerId == providerId }
-                
-                if (matchingProvider == null) {
-                    Log.e(tag, "Provider not found with ID: $providerId")
-                    tvErrorMessage.setText(R.string.provider_not_found)
-                    tvErrorMessage.visibility = View.VISIBLE
-                    return@runOnUiThread
+                if (provider != null) {
+                    // Store the provider data
+                    updateBusinessDetailsUI(provider)
+                } else {
+                    // Try to check if provider exists with a different ID
+                    checkIfProviderExists()
                 }
-                
-                // Update the UI with provider data
-                updateUIWithProviderData(matchingProvider)
             }
         }
     }
     
-    private fun updateUIWithProviderData(provider: ServiceProvider) {
+    private fun checkIfProviderExists() {
+        // Check if the provider account exists by auth ID
+        userApiClient.getServiceProviderByAuthId(userId, token) { provider, error ->
+            requireActivity().runOnUiThread {
+                if (error != null) {
+                    // Provider account doesn't exist due to error
+                    Toast.makeText(
+                        requireContext(),
+                        "Error checking provider account: ${error.message}. Please contact support.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    
+                    // Show empty form with defaults for new user
+                    setupEmptyBusinessDetails()
+                } else if (provider == null) {
+                    // Provider account doesn't exist - show empty form with defaults
+                    setupEmptyBusinessDetails()
+                    
+                    Toast.makeText(
+                        requireContext(),
+                        "No provider account found. You'll need to set up your business details.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    // We found a provider but with a different ID - update it
+                    providerId = provider.providerId ?: 0L
+                    
+                    // Save provider ID to SharedPreferences
+                    val userPrefs = requireActivity().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+                    userPrefs.edit().putLong("providerId", providerId).apply()
+                    
+                    Log.d(tag, "Updated provider ID to: $providerId")
+                    
+                    // Try loading again with the correct provider ID
+                    loadBusinessDetails()
+                }
+            }
+        }
+    }
+    
+    private fun setupEmptyBusinessDetails() {
+        // Set default values for a new business account
+        etBusinessName.setText("")
+        etBusinessDesc.setText("")
+        etBusinessCategory.setText("")
+        etYearEstablished.setText("")
+        etYearsExperience.setText("0")
+        etAvailabilitySchedule.setText("Monday-Friday, 9AM-5PM") // Default schedule
+        etPaymentMethod.setText("")
+        dropdownStatus.setText("Active", false)
+        
+        // Hide error message and progress bar
+        tvErrorMessage.visibility = View.GONE
+        progressBar.visibility = View.GONE
+    }
+    
+    private fun updateBusinessDetailsUI(provider: ServiceProvider) {
         // Fill form with business details - Safely handle nullable values
         etBusinessName.setText(provider.businessName ?: "")
         

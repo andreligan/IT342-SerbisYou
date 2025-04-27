@@ -435,6 +435,19 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
     }
 
     private fun loadServices() {
+        // Check if we have a valid provider ID first
+        if (providerId <= 0) {
+            Log.e(TAG, "Cannot load services: Provider ID is not valid ($providerId)")
+            runOnUiThread {
+                Toast.makeText(this, "No service provider account found. Please contact support.", Toast.LENGTH_LONG).show()
+                tvServiceCount.text = "0"
+                findViewById<TextView>(R.id.tvNoServices).visibility = View.VISIBLE
+                findViewById<HorizontalScrollView>(R.id.servicesScrollView).visibility = View.GONE
+            }
+            return
+        }
+        
+        Log.d(TAG, "Loading services for provider ID: $providerId")
         serviceApiClient.getServicesByProviderId(providerId, token) { servicesList, error -> 
             if (error != null) {
                 Log.e(TAG, "Error loading services", error)
@@ -453,6 +466,9 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
                     
                     // Populate the horizontal services container
                     populateServicesHorizontally(servicesList)
+                } else {
+                    // Set service count to 0 if servicesList is null
+                    tvServiceCount.text = "0"
                 }
                 
                 // Update the original RecyclerView (kept for backward compatibility)
@@ -831,8 +847,14 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
             userApiClient.getServiceProviderByAuthId(userId, token) { provider, error -> 
                 if (error != null) {
                     Log.e(TAG, "Error getting provider profile", error)
-                    // Try fallback method
-                    getProviderIdFromAllProviders(userId)
+                    // Show error message instead of using fallback
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@ServiceProviderDashboardActivity, 
+                            "Could not find your service provider account. Please contact support.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                     return@getServiceProviderByAuthId
                 }
                 
@@ -859,48 +881,25 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
                         loadServices()
                     }
                 } else {
-                    Log.w(TAG, "Could not retrieve provider ID from user profile API call")
-                    getProviderIdFromAllProviders(userId)
-                }
-            }
-        }
-    }
-
-    private fun getProviderIdFromAllProviders(userId: Long) {
-        userApiClient.getAllServiceProviders(token) { providers, error ->
-            if (error != null) {
-                Log.e(TAG, "Error getting all providers", error)
-                return@getAllServiceProviders
-            }
-            
-            if (providers != null) {
-                val matchingProvider = providers.find { it.userAuth?.userId == userId }
-                if (matchingProvider != null && matchingProvider.providerId != null) {
-                    val newProviderId = matchingProvider.providerId
-                    Log.d(TAG, "Found provider ID from providers list: $newProviderId")
-                    
-                    // Save to both SharedPreferences
-                    val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
-                    val userPref = getSharedPreferences("user_prefs", MODE_PRIVATE)
-                    
-                    with(sharedPref.edit()) {
-                        putLong("providerId", newProviderId)
-                        apply()
-                    }
-                    
-                    with(userPref.edit()) {
-                        putLong("providerId", newProviderId)
-                        apply()
-                    }
-                    
-                    // Update the class-level providerId variable
+                    Log.e(TAG, "Could not retrieve provider ID from user profile API call")
                     runOnUiThread {
-                        this.providerId = newProviderId
-                        
-                        // Reload services with the correct provider ID
-                        loadServices()
+                        Toast.makeText(
+                            this@ServiceProviderDashboardActivity, 
+                            "No service provider account was found. Please contact support.",
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
+                    // Don't continue to loadServices() if we don't have a valid provider ID
                 }
+            }
+        } else {
+            Log.e(TAG, "Both userId and providerId are invalid or missing")
+            runOnUiThread {
+                Toast.makeText(
+                    this@ServiceProviderDashboardActivity, 
+                    "User account information is missing. Please login again.",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }

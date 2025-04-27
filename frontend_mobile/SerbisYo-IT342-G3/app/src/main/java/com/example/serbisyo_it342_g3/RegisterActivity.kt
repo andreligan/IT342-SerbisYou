@@ -14,12 +14,14 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
+
 class RegisterActivity : AppCompatActivity() {
     private lateinit var etUsername: EditText
     private lateinit var etEmail: EditText
     private lateinit var etPassword: EditText
     private lateinit var etConfirmPassword: EditText
     private lateinit var btnRegister: Button
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,6 +33,7 @@ class RegisterActivity : AppCompatActivity() {
         etPassword = findViewById(R.id.etPassword)
         etConfirmPassword = findViewById(R.id.etConfirmPassword)
         btnRegister = findViewById(R.id.btnRegister)
+
 
         // Get data from intent
         val role = intent.getStringExtra("ROLE") ?: ""
@@ -46,6 +49,8 @@ class RegisterActivity : AppCompatActivity() {
         
         // For service provider
         val businessName = intent.getStringExtra("BUSINESS_NAME") ?: ""
+
+
 
         btnRegister.setOnClickListener {
             val username = etUsername.text.toString()
@@ -70,6 +75,8 @@ class RegisterActivity : AppCompatActivity() {
                 )
             }
         }
+
+
     }
 
     private fun validateInputs(username: String, email: String, password: String, confirmPassword: String): Boolean {
@@ -238,4 +245,6 @@ class RegisterActivity : AppCompatActivity() {
             }
         }
     }
+
+
 }

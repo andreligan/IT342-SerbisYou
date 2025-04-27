@@ -136,9 +136,8 @@ class ServiceProviderServicesFragment : Fragment() {
         servicesContainer.visibility = View.GONE
         
         if (providerId <= 0) {
-            tvErrorMessage.text = getString(R.string.provider_id_missing)
-            tvErrorMessage.visibility = View.VISIBLE
-            progressBar.visibility = View.GONE
+            // For a new service provider, check if they exist in the system first
+            checkProviderExists()
             return
         }
         
@@ -148,7 +147,89 @@ class ServiceProviderServicesFragment : Fragment() {
                 
                 if (error != null) {
                     Log.e(tag, "Error loading services", error)
-                    tvErrorMessage.text = getString(R.string.error_loading_services)
+                    
+                    // Could be a new account - check if provider exists
+                    checkProviderExists()
+                    return@runOnUiThread
+                }
+                
+                // Update the services list
+                servicesList.clear()
+                categorizedServices.clear()
+                
+                if (services != null && services.isNotEmpty()) {
+                    servicesList.addAll(services)
+                    
+                    // Group services by category
+                    categorizeServices(services)
+                    
+                    // Update TabLayout with categories
+                    updateTabsWithCategories()
+                    
+                    // Display services by category
+                    displayServicesByCategory()
+                    
+                    servicesContainer.visibility = View.VISIBLE
+                    tvNoServices.visibility = View.GONE
+                } else {
+                    // Show "No services" message for this provider
+                    tvNoServices.visibility = View.VISIBLE
+                    servicesContainer.visibility = View.GONE
+                }
+            }
+        }
+    }
+    
+    private fun checkProviderExists() {
+        val serviceApiClient = ServiceApiClient(requireContext())
+        
+        // Try to find the provider by user ID
+        serviceApiClient.getProviderIdByUserId(userId, token) { providerId, error ->
+            requireActivity().runOnUiThread {
+                progressBar.visibility = View.GONE
+                
+                if (error != null || providerId == 0L) {
+                    Log.e(tag, "Error getting provider ID: ${error?.message ?: "Provider ID is 0"}")
+                    
+                    // This is likely a new account with no services
+                    tvNoServices.text = "You haven't added any services yet. Add your first service to get started!"
+                    tvNoServices.visibility = View.VISIBLE
+                    servicesContainer.visibility = View.GONE
+                } else {
+                    // Update the provider ID
+                    this.providerId = providerId
+                    
+                    // Save to SharedPreferences for future use
+                    saveProviderId(providerId)
+                    
+                    // Now try loading services again with the correct ID
+                    loadServicesWithId(providerId)
+                }
+            }
+        }
+    }
+    
+    private fun saveProviderId(providerId: Long) {
+        // Save in both SharedPreferences for consistency
+        val userPrefs = requireActivity().getSharedPreferences("UserPrefs", android.content.Context.MODE_PRIVATE)
+        userPrefs.edit().putLong("providerId", providerId).apply()
+        
+        val userPrefs2 = requireActivity().getSharedPreferences("user_prefs", android.content.Context.MODE_PRIVATE)
+        userPrefs2.edit().putLong("providerId", providerId).apply()
+        
+        Log.d(tag, "Saved provider ID: $providerId to SharedPreferences")
+    }
+    
+    private fun loadServicesWithId(providerId: Long) {
+        progressBar.visibility = View.VISIBLE
+        
+        serviceApiClient.getServicesByProviderId(providerId, token) { services, error ->
+            requireActivity().runOnUiThread {
+                progressBar.visibility = View.GONE
+                
+                if (error != null) {
+                    Log.e(tag, "Error loading services with ID $providerId", error)
+                    tvErrorMessage.text = "Could not load services: ${error.message}"
                     tvErrorMessage.visibility = View.VISIBLE
                     return@runOnUiThread
                 }
@@ -170,8 +251,12 @@ class ServiceProviderServicesFragment : Fragment() {
                     displayServicesByCategory()
                     
                     servicesContainer.visibility = View.VISIBLE
+                    tvNoServices.visibility = View.GONE
                 } else {
+                    // Show empty state for new provider
+                    tvNoServices.text = "You haven't added any services yet. Add your first service to get started!"
                     tvNoServices.visibility = View.VISIBLE
+                    servicesContainer.visibility = View.GONE
                 }
             }
         }

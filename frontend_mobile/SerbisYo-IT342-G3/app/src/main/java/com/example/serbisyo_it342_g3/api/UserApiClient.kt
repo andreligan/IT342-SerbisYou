@@ -33,7 +33,7 @@ class UserApiClient(context: Context) {
             return
         }
         
-        // Use the actual endpoint from CustomerController
+        // First try with getById endpoint
         val url = "${baseApiClient.getBaseUrl()}/api/customers/getById/$userId"
         Log.d(TAG, "Request URL: $url")
         Log.d(TAG, "Token length: ${token.length}, Token snippet: ${token.take(20)}...")
@@ -49,14 +49,15 @@ class UserApiClient(context: Context) {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 Log.e(TAG, "Failed to get customer profile", e)
-                callback(null, e)
+                // Try alternative method to get customer profile
+                getCustomerProfileByGetAll(userId, token, callback)
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val responseBody = response.body?.string()
                 Log.d(TAG, "Response code: ${response.code}")
                 
-                if (response.isSuccessful) {
+                if (response.isSuccessful && responseBody != null && responseBody.isNotBlank() && responseBody != "null") {
                     Log.d(TAG, "Customer profile response: $responseBody")
                     try {
                         val customer = gson.fromJson(responseBody, Customer::class.java)
@@ -75,29 +76,223 @@ class UserApiClient(context: Context) {
                         callback(completeCustomer, null)
                     } catch (e: Exception) {
                         Log.e(TAG, "Error parsing customer profile", e)
+                        // Try alternative method to get customer profile
+                        getCustomerProfileByGetAll(userId, token, callback)
+                    }
+                } else {
+                    // If response is successful but body is empty, try to get all customers and find the matching one
+                    // This handles the case where getById returns empty but customer exists
+                    Log.d(TAG, "Empty or null response body from getById, trying alternative method")
+                    getCustomerProfileByGetAll(userId, token, callback)
+                }
+            }
+        })
+    }
+    
+    // Helper method to get customer profile by querying all customers
+    private fun getCustomerProfileByGetAll(userId: Long, token: String, callback: (Customer?, Exception?) -> Unit) {
+        Log.d(TAG, "Trying to get customer profile from getAll endpoint for userId: $userId")
+        
+        val url = "${baseApiClient.getBaseUrl()}/api/customers/getAll"
+        val request = Request.Builder()
+            .url(url)
+            .get()
+            .header("Authorization", "Bearer $token")
+            .build()
+            
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to get all customers", e)
+                // Finally, fall back to creating a new profile
+                createNewCustomerProfile(userId, token, callback)
+            }
+            
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                
+                if (response.isSuccessful && responseBody != null) {
+                    try {
+                        val customersType = object : TypeToken<List<Customer>>() {}.type
+                        val customers = gson.fromJson<List<Customer>>(responseBody, customersType)
+                        
+                        // Find customer with matching userId in userAuth
+                        val matchingCustomer = customers.find { customer ->
+                            customer.userAuth?.userId == userId
+                        }
+                        
+                        if (matchingCustomer != null) {
+                            Log.d(TAG, "Found matching customer in getAll response for userId: $userId")
+                            
+                            // Create complete customer with username and email info
+                            val username = matchingCustomer.userAuth?.userName ?: ""
+                            val email = matchingCustomer.userAuth?.email ?: ""
+                            
+                            val completeCustomer = matchingCustomer.copy(
+                                username = username,
+                                email = email
+                            )
+                            
+                            callback(completeCustomer, null)
+                        } else {
+                            Log.d(TAG, "No matching customer found in getAll response")
+                            // If no matching customer, create a new one
+                            createNewCustomerProfile(userId, token, callback)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing customers from getAll", e)
+                        // Fall back to creating a new profile
+                        createNewCustomerProfile(userId, token, callback)
+                    }
+                } else {
+                    Log.e(TAG, "Error getting all customers: ${response.code}")
+                    // Fall back to creating a new profile
+                    createNewCustomerProfile(userId, token, callback)
+                }
+            }
+        })
+    }
+    
+    // Helper method to create a new customer profile if one doesn't exist
+    private fun createNewCustomerProfile(userId: Long, token: String, callback: (Customer?, Exception?) -> Unit) {
+        Log.d(TAG, "Creating new customer profile for user: $userId")
+        
+        // First, fetch user info to get username and email
+        fetchUserInfo(userId, token) { user, error ->
+            if (error != null) {
+                Log.e(TAG, "Failed to fetch user info", error)
+                callback(null, error)
+                return@fetchUserInfo
+            }
+            
+            if (user == null) {
+                callback(null, Exception("Failed to fetch user information"))
+                return@fetchUserInfo
+            }
+            
+            // Create a basic customer profile with placeholder text instead of empty strings
+            val customerJson = JSONObject().apply {
+                put("firstName", "First Name") // Use placeholders instead of empty strings
+                put("lastName", "Last Name")   // Use placeholders instead of empty strings
+                put("phoneNumber", "Phone Number") // Use placeholders instead of empty strings
+                put("userAuth", JSONObject().apply {
+                    put("userId", userId)
+                })
+            }
+            
+            val requestBody = customerJson.toString().toRequestBody("application/json".toMediaTypeOrNull())
+            
+            val request = Request.Builder()
+                .url("${baseApiClient.getBaseUrl()}/api/customers/postCustomer")
+                .post(requestBody)
+                .header("Authorization", "Bearer $token")
+                .build()
+            
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    Log.e(TAG, "Failed to create customer profile", e)
+                    
+                    // Return a default customer object anyway to prevent UI issues
+                    val defaultCustomer = Customer(
+                        customerId = userId,
+                        firstName = "First Name", // Use placeholders instead of empty strings
+                        lastName = "Last Name",   // Use placeholders instead of empty strings
+                        phoneNumber = "Phone Number", // Use placeholders instead of empty strings
+                        username = user.userName ?: "",
+                        email = user.email ?: "",
+                        userAuth = user
+                    )
+                    callback(defaultCustomer, null)
+                }
+                
+                override fun onResponse(call: Call, response: Response) {
+                    val responseBody = response.body?.string()
+                    Log.d(TAG, "Create customer response code: ${response.code}")
+                    Log.d(TAG, "Create customer response: $responseBody")
+                    
+                    if (response.isSuccessful) {
+                        try {
+                            val newCustomer = gson.fromJson(responseBody, Customer::class.java)
+                            val completeCustomer = newCustomer.copy(
+                                username = user.userName ?: "",
+                                email = user.email ?: ""
+                            )
+                            
+                            // If the response doesn't include the fields or they are empty, add placeholders
+                            val firstName = if (completeCustomer.firstName.isNullOrBlank()) "First Name" else completeCustomer.firstName
+                            val lastName = if (completeCustomer.lastName.isNullOrBlank()) "Last Name" else completeCustomer.lastName
+                            val phoneNumber = if (completeCustomer.phoneNumber.isNullOrBlank()) "Phone Number" else completeCustomer.phoneNumber
+                            
+                            // Create an updated customer with placeholders if needed
+                            val finalCustomer = completeCustomer.copy(
+                                firstName = firstName,
+                                lastName = lastName,
+                                phoneNumber = phoneNumber,
+                                userAuth = user
+                            )
+                            
+                            callback(finalCustomer, null)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error parsing created customer", e)
+                            
+                            // Return a default customer object anyway to prevent UI issues
+                            val defaultCustomer = Customer(
+                                customerId = userId,
+                                firstName = "First Name", // Use placeholders instead of empty strings
+                                lastName = "Last Name",   // Use placeholders instead of empty strings
+                                phoneNumber = "Phone Number", // Use placeholders instead of empty strings
+                                username = user.userName ?: "",
+                                email = user.email ?: "",
+                                userAuth = user
+                            )
+                            callback(defaultCustomer, null)
+                        }
+                    } else {
+                        Log.e(TAG, "Error creating customer profile: ${response.code}")
+                        
+                        // Return a default customer object anyway to prevent UI issues
+                        val defaultCustomer = Customer(
+                            customerId = userId,
+                            firstName = "First Name", // Use placeholders instead of empty strings
+                            lastName = "Last Name",   // Use placeholders instead of empty strings
+                            phoneNumber = "Phone Number", // Use placeholders instead of empty strings
+                            username = user.userName ?: "",
+                            email = user.email ?: "",
+                            userAuth = user
+                        )
+                        callback(defaultCustomer, null)
+                    }
+                }
+            })
+        }
+    }
+    
+    private fun fetchUserInfo(userId: Long, token: String, callback: (User?, Exception?) -> Unit) {
+        val request = Request.Builder()
+            .url("${baseApiClient.getBaseUrl()}/api/user-auth/getById/$userId")
+            .get()
+            .header("Authorization", "Bearer $token")
+            .build()
+        
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to fetch user info", e)
+                callback(null, e)
+            }
+            
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                
+                if (response.isSuccessful) {
+                    try {
+                        val user = gson.fromJson(responseBody, User::class.java)
+                        callback(user, null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing user info", e)
                         callback(null, e)
                     }
                 } else {
-                    Log.e(TAG, "Error getting customer profile: ${response.code}")
-                    Log.e(TAG, "Error response body: $responseBody")
-                    Log.e(TAG, "Response headers: ${response.headers}")
-                    
-                    // If we get an error, try creating a default Customer with minimal information
-                    Log.d(TAG, "Using default customer profile due to error")
-                    val defaultCustomer = Customer(
-                        customerId = userId,
-                        firstName = "",
-                        lastName = "",
-                        phoneNumber = "",
-                        address = Address(
-                            addressId = 0,
-                            street = "",
-                            city = "",
-                            province = "",
-                            postalCode = ""
-                        )
-                    )
-                    callback(defaultCustomer, null)
+                    Log.e(TAG, "Error fetching user info: ${response.code}")
+                    callback(null, Exception("Failed to fetch user info: ${response.code}"))
                 }
             }
         })
@@ -815,36 +1010,12 @@ class UserApiClient(context: Context) {
                     Log.d(TAG, "Found matching provider: ${matchingProvider.providerId}")
                     callback(matchingProvider, null)
                 } else {
-                    Log.d(TAG, "No matching provider found, creating default provider with ID: $userId")
-                    // Create a default provider if no match found
-                    val defaultProvider = ServiceProvider(
-                        providerId = userId, // Use user ID as provider ID as fallback
-                        firstName = "",
-                        lastName = "",
-                        phoneNumber = "",
-                        businessName = "Service Provider",
-                        yearsOfExperience = 0,
-                        availabilitySchedule = "",
-                        address = null,
-                        userAuth = User(userId = userId, userName = "", email = "")
-                    )
-                    callback(defaultProvider, null)
+                    Log.e(TAG, "No matching service provider found for user ID: $userId")
+                    callback(null, Exception("No service provider account exists for this user. Please contact support."))
                 }
             } else {
-                Log.d(TAG, "No providers found in system, creating default provider with ID: $userId")
-                // Create a default provider if no providers exist
-                val defaultProvider = ServiceProvider(
-                    providerId = userId, // Use user ID as provider ID as fallback
-                    firstName = "",
-                    lastName = "",
-                    phoneNumber = "",
-                    businessName = "Service Provider",
-                    yearsOfExperience = 0,
-                    availabilitySchedule = "",
-                    address = null,
-                    userAuth = User(userId = userId, userName = "", email = "")
-                )
-                callback(defaultProvider, null)
+                Log.e(TAG, "No service providers found in the system")
+                callback(null, Exception("No service providers found in the system. Please contact support."))
             }
         }
     }
@@ -887,6 +1058,138 @@ class UserApiClient(context: Context) {
                     Log.e(TAG, "Error getting all providers: ${response.code}")
                     Log.e(TAG, "Error response body: $responseBody")
                     callback(null, Exception("Failed to get all providers: ${response.code}"))
+                }
+            }
+        })
+    }
+
+    // Get customer ID by user ID (for creating bookings)
+    fun getCustomerIdByUserId(userId: Long, token: String, callback: (Long?, Exception?) -> Unit) {
+        Log.d(TAG, "Getting customer ID for user auth ID: $userId")
+        
+        if (token.isBlank()) {
+            Log.e(TAG, "Token is empty or blank")
+            callback(null, Exception("Authentication token is required"))
+            return
+        }
+        
+        // Use the getAll endpoint to find customer with matching userAuth.userId
+        val url = "${baseApiClient.getBaseUrl()}/api/customers/getAll"
+        
+        val request = Request.Builder()
+            .url(url)
+            .get()
+            .header("Authorization", "Bearer $token")
+            .build()
+            
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to get customers", e)
+                callback(null, e)
+            }
+            
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                
+                if (response.isSuccessful && responseBody != null) {
+                    try {
+                        val customersType = object : TypeToken<List<Map<String, Any>>>() {}.type
+                        val customers = gson.fromJson<List<Map<String, Any>>>(responseBody, customersType)
+                        
+                        // Find customer with matching userId in userAuth
+                        var foundCustomerId: Long? = null
+                        
+                        for (customer in customers) {
+                            val userAuth = customer["userAuth"] as? Map<String, Any>
+                            if (userAuth != null) {
+                                val authUserId = (userAuth["userId"] as? Number)?.toLong()
+                                if (authUserId == userId) {
+                                    foundCustomerId = (customer["customerId"] as? Number)?.toLong()
+                                    break
+                                }
+                            }
+                        }
+                        
+                        if (foundCustomerId != null) {
+                            Log.d(TAG, "Found customer ID: $foundCustomerId for user ID: $userId")
+                            callback(foundCustomerId, null)
+                        } else {
+                            Log.e(TAG, "No customer found with user ID: $userId, creating new customer")
+                            
+                            // Create a new customer for this user
+                            createCustomerForUserId(userId, token, callback)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing customers data", e)
+                        callback(null, e)
+                    }
+                } else {
+                    Log.e(TAG, "Error getting customers: ${response.code}")
+                    callback(null, Exception("Failed to get customers: ${response.code}"))
+                }
+            }
+        })
+    }
+    
+    // Helper method to create a new customer for a user ID
+    private fun createCustomerForUserId(userId: Long, token: String, callback: (Long?, Exception?) -> Unit) {
+        // Create a basic customer profile
+        val customerJson = JSONObject().apply {
+            put("firstName", "First Name")
+            put("lastName", "Last Name")
+            put("phoneNumber", "Phone Number")
+            put("userAuth", JSONObject().apply {
+                put("userId", userId)
+            })
+        }
+        
+        val requestBody = customerJson.toString().toRequestBody("application/json".toMediaTypeOrNull())
+        
+        val request = Request.Builder()
+            .url("${baseApiClient.getBaseUrl()}/api/customers/postCustomer")
+            .post(requestBody)
+            .header("Authorization", "Bearer $token")
+            .build()
+        
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to create customer", e)
+                callback(null, e)
+            }
+            
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                
+                if (response.isSuccessful) {
+                    try {
+                        val customerData = gson.fromJson(responseBody, Map::class.java)
+                        val customerId = (customerData["customerId"] as? Number)?.toLong()
+                        
+                        if (customerId != null) {
+                            Log.d(TAG, "Created customer with ID: $customerId for user ID: $userId")
+                            callback(customerId, null)
+                        } else {
+                            Log.e(TAG, "Customer created but couldn't extract ID")
+                            callback(null, Exception("Failed to extract customer ID from response"))
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing created customer data", e)
+                        callback(null, e)
+                    }
+                } else {
+                    // If we get a 500 error from the failed create, there might be an existing customer
+                    // but with a DB constraint violation. Try one more time to get it.
+                    if (response.code == 500 && responseBody?.contains("Duplicate entry") == true) {
+                        Log.w(TAG, "Got duplicate customer error, trying one more time to find customer")
+                        // Wait briefly to allow any database transaction to complete
+                        Thread.sleep(500)
+                        // Try again to get all customers and find the one with our user ID
+                        getCustomerIdByUserId(userId, token, callback)
+                    } else {
+                        Log.e(TAG, "Error creating customer: ${response.code}")
+                        Log.e(TAG, "Error response body: $responseBody")
+                        callback(null, Exception("Failed to create customer: ${response.code}"))
+                    }
                 }
             }
         })

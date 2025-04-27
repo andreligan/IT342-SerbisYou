@@ -712,11 +712,11 @@ class CustomerDashboardActivity : AppCompatActivity() {
     
     private fun createBooking(serviceId: Long, bookingDateTime: String) {
         val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
-        val customerId = sharedPref.getString("userId", "0")?.toLongOrNull() ?: 0
+        val userId = sharedPref.getString("userId", "0")?.toLongOrNull() ?: 0
         val customerName = sharedPref.getString("username", "Customer") ?: "Customer"
         
-        if (customerId == 0L) {
-            Toast.makeText(this, "Error: Customer ID not found", Toast.LENGTH_LONG).show()
+        if (userId == 0L) {
+            Toast.makeText(this, "Error: User ID not found", Toast.LENGTH_LONG).show()
             return
         }
         
@@ -724,23 +724,36 @@ class CustomerDashboardActivity : AppCompatActivity() {
         
         progressBar.visibility = View.VISIBLE
         
-        bookingApiClient.createBooking(serviceId, customerId, bookingDate, token) { booking, error ->
-            runOnUiThread {
-                progressBar.visibility = View.GONE
-                
-                if (error != null) {
-                    Log.e(TAG, "Error creating booking", error)
-                    Toast.makeText(this, "Error creating booking: ${error.message}", Toast.LENGTH_LONG).show()
-                    return@runOnUiThread
+        // Get the actual customerId instead of using userId directly
+        val userApiClient = UserApiClient(this)
+        userApiClient.getCustomerIdByUserId(userId, token) { customerId, error ->
+            if (error != null || customerId == null) {
+                runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(this, "Error: Customer profile not found. Please set up your profile first.", Toast.LENGTH_LONG).show()
                 }
-                
-                if (booking != null) {
-                    Toast.makeText(this, "Booking created successfully! Status: ${booking.status}", Toast.LENGTH_LONG).show()
+                return@getCustomerIdByUserId
+            }
+            
+            // Now use the correct customerId to create the booking
+            bookingApiClient.createBooking(serviceId, customerId, bookingDate, token) { booking, bookingError ->
+                runOnUiThread {
+                    progressBar.visibility = View.GONE
                     
-                    // Send notification to service provider
-                    sendBookingNotificationToProvider(booking, customerName)
-                } else {
-                    Toast.makeText(this, "Unknown error occurred while creating booking", Toast.LENGTH_LONG).show()
+                    if (bookingError != null) {
+                        Log.e(TAG, "Error creating booking", bookingError)
+                        Toast.makeText(this, "Error creating booking: ${bookingError.message}", Toast.LENGTH_LONG).show()
+                        return@runOnUiThread
+                    }
+                    
+                    if (booking != null) {
+                        Toast.makeText(this, "Booking created successfully! Status: ${booking.status}", Toast.LENGTH_LONG).show()
+                        
+                        // Send notification to service provider
+                        sendBookingNotificationToProvider(booking, customerName)
+                    } else {
+                        Toast.makeText(this, "Unknown error occurred while creating booking", Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         }

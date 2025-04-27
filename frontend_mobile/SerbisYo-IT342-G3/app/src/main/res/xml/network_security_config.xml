@@ -8,5 +8,7 @@
         <domain includeSubdomains="true">192.168.1.101</domain>
         <domain includeSubdomains="true">192.168.1.102</domain>
         <domain includeSubdomains="true">192.168.100.10</domain>
+        <domain includeSubdomains="true">192.168.112.136</domain>
+        <domain includeSubdomains="true">api.paymongo.com</domain>
     </domain-config>
 </network-security-config> 

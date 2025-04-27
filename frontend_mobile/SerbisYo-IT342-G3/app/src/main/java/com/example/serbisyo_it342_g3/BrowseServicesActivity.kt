@@ -90,8 +90,10 @@ class BrowseServicesActivity : AppCompatActivity() {
     private var sortOption = "recommended"
     private var isFilterVisible = false
     
-    private val tag = "BrowseServicesActivity"
+    private val tag = "BrowseServices"
     private var token: String = ""
+    private var userId: Long = 0
+    private var customerAddress: com.example.serbisyo_it342_g3.data.Address? = null
 
     // Add constants at class level, add this near the top before onCreate
     companion object {
@@ -833,6 +835,9 @@ class BrowseServicesActivity : AppCompatActivity() {
         // Set loading text while fetching
         tvAddress.text = getString(R.string.loading_address)
         
+        // Log request for debugging
+        Log.d(tag, "Fetching addresses for customer ID: $customerId")
+        
         // Use the address API client instead of direct OkHttp call
         val addressApiClient = AddressApiClient(this)
         addressApiClient.getAddressesByUserId(customerId, token) { addresses, error ->
@@ -844,8 +849,10 @@ class BrowseServicesActivity : AppCompatActivity() {
                 }
                 
                 if (addresses.isNullOrEmpty()) {
-                    Log.d(tag, "No addresses found for customer $customerId")
-                    tvAddress.text = getString(R.string.no_address_found)
+                    Log.d(tag, "No addresses found for customer $customerId, creating default address")
+                    
+                    // Create a default address for this new customer
+                    createDefaultAddress(customerId, tvAddress)
                     return@runOnUiThread
                 }
                 
@@ -855,10 +862,22 @@ class BrowseServicesActivity : AppCompatActivity() {
                 var selectedAddress = addresses.find { it.main }
                 Log.d(tag, "Main address found: ${selectedAddress != null}")
                 
-                // If no main address, use the first one
+                // If no main address, use the first one and set it as main - using a more defensive approach to avoid smart cast issues
                 if (selectedAddress == null && addresses.isNotEmpty()) {
                     selectedAddress = addresses[0]
-                    Log.d(tag, "No main address found, using first address")
+                    Log.d(tag, "No main address found, using first address and setting it as main")
+                    
+                    // Set this address as main - using a more defensive approach to avoid smart cast issues
+                    addresses[0].addressId?.let { id ->
+                        try {
+                            val addressId = id.toInt()
+                            addressApiClient.updateAddressMainStatus(addressId, true, token) { success, error ->
+                                Log.d(tag, "Setting address $addressId as main: success=$success, error=$error")
+                            }
+                        } catch (e: Exception) {
+                            Log.e(tag, "Error converting addressId to Int", e)
+                        }
+                    }
                 }
                 
                 if (selectedAddress != null) {
@@ -881,9 +900,46 @@ class BrowseServicesActivity : AppCompatActivity() {
                     val formattedAddress = parts.joinToString(", ")
                     Log.d(tag, "Final address display: $formattedAddress")
                     tvAddress.text = formattedAddress
+                    
+                    // Save to customer address for later use
+                    customerAddress = selectedAddress
                 } else {
                     Log.d(tag, "No address found for customer")
                     tvAddress.text = getString(R.string.no_address_found)
+                }
+            }
+        }
+    }
+    
+    /**
+     * Create a default address for a new customer
+     */
+    private fun createDefaultAddress(customerId: Long, tvAddress: TextView) {
+        val addressApiClient = AddressApiClient(this)
+        
+        // Create basic address structure
+        val defaultAddress = com.example.serbisyo_it342_g3.data.Address(
+            street = "Add Street, Calzada Pob.",
+            streetName = "Add Street, Calzada Pob.",
+            city = "Jovellar", 
+            province = "Albay",
+            barangay = "",
+            postalCode = "",
+            main = true
+        )
+        
+        Log.d(tag, "Creating default address for customer $customerId")
+        
+        // Use the class variable userId which should be initialized in onCreate
+        addressApiClient.addAddress(userId, defaultAddress, token) { success, error ->
+            runOnUiThread {
+                if (success) {
+                    Log.d(tag, "Default address created successfully")
+                    // Fetch addresses again to display the newly created one
+                    fetchAddressesForCustomer(customerId, tvAddress)
+                } else {
+                    Log.e(tag, "Error creating default address", error)
+                    tvAddress.text = "Add Street, Calzada Pob., Jovellar, Albay (Default)"
                 }
             }
         }
@@ -1245,6 +1301,10 @@ class BrowseServicesActivity : AppCompatActivity() {
      * Shows a dialog confirming successful booking
      */
     private fun showBookingSuccessDialog(booking: Booking) {
+        // Set flag that a booking was just created - this helps the booking history fragment
+        val sharedPref = getSharedPreferences("BookingState", MODE_PRIVATE)
+        sharedPref.edit().putBoolean("recently_booked", true).apply()
+        
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Booking Successful!")
         builder.setMessage("Your booking has been created successfully. You can view and manage it in your bookings history.")
@@ -1430,48 +1490,69 @@ class BrowseServicesActivity : AppCompatActivity() {
             userIdStr?.toLongOrNull() ?: 0
         }
         
-        // Create booking with API
-        val bookingApiClient = BookingApiClient(this)
+        // First get the customer ID from the database to ensure it exists
+        val userApiClient = UserApiClient(this)
+        val userIdFromDatabase = getSharedPreferences("UserPrefs", MODE_PRIVATE).getLong("userId", 0)
         
-        // Extract only the start time from the time slot (e.g., "01:30:00" from "01:30:00-01:45:00")
-        val startTime = timeSlot.split("-").firstOrNull() ?: timeSlot
-        
-        bookingApiClient.createBooking(
-            serviceId = service.serviceId,
-            customerId = userId,
-            bookingDate = bookingDate,
-            token = token,
-            note = specialInstructions,
-            paymentMethod = paymentMethod,
-            bookingTime = startTime,
-            totalCost = totalPrice.toDouble()
-        ) { booking, error ->
+        userApiClient.getCustomerIdByUserId(userIdFromDatabase, token) { retrievedCustomerId, error ->
             runOnUiThread {
-                if (error != null) {
+                if (error != null || retrievedCustomerId == null || retrievedCustomerId == 0L) {
                     progressDialog.dismiss()
-                    Log.e(tag, "Error creating booking", error)
+                    Log.e(tag, "Error getting customer ID: ${error?.message}")
                     Toast.makeText(
                         this,
-                        "Error creating booking: ${error.message}",
+                        "Error: Customer profile not found. Please set up your profile first.",
                         Toast.LENGTH_LONG
                     ).show()
                     return@runOnUiThread
                 }
                 
-                if (booking != null) {
-                    // Create transaction record for the booking
-                    createTransactionRecord(booking.bookingId, totalPrice.toDouble(), paymentMethod) {
-                        progressDialog.dismiss()
-                        // Show success dialog
-                        showPaymentSuccessDialog(booking)
+                Log.d(tag, "Retrieved customer ID: $retrievedCustomerId for user ID: $userIdFromDatabase")
+                
+                // Create booking with API using the actual customerId from the database
+                val bookingApiClient = BookingApiClient(this)
+                bookingApiClient.createBooking(
+                    serviceId = service.serviceId,
+                    customerId = retrievedCustomerId, // Use the actual customer ID from database
+                    bookingDate = bookingDate,
+                    token = token,
+                    note = specialInstructions,
+                    paymentMethod = paymentMethod,
+                    bookingTime = timeSlot.split("-").firstOrNull() ?: timeSlot,
+                    totalCost = totalPrice.toDouble()
+                ) { booking, bookingError ->
+                    runOnUiThread {
+                        if (bookingError != null) {
+                            progressDialog.dismiss()
+                            Log.e(tag, "Error creating booking after payment", bookingError)
+                            Toast.makeText(
+                                this,
+                                "Error creating booking: ${bookingError.message}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@runOnUiThread
+                        }
+                        
+                        if (booking != null) {
+                            // Clear pending booking data
+                            val preferences = getSharedPreferences("PendingBooking", MODE_PRIVATE)
+                            preferences.edit().clear().apply()
+                            
+                            // Create transaction record for the GCash payment
+                            createTransactionRecord(booking.bookingId, totalPrice.toDouble(), paymentMethod) {
+                                progressDialog.dismiss()
+                                // Show success dialog
+                                showPaymentSuccessDialog(booking)
+                            }
+                        } else {
+                            progressDialog.dismiss()
+                            Toast.makeText(
+                                this,
+                                "Unknown error occurred while creating booking",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
                     }
-                } else {
-                    progressDialog.dismiss()
-                    Toast.makeText(
-                        this,
-                        "Unknown error occurred while creating booking",
-                        Toast.LENGTH_LONG
-                    ).show()
                 }
             }
         }
@@ -1587,47 +1668,69 @@ class BrowseServicesActivity : AppCompatActivity() {
                     progressDialog.setCancelable(false)
                     progressDialog.show()
                     
-                    // Create booking with API
-                    val bookingApiClient = BookingApiClient(this)
-                    bookingApiClient.createBooking(
-                        serviceId = serviceId,
-                        customerId = customerId,
-                        bookingDate = bookingDate,
-                        token = token,
-                        note = specialInstructions,
-                        paymentMethod = paymentMethod,
-                        bookingTime = startTime,
-                        totalCost = totalPrice.toDouble()
-                    ) { booking, error ->
+                    // First get the customer ID from the database to ensure it exists
+                    val userApiClient = UserApiClient(this)
+                    val userId = getSharedPreferences("UserPrefs", MODE_PRIVATE).getLong("userId", 0)
+                    
+                    userApiClient.getCustomerIdByUserId(userId, token) { retrievedCustomerId, error ->
                         runOnUiThread {
-                            if (error != null) {
+                            if (error != null || retrievedCustomerId == null || retrievedCustomerId == 0L) {
                                 progressDialog.dismiss()
-                                Log.e(tag, "Error creating booking after payment", error)
+                                Log.e(tag, "Error getting customer ID: ${error?.message}")
                                 Toast.makeText(
                                     this,
-                                    "Error creating booking: ${error.message}",
+                                    "Error: Customer profile not found. Please set up your profile first.",
                                     Toast.LENGTH_LONG
                                 ).show()
                                 return@runOnUiThread
                             }
                             
-                            if (booking != null) {
-                                // Clear pending booking data
-                                preferences.edit().clear().apply()
-                                
-                                // Create transaction record for the GCash payment
-                                createTransactionRecord(booking.bookingId, totalPrice.toDouble(), paymentMethod) {
-                                    progressDialog.dismiss()
-                                    // Show success dialog
-                                    showPaymentSuccessDialog(booking)
+                            Log.d(tag, "Retrieved customer ID: $retrievedCustomerId for user ID: $userId")
+                            
+                            // Create booking with API using the actual customerId from the database
+                            val bookingApiClient = BookingApiClient(this)
+                            bookingApiClient.createBooking(
+                                serviceId = serviceId,
+                                customerId = retrievedCustomerId, // Use the actual customer ID from database
+                                bookingDate = bookingDate,
+                                token = token,
+                                note = specialInstructions,
+                                paymentMethod = paymentMethod,
+                                bookingTime = startTime,
+                                totalCost = totalPrice.toDouble()
+                            ) { booking, bookingError ->
+                                runOnUiThread {
+                                    if (bookingError != null) {
+                                        progressDialog.dismiss()
+                                        Log.e(tag, "Error creating booking after payment", bookingError)
+                                        Toast.makeText(
+                                            this,
+                                            "Error creating booking: ${bookingError.message}",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                        return@runOnUiThread
+                                    }
+                                    
+                                    if (booking != null) {
+                                        // Clear pending booking data
+                                        val preferences = getSharedPreferences("PendingBooking", MODE_PRIVATE)
+                                        preferences.edit().clear().apply()
+                                        
+                                        // Create transaction record for the GCash payment
+                                        createTransactionRecord(booking.bookingId, totalPrice.toDouble(), paymentMethod) {
+                                            progressDialog.dismiss()
+                                            // Show success dialog
+                                            showPaymentSuccessDialog(booking)
+                                        }
+                                    } else {
+                                        progressDialog.dismiss()
+                                        Toast.makeText(
+                                            this,
+                                            "Unknown error occurred while creating booking",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
                                 }
-                            } else {
-                                progressDialog.dismiss()
-                                Toast.makeText(
-                                    this,
-                                    "Unknown error occurred while creating booking",
-                                    Toast.LENGTH_LONG
-                                ).show()
                             }
                         }
                     }

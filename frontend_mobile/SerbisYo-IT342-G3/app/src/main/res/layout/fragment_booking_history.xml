@@ -69,6 +69,12 @@
                 android:gravity="center"
                 android:padding="16dp"
                 android:textColor="#666666"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:textSize="16sp"
+                android:minHeight="100dp"
+                android:lineSpacingExtra="4dp"
                 android:visibility="gone" />
 
             <!-- Bookings RecyclerView -->

@@ -1,17 +1,20 @@
 package com.example.serbisyo_it342_g3
 
+import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.example.serbisyo_it342_g3.api.BaseApiClient
 import com.google.gson.Gson
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
@@ -23,9 +26,11 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var etPassword: EditText
     private lateinit var btnLogin: Button
     private lateinit var tvSignUp: TextView
+    private lateinit var btnGoogleSignIn: Button
     private lateinit var baseApiClient: BaseApiClient
+    private lateinit var googleSignInLauncher: ActivityResultLauncher<Intent>
     
-    private val TAG = "LoginActivity"
+    private val loginActivityTag = "LoginActivity"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,9 +40,31 @@ class LoginActivity : AppCompatActivity() {
         etPassword = findViewById(R.id.etPassword)
         btnLogin = findViewById(R.id.btnLogin)
         tvSignUp = findViewById(R.id.tvSignUp)
+        btnGoogleSignIn = findViewById(R.id.btnGoogleSignIn)
 
         // Initialize BaseApiClient
         baseApiClient = BaseApiClient(this)
+        
+        // Set up ActivityResultLauncher for Google Sign-In
+        googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val data = result.data
+            if (result.resultCode == Activity.RESULT_OK && data != null) {
+                handleGoogleSignInResult(data)
+            } else {
+                Log.d(loginActivityTag, "Google Sign-In failed: ${result.resultCode}")
+            }
+        }
+        
+        // Check for OAuth error from browser redirect
+        if (intent.getBooleanExtra("auth_error", false)) {
+            Toast.makeText(this, "Google authentication failed. Please try again or use username/password.", Toast.LENGTH_LONG).show()
+        }
+        
+        // Add long press listener to Google Sign-In button to check status manually
+        btnGoogleSignIn.setOnLongClickListener {
+            checkGoogleLoginStatus()
+            true
+        }
         
         // Network connectivity check
         if (!baseApiClient.isNetworkAvailable()) {
@@ -54,7 +81,7 @@ class LoginActivity : AppCompatActivity() {
             }
 
             // Debug message
-            Log.d(TAG, "Attempting login with username: $username")
+            Log.d(loginActivityTag, "Attempting login with username: $username")
             Toast.makeText(this, "Logging in...", Toast.LENGTH_SHORT).show()
             
             loginUser(username, password)
@@ -64,12 +91,234 @@ class LoginActivity : AppCompatActivity() {
             // Redirect to the new multi-step registration flow
             startActivity(Intent(this, MultiStepRegistrationActivity::class.java))
         }
+        
+        // Set up Google Sign In button
+        btnGoogleSignIn.setOnClickListener {
+            signInWithGoogle()
+        }
+        
+        // Check if we should start Google Sign-In immediately (from registration fragment)
+        if (intent.getBooleanExtra("startGoogleSignIn", false)) {
+            signInWithGoogle()
+        }
+        
+        // Check if we have Google Sign-In data passed from registration
+        val googleSignInData = intent.getParcelableExtra("googleSignInData") as? Intent
+        if (googleSignInData != null) {
+            handleGoogleSignInResult(googleSignInData)
+        }
+    }
+    
+    private fun signInWithGoogle() {
+        try {
+            // Get the server base URL
+            val baseUrl = baseApiClient.getBaseUrl()
+            
+            // Create direct URL to Google Sign-In endpoint
+            val googleAuthUrl = "$baseUrl/oauth2/authorization/google"
+            
+            // Open in Chrome Custom Tabs (preferred by Google) or external browser
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(googleAuthUrl))
+            
+            // To customize Chrome Custom Tabs for better experience
+            try {
+                // Try to use Chrome Custom Tabs if available
+                val customTabsIntent = androidx.browser.customtabs.CustomTabsIntent.Builder()
+                    .setColorSchemeParams(
+                        androidx.browser.customtabs.CustomTabsIntent.COLOR_SCHEME_LIGHT,
+                        androidx.browser.customtabs.CustomTabColorSchemeParams.Builder()
+                            .setToolbarColor(resources.getColor(R.color.colorPrimary, theme))
+                            .build()
+                    )
+                    .setShowTitle(true)
+                    .build()
+                
+                // Find Chrome or other browser that supports Custom Tabs
+                val packageName = "com.android.chrome" // Default to Chrome
+                customTabsIntent.intent.setPackage(packageName)
+                customTabsIntent.launchUrl(this, Uri.parse(googleAuthUrl))
+            } catch (e: Exception) {
+                // Fallback to regular browser intent
+                startActivity(intent)
+                Log.e(loginActivityTag, "Error using CustomTabs: ${e.message}", e)
+            }
+            
+            // Log for debugging
+            Log.d(loginActivityTag, "Opening Google auth URL with Custom Tabs: $googleAuthUrl")
+            
+            // Register redirect handler activity in manifest
+            Toast.makeText(
+                this, 
+                "Please sign in with Google. After signing in, you'll be redirected back to the app.",
+                Toast.LENGTH_LONG
+            ).show()
+            
+        } catch (e: Exception) {
+            Log.e(loginActivityTag, "Error starting Google Sign-In: ${e.message}", e)
+            Toast.makeText(this, "Error starting Google Sign-In: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    private fun handleGoogleSignInResult(data: Intent) {
+        try {
+            // Extract email from the intent data
+            val email = data.getStringExtra("email") ?: ""
+            
+            if (email.isNotEmpty()) {
+                // We have email from Google authentication, check if user exists
+                checkExistingUser(email, data.getStringExtra("name") ?: "", data.getStringExtra("picture") ?: "")
+            } else {
+                Log.e(loginActivityTag, "No email received from Google authentication")
+                Toast.makeText(this, "Failed to get user information from Google", Toast.LENGTH_LONG).show()
+            }
+            
+        } catch (e: Exception) {
+            Log.e(loginActivityTag, "Error processing Google authentication result", e)
+            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+    
+    private fun checkExistingUser(email: String, name: String, picture: String) {
+        thread {
+            try {
+                val client = baseApiClient.client
+                
+                // Create a request to check if user exists
+                val jsonObj = JSONObject()
+                jsonObj.put("email", email)
+                
+                val requestBody = jsonObj.toString()
+                    .toRequestBody("application/json".toMediaTypeOrNull())
+                
+                val requestUrl = "${baseApiClient.getBaseUrl()}/api/user-auth/check-email"
+                
+                val request = Request.Builder()
+                    .url(requestUrl)
+                    .post(requestBody)
+                    .build()
+                
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val responseBody = response.body?.string() ?: ""
+                        val exists = responseBody.contains("true")
+                        
+                        runOnUiThread {
+                            if (exists) {
+                                // User exists, try to login with Google credentials
+                                loginWithGoogle(email)
+                            } else {
+                                // User doesn't exist, redirect to role selection
+                                val intent = Intent(this, OAuth2RoleSelectionActivity::class.java).apply {
+                                    putExtra("email", email)
+                                    putExtra("name", name)
+                                    putExtra("picture", picture)
+                                }
+                                startActivity(intent)
+                            }
+                        }
+                    } else {
+                        runOnUiThread {
+                            Toast.makeText(this, "Error checking user: ${response.code}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(loginActivityTag, "Error checking existing user", e)
+                runOnUiThread {
+                    Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+    
+    private fun loginWithGoogle(email: String) {
+        thread {
+            try {
+                val client = baseApiClient.client
+                
+                val jsonObj = JSONObject()
+                jsonObj.put("email", email)
+                jsonObj.put("isOAuth", true)
+                
+                val requestBody = jsonObj.toString()
+                    .toRequestBody("application/json".toMediaTypeOrNull())
+                
+                val requestUrl = "${baseApiClient.getBaseUrl()}/api/user-auth/oauth-login"
+                
+                val request = Request.Builder()
+                    .url(requestUrl)
+                    .post(requestBody)
+                    .build()
+                
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val responseBody = response.body?.string() ?: ""
+                        
+                        try {
+                            val jsonResponse = Gson().fromJson(responseBody, Map::class.java)
+                            
+                            val token = jsonResponse["token"] as? String
+                            val role = jsonResponse["role"] as? String
+                            val userId = jsonResponse["userId"] as? String
+                            
+                            if (token != null && role != null) {
+                                // Save to shared preferences
+                                val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
+                                with(sharedPref.edit()) {
+                                    putString("token", token)
+                                    val userIdLong = userId?.toLongOrNull() ?: 0L
+                                    putLong("userId", userIdLong)
+                                    putString("username", email)
+                                    putString("role", role)
+                                    apply()
+                                }
+                                
+                                runOnUiThread {
+                                    // Navigate based on role
+                                    if (role.contains("Customer", ignoreCase = true)) {
+                                        val intent = Intent(this, CustomerDashboardActivity::class.java)
+                                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                        startActivity(intent)
+                                        finish()
+                                    } else if (role.contains("Service Provider", ignoreCase = true)) {
+                                        val intent = Intent(this, ServiceProviderDashboardActivity::class.java)
+                                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                        startActivity(intent)
+                                        finish()
+                                    } else {
+                                        Toast.makeText(this, "Unknown role: $role", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            } else {
+                                runOnUiThread {
+                                    Toast.makeText(this, "Invalid response from server", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e(loginActivityTag, "Error parsing response", e)
+                            runOnUiThread {
+                                Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    } else {
+                        runOnUiThread {
+                            Toast.makeText(this, "Login failed: ${response.code}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(loginActivityTag, "Error during Google login", e)
+                runOnUiThread {
+                    Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 
     private fun loginUser(username: String, password: String) {
         thread {
             try {
-                Log.d(TAG, "Creating HTTP client")
+                Log.d(loginActivityTag, "Creating HTTP client")
                 val client = baseApiClient.client
                 
                 val jsonObject = JSONObject()
@@ -81,8 +330,8 @@ class LoginActivity : AppCompatActivity() {
                 
                 val requestUrl = "${baseApiClient.getBaseUrl()}/api/user-auth/login"
 
-                Log.d(TAG, "Sending login request to: $requestUrl")
-                Log.d(TAG, "Request body: $jsonObject")
+                Log.d(loginActivityTag, "Sending login request to: $requestUrl")
+                Log.d(loginActivityTag, "Request body: $jsonObject")
                 
                 val request = Request.Builder()
                     .url(requestUrl)
@@ -90,22 +339,22 @@ class LoginActivity : AppCompatActivity() {
                     .build()
 
                 client.newCall(request).execute().use { response ->
-                    Log.d(TAG, "Response code: ${response.code}")
+                    Log.d(loginActivityTag, "Response code: ${response.code}")
                     
                     if (response.isSuccessful) {
                         val responseBody = response.body?.string() ?: ""
-                        Log.d(TAG, "Response body: $responseBody")
+                        Log.d(loginActivityTag, "Response body: $responseBody")
                         
                         try {
                             val jsonResponse = Gson().fromJson(responseBody, Map::class.java)
-                            Log.d(TAG, "Parsed response: $jsonResponse")
+                            Log.d(loginActivityTag, "Parsed response: $jsonResponse")
                             
                             // Extract data from response
                             val token = jsonResponse["token"] as? String
                             val role = jsonResponse["role"] as? String
                             val userId = jsonResponse["userId"] as? String
                             
-                            Log.d(TAG, "Extracted data - Token: ${token?.take(20)}..., Role: $role, UserId: $userId")
+                            Log.d(loginActivityTag, "Extracted data - Token: ${token?.take(20)}..., Role: $role, UserId: $userId")
                             
                             if (token == null || role == null) {
                                 runOnUiThread {
@@ -131,7 +380,7 @@ class LoginActivity : AppCompatActivity() {
                             runOnUiThread {
                                 // Navigate based on role
                                 if (role.contains("Customer", ignoreCase = true)) {
-                                    Log.d(TAG, "Navigating to CustomerDashboardActivity")
+                                    Log.d(loginActivityTag, "Navigating to CustomerDashboardActivity")
                                     Toast.makeText(this, "Login successful as Customer", Toast.LENGTH_SHORT).show()
                                     
                                     val intent = Intent(this, CustomerDashboardActivity::class.java)
@@ -140,7 +389,7 @@ class LoginActivity : AppCompatActivity() {
                                     finish()
                                 } 
                                 else if (role.contains("Service Provider", ignoreCase = true)) {
-                                    Log.d(TAG, "Navigating to ServiceProviderDashboardActivity")
+                                    Log.d(loginActivityTag, "Navigating to ServiceProviderDashboardActivity")
                                     Toast.makeText(this, "Login successful as Service Provider", Toast.LENGTH_SHORT).show()
                                     
                                     val intent = Intent(this, ServiceProviderDashboardActivity::class.java)
@@ -149,19 +398,19 @@ class LoginActivity : AppCompatActivity() {
                                     finish()
                                 } 
                                 else {
-                                    Log.d(TAG, "Unknown role: $role")
+                                    Log.d(loginActivityTag, "Unknown role: $role")
                                     Toast.makeText(this, "Unknown role: $role", Toast.LENGTH_LONG).show()
                                 }
                             }
                         } catch (e: Exception) {
-                            Log.e(TAG, "Error parsing response", e)
+                            Log.e(loginActivityTag, "Error parsing response", e)
                             runOnUiThread {
                                 Toast.makeText(this, "Error parsing response: ${e.message}", Toast.LENGTH_LONG).show()
                             }
                         }
                     } else {
                         val errorBody = response.body?.string() ?: ""
-                        Log.e(TAG, "Login failed: ${response.code} - $errorBody")
+                        Log.e(loginActivityTag, "Login failed: ${response.code} - $errorBody")
                         
                         runOnUiThread {
                             when (response.code) {
@@ -177,7 +426,7 @@ class LoginActivity : AppCompatActivity() {
                                         val message = errorJson?.optString("message") ?: "Access denied. Please check your credentials."
                                         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
                                     } catch (e: Exception) {
-                                        Log.e(TAG, "Error parsing error response", e)
+                                        Log.e(loginActivityTag, "Error parsing error response", e)
                                         Toast.makeText(this, "Access denied. Please check your credentials.", Toast.LENGTH_LONG).show()
                                     }
                                 }
@@ -188,14 +437,102 @@ class LoginActivity : AppCompatActivity() {
                     }
                 }
             } catch (e: IOException) {
-                Log.e(TAG, "Network error", e)
+                Log.e(loginActivityTag, "Network error", e)
                 runOnUiThread {
                     Toast.makeText(this, "Network error: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error during login", e)
+                Log.e(loginActivityTag, "Error during login", e)
                 runOnUiThread {
                     Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    // Method to manually check if user is already logged in via Google
+    // This helps users who completed Google authentication in browser
+    // but the app didn't automatically capture the result
+    private fun checkGoogleLoginStatus() {
+        Toast.makeText(this, "Checking Google authentication status...", Toast.LENGTH_SHORT).show()
+        
+        thread {
+            try {
+                val client = baseApiClient.client
+                val requestUrl = "${baseApiClient.getBaseUrl()}/api/user-auth/check-oauth-status"
+                
+                // Create an empty request to check if user has active session
+                val requestBody = "{}".toRequestBody("application/json".toMediaTypeOrNull())
+                
+                val request = Request.Builder()
+                    .url(requestUrl)
+                    .post(requestBody)
+                    .build()
+                
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val responseBody = response.body?.string() ?: ""
+                        Log.d(loginActivityTag, "OAuth status response: $responseBody")
+                        
+                        try {
+                            val jsonResponse = Gson().fromJson(responseBody, Map::class.java)
+                            val isAuthenticated = jsonResponse["authenticated"] as? Boolean ?: false
+                            
+                            if (isAuthenticated) {
+                                val token = jsonResponse["token"] as? String
+                                val userId = jsonResponse["userId"] as? String
+                                val role = jsonResponse["role"] as? String
+                                
+                                if (token != null && role != null) {
+                                    // Save auth data
+                                    val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
+                                    with(sharedPref.edit()) {
+                                        putString("token", token)
+                                        val userIdLong = userId?.toLongOrNull() ?: 0L
+                                        putLong("userId", userIdLong)
+                                        putString("role", role)
+                                        apply()
+                                    }
+                                    
+                                    // Navigate based on role
+                                    runOnUiThread {
+                                        if (role.contains("Customer", ignoreCase = true)) {
+                                            startActivity(Intent(this, CustomerDashboardActivity::class.java).apply {
+                                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                            })
+                                        } else {
+                                            startActivity(Intent(this, ServiceProviderDashboardActivity::class.java).apply {
+                                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                            })
+                                        }
+                                        finish()
+                                    }
+                                } else {
+                                    runOnUiThread {
+                                        Toast.makeText(this, "Authenticated, but missing token or role", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            } else {
+                                runOnUiThread {
+                                    Toast.makeText(this, "Not authenticated with Google. Please sign in.", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e(loginActivityTag, "Error parsing response", e)
+                            runOnUiThread {
+                                Toast.makeText(this, "Error checking status: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } else {
+                        runOnUiThread {
+                            Toast.makeText(this, "Failed to check login status: ${response.code}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(loginActivityTag, "Error checking OAuth status", e)
+                runOnUiThread {
+                    Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }

@@ -215,8 +215,7 @@ class ServiceProviderScheduleFragment : Fragment() {
     
     private fun loadSchedules() {
         if (providerId <= 0) {
-            tvErrorMessage.text = "Provider ID not found. Please reload the page."
-            tvErrorMessage.visibility = View.VISIBLE
+            checkProviderId()
             return
         }
         
@@ -286,10 +285,22 @@ class ServiceProviderScheduleFragment : Fragment() {
                             if (!isAdded) return@withContext
                             
                             progressBar.visibility = View.GONE
-                            val errorMsg = "Failed to fetch schedules: HTTP ${response.code}"
-                            Log.e(tag, errorMsg)
-                            tvErrorMessage.text = errorMsg
-                            tvErrorMessage.visibility = View.VISIBLE
+                            
+                            // For 404 errors (no schedules found), show empty state
+                            if (response.code == 404) {
+                                tvNoSchedules.visibility = View.VISIBLE
+                                tvNoSchedules.text = "No schedules found. Add a schedule to get started."
+                            } else {
+                                val errorMsg = "Failed to fetch schedules: HTTP ${response.code}"
+                                Log.e(tag, errorMsg)
+                                tvErrorMessage.text = errorMsg
+                                tvErrorMessage.visibility = View.VISIBLE
+                                
+                                // Could be a problem with provider ID - check it
+                                if (response.code == 400 || response.code == 401) {
+                                    checkProviderId()
+                                }
+                            }
                         }
                     }
                 }
@@ -299,11 +310,103 @@ class ServiceProviderScheduleFragment : Fragment() {
                     if (!isAdded) return@withContext
                     
                     progressBar.visibility = View.GONE
-                    tvErrorMessage.text = "Error: ${e.message}"
-                    tvErrorMessage.visibility = View.VISIBLE
+                    
+                    // Show empty state instead of error for new providers
+                    tvNoSchedules.visibility = View.VISIBLE
+                    tvNoSchedules.text = "No schedules found. Add a schedule to get started."
                 }
             }
         }
+    }
+    
+    private fun checkProviderId() {
+        progressBar.visibility = View.VISIBLE
+        
+        // Use Coroutines for background processing
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Make API call to get provider ID by user ID
+                val client = OkHttpClient()
+                val url = "${Constants.BASE_URL}user-auth/getUserByAuthId/$userId"
+                
+                val request = Request.Builder()
+                    .url(url)
+                    .addHeader("Authorization", "Bearer $token")
+                    .get()
+                    .build()
+                
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val responseBody = response.body?.string() ?: "{}"
+                        val jsonObject = JSONObject(responseBody)
+                        val serviceProvider = jsonObject.optJSONObject("serviceProvider")
+                        
+                        if (serviceProvider != null) {
+                            val providerId = serviceProvider.optLong("providerId", 0)
+                            
+                            withContext(Dispatchers.Main) {
+                                if (!isAdded) return@withContext
+                                
+                                if (providerId > 0) {
+                                    this@ServiceProviderScheduleFragment.providerId = providerId
+                                    
+                                    // Save to SharedPreferences
+                                    saveProviderId(providerId)
+                                    
+                                    // Now load schedules with this provider ID
+                                    loadSchedules()
+                                } else {
+                                    // New provider account with no schedules yet
+                                    progressBar.visibility = View.GONE
+                                    tvNoSchedules.visibility = View.VISIBLE
+                                    tvNoSchedules.text = "No schedules found. Add a schedule to get started."
+                                }
+                            }
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                if (!isAdded) return@withContext
+                                
+                                // New provider account with no schedules yet
+                                progressBar.visibility = View.GONE
+                                tvNoSchedules.visibility = View.VISIBLE
+                                tvNoSchedules.text = "No schedules found. Add a schedule to get started."
+                            }
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            if (!isAdded) return@withContext
+                            
+                            progressBar.visibility = View.GONE
+                            
+                            // For new providers, show empty state instead of error
+                            tvNoSchedules.visibility = View.VISIBLE
+                            tvNoSchedules.text = "No schedules found. Add a schedule to get started."
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "Error checking provider ID", e)
+                
+                withContext(Dispatchers.Main) {
+                    if (!isAdded) return@withContext
+                    
+                    progressBar.visibility = View.GONE
+                    tvNoSchedules.visibility = View.VISIBLE
+                    tvNoSchedules.text = "No schedules found. Add a schedule to get started."
+                }
+            }
+        }
+    }
+    
+    private fun saveProviderId(providerId: Long) {
+        // Save provider ID to both SharedPreferences locations for consistency
+        val userPrefs = requireActivity().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+        userPrefs.edit().putLong("providerId", providerId).apply()
+        
+        val userPrefs2 = requireActivity().getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        userPrefs2.edit().putLong("providerId", providerId).apply()
+        
+        Log.d(tag, "Saved provider ID: $providerId to SharedPreferences")
     }
     
     private fun validateInputs(): Boolean {

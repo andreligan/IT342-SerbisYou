@@ -95,12 +95,8 @@ class ServiceApiClient(private val context: Context) {
     fun getServicesByProviderId(providerId: Long, token: String, callback: (List<Service>?, Exception?) -> Unit) {
         Log.d(TAG, "Getting services for provider: $providerId with token: $token")
         
-        // Note: Based on the database schema, provider_id needs to be 1 
-        // even though the user ID is 5 (there seems to be a mismatch in the database)
-        val actualProviderId = 1L
-        
         val request = Request.Builder()
-            .url("${baseApiClient.getBaseUrl()}/api/services/getAll")
+            .url("${baseApiClient.getBaseUrl()}/api/services/provider/$providerId")
             .get()
             .header("Authorization", "Bearer $token")
             .build()
@@ -126,16 +122,15 @@ class ServiceApiClient(private val context: Context) {
                         val type = object : TypeToken<List<Service>>() {}.type
                         val services = gson.fromJson<List<Service>>(responseBody, type)
                         
-                        // Filter services by provider ID (using the actual provider ID from database)
-                        val providerServices = services.filter { it.provider?.providerId == actualProviderId }
-                        
                         // Log service details for debugging
-                        for (service in providerServices) {
+                        Log.d(TAG, "Found ${services.size} services for provider ID $providerId")
+                        for (service in services) {
                             Log.d(TAG, "Service: id=${service.serviceId}, name=${service.serviceName}, " +
+                                    "providerId=${service.provider?.providerId}, " +
                                     "serviceImage=${service.serviceImage}, imageUrl=${service.imageUrl}")
                         }
                         
-                        callback(providerServices, null)
+                        callback(services, null)
                     } catch (e: Exception) {
                         Log.e(TAG, "Error parsing services", e)
                         callback(null, e)
@@ -143,6 +138,50 @@ class ServiceApiClient(private val context: Context) {
                 } else {
                     Log.e(TAG, "Error getting services: ${response.code}")
                     Log.e(TAG, "Error response body: $responseBody")
+                    
+                    // If we get a 404 (endpoint not found) or other error, fall back to the old method
+                    fallbackToAllServicesFiltering(providerId, token, callback)
+                }
+            }
+        })
+    }
+
+    // Fallback method that uses the old approach of fetching all services and filtering
+    private fun fallbackToAllServicesFiltering(providerId: Long, token: String, callback: (List<Service>?, Exception?) -> Unit) {
+        Log.d(TAG, "Falling back to filtering all services for provider: $providerId")
+        
+        val request = Request.Builder()
+            .url("${baseApiClient.getBaseUrl()}/api/services/getAll")
+            .get()
+            .header("Authorization", "Bearer $token")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to get services in fallback method", e)
+                callback(null, e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                
+                if (response.isSuccessful) {
+                    try {
+                        val type = object : TypeToken<List<Service>>() {}.type
+                        val services = gson.fromJson<List<Service>>(responseBody, type)
+                        
+                        // Filter services by the provider ID that was passed to this method
+                        val providerServices = services.filter { it.provider?.providerId == providerId }
+                        
+                        Log.d(TAG, "Fallback method found ${providerServices.size} services for provider ID $providerId out of ${services.size} total services")
+                        
+                        callback(providerServices, null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing services in fallback method", e)
+                        callback(null, e)
+                    }
+                } else {
+                    Log.e(TAG, "Error getting services in fallback method: ${response.code}")
                     callback(null, Exception("Failed to get services: ${response.code}"))
                 }
             }
@@ -190,10 +229,6 @@ class ServiceApiClient(private val context: Context) {
     fun createService(providerId: Long, categoryId: Long, service: Service, token: String, callback: (Service?, Exception?) -> Unit) {
         Log.d(TAG, "Creating service for provider: $providerId, category: $categoryId")
         
-        // Note: Based on the database schema, provider_id needs to be 1 
-        // even though the user ID is 5 (there seems to be a mismatch in the database)
-        val actualProviderId = 1L
-        
         val jsonObject = JSONObject().apply {
             put("serviceName", service.serviceName)
             put("serviceDescription", service.serviceDescription)
@@ -207,7 +242,7 @@ class ServiceApiClient(private val context: Context) {
 
         // Updated URL format to ensure compatibility with the controller's expected format
         val request = Request.Builder()
-            .url("${baseApiClient.getBaseUrl()}/api/services/postService/$actualProviderId/$categoryId")
+            .url("${baseApiClient.getBaseUrl()}/api/services/postService/$providerId/$categoryId")
             .post(requestBody) // Ensure we're using POST method
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json") // Add explicit content type
@@ -251,9 +286,6 @@ class ServiceApiClient(private val context: Context) {
     fun updateService(serviceId: Long, providerId: Long, categoryId: Long, service: Service, token: String, callback: (Service?, Exception?) -> Unit) {
         Log.d(TAG, "Updating service with ID: $serviceId")
         
-        // Note: Based on the database schema, provider_id needs to be 1 
-        val actualProviderId = 1L
-        
         val jsonObject = JSONObject().apply {
             put("serviceName", service.serviceName)
             put("serviceDescription", service.serviceDescription)
@@ -266,7 +298,7 @@ class ServiceApiClient(private val context: Context) {
         val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
 
         val request = Request.Builder()
-            .url("${baseApiClient.getBaseUrl()}/api/services/updateService/$serviceId/$actualProviderId/$categoryId")
+            .url("${baseApiClient.getBaseUrl()}/api/services/updateService/$serviceId/$providerId/$categoryId")
             .put(requestBody) // Ensure we're using PUT method
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json") // Add explicit content type
@@ -385,9 +417,7 @@ class ServiceApiClient(private val context: Context) {
             Log.d(TAG, "Image base64 length: ${base64Image.length}")
         }
         
-        // Note: Based on the database schema, provider_id needs to be 1 
-
-        val actualProviderId = 1L
+        // FIXED: Use the actual providerId instead of hardcoding to 1L
         
         val jsonObject = JSONObject().apply {
             put("serviceName", service.serviceName)
@@ -410,7 +440,7 @@ class ServiceApiClient(private val context: Context) {
         Log.d(TAG, "Request size: ${requestSize / 1024} KB")
         
         val request = Request.Builder()
-            .url("${baseApiClient.getBaseUrl()}/api/services/updateServiceWithImage/$serviceId/$actualProviderId/$categoryId")
+            .url("${baseApiClient.getBaseUrl()}/api/services/updateServiceWithImage/$serviceId/$providerId/$categoryId")
             .put(requestBody)
 
             .header("Authorization", "Bearer $token")
@@ -491,8 +521,7 @@ class ServiceApiClient(private val context: Context) {
             Log.d(TAG, "Image base64 length: ${base64Image.length}")
         }
         
-        // Note: Based on the database schema, provider_id needs to be 1 
-        val actualProviderId = 1L
+        // FIXED: Use the actual providerId instead of hardcoding to 1L
         
         val jsonObject = JSONObject().apply {
             put("serviceName", service.serviceName)
@@ -523,7 +552,7 @@ class ServiceApiClient(private val context: Context) {
             "services/postService" // Regular endpoint
         }
         
-        val url = "${baseApiClient.getBaseUrl()}/api/$endpoint/$actualProviderId/$categoryId"
+        val url = "${baseApiClient.getBaseUrl()}/api/$endpoint/$providerId/$categoryId"
         
         val request = Request.Builder()
             .url(url)
@@ -743,6 +772,57 @@ class ServiceApiClient(private val context: Context) {
                     }
                 } else {
                     callback(null, Exception("Failed to get service: ${response.code}"))
+                }
+            }
+        })
+    }
+
+    // Get provider ID by user ID
+    fun getProviderIdByUserId(userId: Long, token: String, callback: (Long, Exception?) -> Unit) {
+        Log.d(TAG, "Getting provider ID for user ID: $userId")
+        
+        val request = Request.Builder()
+            .url("${baseApiClient.getBaseUrl()}/api/service-providers/by-user/$userId")
+            .get()
+            .header("Authorization", "Bearer $token")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to get provider ID for user", e)
+                callback(0, e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                Log.d(TAG, "Response code: ${response.code}")
+                
+                if (response.isSuccessful && responseBody != null) {
+                    try {
+                        val provider = gson.fromJson(responseBody, ServiceProvider::class.java)
+                        val providerId = provider.providerId ?: 0
+                        Log.d(TAG, "Found provider ID: $providerId for user ID: $userId")
+                        callback(providerId, null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing provider data", e)
+                        // Try to extract provider ID directly if possible
+                        try {
+                            val jsonObject = JSONObject(responseBody)
+                            val providerId = jsonObject.optLong("providerId", 0)
+                            if (providerId > 0) {
+                                Log.d(TAG, "Extracted provider ID from JSON: $providerId")
+                                callback(providerId, null)
+                            } else {
+                                callback(0, e)
+                            }
+                        } catch (jsonEx: Exception) {
+                            Log.e(TAG, "Error extracting provider ID from JSON", jsonEx)
+                            callback(0, e)
+                        }
+                    }
+                } else {
+                    Log.e(TAG, "Error getting provider ID: ${response.code}")
+                    callback(0, Exception("Failed to get provider ID: ${response.code}"))
                 }
             }
         })

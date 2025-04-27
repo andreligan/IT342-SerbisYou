@@ -26,8 +26,51 @@ class BookingApiClient(private val context: Context) {
             return
         }
 
-        Log.d(TAG, "Getting bookings for customer: $customerId with token: $token")
+        Log.d(TAG, "Getting bookings for customer: $customerId with token: ${token.take(20)}...")
 
+        // Try to fetch bookings directly from the customer endpoint first
+        val directUrl = "${baseApiClient.getBaseUrl()}/api/bookings/customer/$customerId"
+        
+        val request = Request.Builder()
+            .url(directUrl)
+            .get()
+            .header("Authorization", "Bearer $token")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to get bookings from direct endpoint, falling back to filtering", e)
+                // On failure, fallback to the old method of getting all bookings and filtering
+                getAllBookingsAndFilter(customerId, token, callback)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                Log.d(TAG, "Response code from direct endpoint: ${response.code}")
+                
+                if (response.isSuccessful) {
+                    try {
+                        val type = object : TypeToken<List<Booking>>() {}.type
+                        val customerBookings = gson.fromJson<List<Booking>>(responseBody, type) ?: emptyList()
+                        
+                        Log.d(TAG, "Directly received ${customerBookings.size} bookings for customer $customerId")
+                        callback(customerBookings, null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing bookings from direct endpoint, falling back to filtering", e)
+                        // On parsing error, fallback to the old method
+                        getAllBookingsAndFilter(customerId, token, callback)
+                    }
+                } else {
+                    // If the endpoint doesn't exist (404) or returns an error, fall back to old method
+                    Log.d(TAG, "Direct endpoint returned ${response.code}, falling back to filtering")
+                    getAllBookingsAndFilter(customerId, token, callback)
+                }
+            }
+        })
+    }
+
+    // Fallback method to get all bookings and filter them client-side
+    private fun getAllBookingsAndFilter(customerId: Long, token: String, callback: (List<Booking>?, Exception?) -> Unit) {
         val request = Request.Builder()
             .url("${baseApiClient.getBaseUrl()}/api/bookings/getAll")
             .get()
@@ -42,15 +85,57 @@ class BookingApiClient(private val context: Context) {
 
             override fun onResponse(call: Call, response: Response) {
                 val responseBody = response.body?.string()
-                Log.d(TAG, "Response code: ${response.code}")
-                Log.d(TAG, "Response body: $responseBody")
-
+                Log.d(TAG, "Response code from getAll: ${response.code}")
+                Log.d(TAG, "Raw response body: ${responseBody?.take(200)}...")
+                
                 if (response.isSuccessful) {
-                    Log.d(TAG, "Bookings response: $responseBody")
                     try {
                         val type = object : TypeToken<List<Booking>>() {}.type
-                        val bookings = gson.fromJson<List<Booking>>(responseBody, type)
-                        callback(bookings, null)
+                        val allBookings = gson.fromJson<List<Booking>>(responseBody, type) ?: emptyList()
+                        
+                        Log.d(TAG, "Received ${allBookings.size} total bookings")
+                        
+                        // Filter bookings by customer ID with improved handling
+                        val customerBookings = allBookings.filter { booking ->
+                            val bookingCustomer = booking.customer
+                            if (bookingCustomer == null) {
+                                Log.d(TAG, "Booking ${booking.bookingId} has null customer")
+                                false
+                            } else {
+                                val bookingCustomerId = bookingCustomer.customerId
+                                val customerIdMatches = bookingCustomerId == customerId
+                                
+                                // Additional debugging to diagnose the issue
+                                Log.d(TAG, "Booking ${booking.bookingId}: customerID=${bookingCustomerId} (${bookingCustomerId.javaClass.simpleName}), " +
+                                        "looking for customerId=$customerId (${customerId.javaClass.simpleName}), match=$customerIdMatches")
+                                
+                                // Try string comparison as fallback if types don't match
+                                customerIdMatches || bookingCustomerId.toString() == customerId.toString()
+                            }
+                        }
+                        
+                        Log.d(TAG, "Found ${customerBookings.size} bookings for customer $customerId after filtering")
+                        
+                        if (customerBookings.isEmpty()) {
+                            // Try looking for customerId in other places in case the backend structure is inconsistent
+                            val potentialBookings = allBookings.filter { booking ->
+                                val jsonString = gson.toJson(booking)
+                                jsonString.contains("\"customerId\":$customerId") || 
+                                jsonString.contains("\"customerId\":\"$customerId\"") ||
+                                jsonString.contains("\"customer_id\":$customerId") ||
+                                jsonString.contains("\"customer_id\":\"$customerId\"")
+                            }
+                            
+                            if (potentialBookings.isNotEmpty()) {
+                                Log.d(TAG, "Found ${potentialBookings.size} potential bookings by searching JSON")
+                                callback(potentialBookings, null)
+                                return
+                            }
+                            
+                            Log.d(TAG, "No bookings found for customer $customerId")
+                        }
+                        
+                        callback(customerBookings, null)
                     } catch (e: Exception) {
                         Log.e(TAG, "Error parsing bookings", e)
                         callback(null, e)

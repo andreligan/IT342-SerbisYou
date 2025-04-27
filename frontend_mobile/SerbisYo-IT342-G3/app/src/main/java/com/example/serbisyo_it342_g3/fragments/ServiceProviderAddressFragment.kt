@@ -263,29 +263,44 @@ class ServiceProviderAddressFragment : Fragment() {
             requireActivity().runOnUiThread {
                 if (error != null) {
                     Log.e(TAG, "Error getting provider profile", error)
-                    // Fallback - try to get all providers and find by user ID
-                    getProviderIdFromAllProviders()
+                    // Don't fall back to a default provider ID, just show empty state
+                    tvNoAddresses.visibility = View.VISIBLE
+                    rvAddresses.visibility = View.GONE
+                    tvNoAddresses.text = "No address information available for new account. Please add your first address."
+                    progressBar.visibility = View.GONE
                 } else if (serviceProvider != null) {
-                    providerId = serviceProvider.providerId ?: 1L
+                    providerId = serviceProvider.providerId ?: 0L
                     // Save provider ID to SharedPreferences
                     saveProviderIdToPrefs(providerId)
                     Log.d(TAG, "Retrieved provider ID: $providerId")
-                    loadAddresses()
+                    
+                    if (providerId > 0) {
+                        loadAddresses()
+                    } else {
+                        tvNoAddresses.visibility = View.VISIBLE
+                        rvAddresses.visibility = View.GONE
+                        tvNoAddresses.text = "No address information available for new account. Please add your first address."
+                        progressBar.visibility = View.GONE
+                    }
                 } else {
-                    // Fallback to provider ID 1 if not found
-                    providerId = 1L
-                    // Save provider ID to SharedPreferences
-                    saveProviderIdToPrefs(providerId)
-                    Log.d(TAG, "Using default provider ID: $providerId")
-                    loadAddresses()
+                    // No provider found - this is a new account
+                    tvNoAddresses.visibility = View.VISIBLE
+                    rvAddresses.visibility = View.GONE
+                    tvNoAddresses.text = "No address information available for new account. Please add your first address." 
+                    progressBar.visibility = View.GONE
                 }
             }
         }
     }
     
     private fun saveProviderIdToPrefs(id: Long) {
-        val sharedPreferences = requireActivity().getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        if (id <= 0) return // Don't save invalid IDs
+        
+        val sharedPreferences = requireActivity().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
         sharedPreferences.edit().putLong("providerId", id).apply()
+        
+        val userPrefs = requireActivity().getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        userPrefs.edit().putLong("providerId", id).apply()
     }
     
     private fun getProviderIdFromAllProviders() {
@@ -295,29 +310,39 @@ class ServiceProviderAddressFragment : Fragment() {
                 
                 if (error != null) {
                     Log.e(TAG, "Error getting providers", error)
-                    // Use default provider ID of 1
-                    providerId = 1L
-                    Log.d(TAG, "Using default provider ID: $providerId (fallback)")
-                    loadAddresses()
+                    // Show empty state instead of using default provider
+                    tvNoAddresses.visibility = View.VISIBLE
+                    rvAddresses.visibility = View.GONE
+                    tvNoAddresses.text = "No address information available. Please add your first address."
                     return@runOnUiThread
                 }
                 
                 if (providers != null) {
                     val matchingProvider = providers.find { it.userAuth?.userId == userId }
                     if (matchingProvider != null) {
-                        providerId = matchingProvider.providerId ?: 1L
+                        providerId = matchingProvider.providerId ?: 0L
                         Log.d(TAG, "Found provider ID from list: $providerId")
+                        
+                        // Only save and load if we found a valid provider ID
+                        if (providerId > 0) {
+                            saveProviderIdToPrefs(providerId)
+                            loadAddresses()
+                        } else {
+                            tvNoAddresses.visibility = View.VISIBLE
+                            rvAddresses.visibility = View.GONE
+                            tvNoAddresses.text = "No address information available for your account. Please add your first address."
+                        }
                     } else {
-                        // Use default provider ID of 1
-                        providerId = 1L
-                        Log.d(TAG, "Using default provider ID: $providerId (not found in list)")
+                        // No matching provider - new account
+                        tvNoAddresses.visibility = View.VISIBLE
+                        rvAddresses.visibility = View.GONE
+                        tvNoAddresses.text = "No address information available for new account. Please add your first address."
                     }
-                    loadAddresses()
                 } else {
-                    // Use default provider ID of 1
-                    providerId = 1L
-                    Log.d(TAG, "Using default provider ID: $providerId (no providers)")
-                    loadAddresses()
+                    // No providers returned from API
+                    tvNoAddresses.visibility = View.VISIBLE
+                    rvAddresses.visibility = View.GONE
+                    tvNoAddresses.text = "No address information available. Please add your first address."
                 }
             }
         }
@@ -465,9 +490,13 @@ class ServiceProviderAddressFragment : Fragment() {
     private fun loadAddresses() {
         progressBar.visibility = View.VISIBLE
         
-        // Ensure we use the correct provider ID (1)
+        // Don't use default provider ID for new accounts
         if (providerId <= 0) {
-            providerId = 1
+            progressBar.visibility = View.GONE
+            tvNoAddresses.visibility = View.VISIBLE
+            rvAddresses.visibility = View.GONE
+            tvNoAddresses.text = "No address information available. Please add your first address."
+            return
         }
         
         Log.d(TAG, "Loading addresses for provider ID: $providerId")
