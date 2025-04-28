@@ -1,22 +1,22 @@
 package com.example.serbisyo_it342_g3.fragments
 
+import android.app.Dialog
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ProgressBar
-import android.widget.TextView
-import android.widget.Toast
+import android.view.Window
+import android.widget.*
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.serbisyo_it342_g3.R
 import com.example.serbisyo_it342_g3.api.BookingApiClient
+import com.example.serbisyo_it342_g3.api.ReviewApiClient
 import com.example.serbisyo_it342_g3.data.Booking
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
 
 class BookingHistoryFragment : Fragment() {
     private val TAG = "BookingHistoryFragment"
@@ -28,10 +28,14 @@ class BookingHistoryFragment : Fragment() {
     private lateinit var subHeaderText: TextView
     
     private lateinit var bookingApiClient: BookingApiClient
+    private lateinit var reviewApiClient: ReviewApiClient
     private var token: String = ""
     private var userId: Long = 0
     private var bookings = mutableListOf<Booking>()
     private lateinit var bookingAdapter: BookingAdapter
+    
+    // Track bookings that have already been reviewed or are in the process of being reviewed
+    private val reviewedBookings = mutableSetOf<Long>()
     
     companion object {
         fun newInstance(): BookingHistoryFragment {
@@ -44,29 +48,16 @@ class BookingHistoryFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_booking_history, container, false)
         
-        // Get shared preferences
-        val sharedPref = requireActivity().getSharedPreferences("UserPrefs", 
-                                                             android.content.Context.MODE_PRIVATE)
-        // Fix userId retrieval using try-catch
-        userId = try {
-            // Try to get as Long first (new format)
-            sharedPref.getLong("userId", 0)
-        } catch (e: ClassCastException) {
-            // If that fails, try the String format (old format) and convert
-            val userIdStr = sharedPref.getString("userId", "0")
-            userIdStr?.toLongOrNull() ?: 0
-        }
-        token = sharedPref.getString("token", "") ?: ""
-        
-        // Log user ID for debugging
-        Log.d(TAG, "User ID from preferences: $userId (${userId.javaClass.simpleName})")
-        Log.d(TAG, "Token from preferences: ${token.take(20)}...")
-        
-        // Initialize the API client
+        // Initialize API clients
         bookingApiClient = BookingApiClient(requireContext())
+        reviewApiClient = ReviewApiClient(requireContext())
+        
+        // Get token and user ID from SharedPreferences
+        val preferences = requireContext().getSharedPreferences("UserPrefs", 0)
+        token = preferences.getString("token", "") ?: ""
+        userId = preferences.getLong("userId", 0)
         
         // Initialize views
         rvBookings = view.findViewById(R.id.rvBookings)
@@ -84,26 +75,7 @@ class BookingHistoryFragment : Fragment() {
         bookingAdapter = BookingAdapter(bookings)
         rvBookings.adapter = bookingAdapter
         
-        // Make tvNoBookings clickable to retry loading
-        tvNoBookings.setOnClickListener {
-            loadBookingHistory()
-        }
-        
-        // Check if we're coming from a successful booking
-        val bookingState = requireActivity().getSharedPreferences("BookingState", android.content.Context.MODE_PRIVATE)
-        val recentlyBooked = bookingState.getBoolean("recently_booked", false)
-        if (recentlyBooked) {
-            Log.d(TAG, "Recently booked flag detected on create, setting up delayed loading")
-            // We'll first try to load immediately, and if that fails, retry after a delay
-            view.postDelayed({
-                if (isAdded && !isDetached && bookings.isEmpty()) {
-                    Log.d(TAG, "Performing delayed reload after booking creation")
-                    loadBookingHistory()
-                }
-            }, 1500) // Shorter initial delay
-        }
-        
-        // Load bookings
+        // Load booking history
         loadBookingHistory()
         
         return view
@@ -112,250 +84,41 @@ class BookingHistoryFragment : Fragment() {
     private fun loadBookingHistory() {
         progressBar.visibility = View.VISIBLE
         tvNoBookings.visibility = View.GONE
-        rvBookings.visibility = View.GONE
         
-        // Log to verify request parameters
-        Log.d(TAG, "Loading booking history for user ID: $userId with token: ${token.take(20)}...")
-        
-        // Double-check if userId is valid
-        if (userId <= 0) {
-            Log.e(TAG, "Invalid user ID: $userId")
-            tvNoBookings.text = "Error: Invalid user ID. Please log in again."
-            tvNoBookings.visibility = View.VISIBLE
-            progressBar.visibility = View.GONE
-            return
-        }
-        
-        // Make a direct API call to get ALL bookings and manually filter
-        val baseApiClient = com.example.serbisyo_it342_g3.api.BaseApiClient(requireContext())
-        val client = baseApiClient.client
-        
-        val request = okhttp3.Request.Builder()
-            .url("${baseApiClient.getBaseUrl()}/api/bookings/getAll")
-            .get()
-            .header("Authorization", "Bearer $token")
-            .build()
-        
-        // Execute the request on a background thread
-        Thread {
-            try {
-                client.newCall(request).execute().use { response ->
-                    val responseBody = response.body?.string()
-                    Log.d(TAG, "Response code: ${response.code}")
+        // Load bookings for the logged-in user
+        bookingApiClient.getUserBookings(
+            token = token,
+            userId = userId,
+            onSuccess = { loadedBookings ->
+                requireActivity().runOnUiThread {
+                    progressBar.visibility = View.GONE
                     
-                    requireActivity().runOnUiThread {
-                        progressBar.visibility = View.GONE
-                        
-                        if (!response.isSuccessful || responseBody == null) {
-                            Log.e(TAG, "Error getting bookings: ${response.code}")
-                            tvNoBookings.text = "Failed to load booking history\nTap to retry"
-                            tvNoBookings.visibility = View.VISIBLE
-                            return@runOnUiThread
-                        }
-                        
-                        // Log the entire response for debugging
-                        Log.d(TAG, "Raw response: $responseBody")
-                        
-                        try {
-                            // Parse the response
-                            val gson = com.google.gson.Gson()
-                            val type = object : com.google.gson.reflect.TypeToken<List<com.example.serbisyo_it342_g3.data.Booking>>() {}.type
-                            val allBookings = gson.fromJson<List<com.example.serbisyo_it342_g3.data.Booking>>(responseBody, type) ?: emptyList()
-                            
-                            Log.d(TAG, "Parsed ${allBookings.size} total bookings")
-                            
-                            // Check each booking in detail to catch any issues
-                            for (booking in allBookings) {
-                                val bookingId = booking.bookingId
-                                val customerId = booking.customer?.customerId
-                                val userId = booking.customer?.userAuth?.userId
-                                val customerIdType = customerId?.javaClass?.simpleName ?: "null"
-                                val userIdType = userId?.javaClass?.simpleName ?: "null"
-                                
-                                Log.d(TAG, "Booking $bookingId: customer=$customerId ($customerIdType), userAuth.userId=$userId ($userIdType)")
-                                
-                                // Check if this booking matches our user in any way
-                                val rawJson = gson.toJson(booking)
-                                Log.d(TAG, "Booking $bookingId JSON: $rawJson")
-                                
-                                if (rawJson.contains("\"userId\":$userId") || 
-                                    rawJson.contains("\"userId\":\"$userId\"") ||
-                                    rawJson.contains("\"user_id\":$userId") ||
-                                    rawJson.contains("\"user_id\":\"$userId\"")) {
-                                    Log.d(TAG, "Found userId match in raw JSON")
-                                }
-                            }
-                            
-                            // Get our own userId from preferences for direct comparison
-                            val authUserId = requireActivity().getSharedPreferences("UserPrefs", android.content.Context.MODE_PRIVATE).getLong("userId", 0)
-                            Log.d(TAG, "Current auth userId from preferences: $authUserId")
-                            
-                            // Try multiple filtering approaches to find bookings
-                            // 1. First try filtering by customer ID (string comparison)
-                            var customerBookings = allBookings.filter { booking ->
-                                booking.customer?.customerId.toString() == this.userId.toString()
-                            }
-                            
-                            // 2. If that doesn't work, try filtering by userAuth.userId
-                            if (customerBookings.isEmpty()) {
-                                Log.d(TAG, "No bookings found by customerId, trying userAuth.userId")
-                                customerBookings = allBookings.filter { booking ->
-                                    booking.customer?.userAuth?.userId.toString() == authUserId.toString()
-                                }
-                            }
-                            
-                            // 3. If still empty, try general JSON search for customerId or userId
-                            if (customerBookings.isEmpty()) {
-                                Log.d(TAG, "No bookings found by direct comparison, trying JSON search")
-                                customerBookings = allBookings.filter { booking ->
-                                    val json = gson.toJson(booking)
-                                    json.contains("\"customerId\":${this.userId}") || 
-                                    json.contains("\"customerId\":\"${this.userId}\"") ||
-                                    json.contains("\"customer_id\":${this.userId}") ||
-                                    json.contains("\"customer_id\":\"${this.userId}\"") ||
-                                    json.contains("\"userId\":$authUserId") || 
-                                    json.contains("\"userId\":\"$authUserId\"") ||
-                                    json.contains("\"user_id\":$authUserId") ||
-                                    json.contains("\"user_id\":\"$authUserId\"")
-                                }
-                            }
-                            
-                            // 4. If we're customer ID 18, try direct comparison with that value
-                            if (customerBookings.isEmpty() && this.userId == 18L) {
-                                Log.d(TAG, "Special case for customer ID 18, direct search")
-                                customerBookings = allBookings.filter { booking ->
-                                    val json = gson.toJson(booking)
-                                    json.contains("\"18\"") || json.contains("\":18") || json.contains("customer\":18")
-                                }
-                            }
-                            
-                            // 5. Check if we need to specifically handle newer customers with a different structure
-                            if (customerBookings.isEmpty()) {
-                                Log.d(TAG, "Trying alternative approach - check for structure differences between customer ID 1 and 18")
-                                
-                                // Get a reference booking for customer ID 1
-                                val customerOneBooking = allBookings.find { booking ->
-                                    val json = gson.toJson(booking)
-                                    json.contains("\"customerId\":1") || json.contains("\"customerId\":\"1\"")
-                                }
-                                
-                                if (customerOneBooking != null) {
-                                    val customerOneJson = gson.toJson(customerOneBooking)
-                                    Log.d(TAG, "Structure for customer ID 1 booking: $customerOneJson")
-                                    
-                                    // Check the detailed structure of how customer ID 1 bookings are stored
-                                    val customerOneIdPath = findJsonPath(customerOneJson, "1")
-                                    Log.d(TAG, "Path to ID 1 in JSON: $customerOneIdPath")
-                                    
-                                    // Now search for any booking with a similar path but with current customer ID
-                                    customerBookings = allBookings.filter { booking ->
-                                        val json = gson.toJson(booking)
-                                        
-                                        // Try more search patterns based on what we learn from customer ID 1 structure
-                                        json.contains("\"customer\":{") && json.contains("\"${this.userId}\"") ||
-                                        json.contains("\"customer\":${this.userId}") ||
-                                        json.contains("\"customerId\":${this.userId}") ||
-                                        // Add many variations to catch potential differences
-                                        json.contains("\"customer_id\":${this.userId}")
-                                    }
-                                }
-                            }
-                            
-                            // 6. Last resort - look through all bookings manually and log their structure
-                            if (customerBookings.isEmpty()) {
-                                Log.d(TAG, "Final attempt - manually examining all bookings:")
-                                
-                                for (booking in allBookings) {
-                                    val json = gson.toJson(booking)
-                                    
-                                    // Check if this booking might relate to our customer in any way
-                                    if (json.contains("${this.userId}")) {
-                                        Log.d(TAG, "Booking ${booking.bookingId} contains customer ID ${this.userId}: $json")
-                                        customerBookings = listOf(booking)
-                                        break
-                                    }
-                                }
-                                
-                                // If still nothing, log the structure of all bookings for analysis
-                                if (customerBookings.isEmpty() && allBookings.isNotEmpty()) {
-                                    Log.d(TAG, "Showing structure of first 3 bookings for analysis")
-                                    allBookings.take(3).forEachIndexed { index, booking ->
-                                        Log.d(TAG, "Sample booking $index: ${gson.toJson(booking)}")
-                                    }
-                                }
-                            }
-                            
-                            bookings.clear()
-                            if (customerBookings.isNotEmpty()) {
-                                Log.d(TAG, "SUCCESS: Found ${customerBookings.size} bookings for customer ID ${this.userId}")
-                                
-                                // Clear the recently_booked flag since we found bookings
-                                val bookingState = requireActivity().getSharedPreferences("BookingState", android.content.Context.MODE_PRIVATE)
-                                bookingState.edit().putBoolean("recently_booked", false).apply()
-                                
-                                // Add all found bookings to our list
-                                bookings.addAll(customerBookings)
-                                
-                                // Update UI to show the bookings
-                                try {
-                                    tvNoBookings.visibility = View.GONE
-                                    rvBookings.visibility = View.VISIBLE
-                                    
-                                    // Force adapter to refresh
-                                    bookingAdapter.notifyDataSetChanged()
-                                    
-                                    // Log success for troubleshooting
-                                    Log.d(TAG, "UI updated to show ${bookings.size} bookings")
-                                } catch (e: Exception) {
-                                    Log.e(TAG, "Error updating UI with found bookings", e)
-                                }
-                            } else {
-                                // Check if we just created a booking but don't see it yet
-                                val sharedPref = requireActivity().getSharedPreferences("BookingState", android.content.Context.MODE_PRIVATE)
-                                val recentlyBooked = sharedPref.getBoolean("recently_booked", false)
-                                
-                                if (recentlyBooked) {
-                                    // We recently booked but can't find it - maybe it's still processing
-                                    tvNoBookings.text = "Your booking might still be processing\nTap to refresh"
-                                    tvNoBookings.visibility = View.VISIBLE
-                                    rvBookings.visibility = View.GONE
-                                    
-                                    // Schedule an automatic retry after a delay
-                                    view?.postDelayed({
-                                        if (isAdded && !isDetached) {
-                                            Log.d(TAG, "Auto-retrying booking history load after delay")
-                                            loadBookingHistory()
-                                        }
-                                    }, 3000)
-                                } else {
-                                    tvNoBookings.text = "You don't have any bookings yet"
-                                    tvNoBookings.visibility = View.VISIBLE
-                                    rvBookings.visibility = View.GONE
-                                }
-                            }
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Error parsing booking response", e)
-                            tvNoBookings.text = "Error loading bookings\nTap to retry"
-                            tvNoBookings.visibility = View.VISIBLE
-                        }
-                        
-                        // Always update the adapter to be safe
-                        bookingAdapter.notifyDataSetChanged()
+                    // Update the bookings list
+                    bookings.clear()
+                    if (loadedBookings != null) {
+                        bookings.addAll(loadedBookings)
                     }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Network error", e)
-                try {
-                    requireActivity().runOnUiThread {
-                        progressBar.visibility = View.GONE
-                        tvNoBookings.text = "Network error\nTap to retry"
+                    
+                    // Show no bookings message if list is empty
+                    if (bookings.isEmpty()) {
                         tvNoBookings.visibility = View.VISIBLE
+                    } else {
+                        tvNoBookings.visibility = View.GONE
                     }
-                } catch (e2: Exception) {
-                    Log.e(TAG, "Error updating UI", e2)
+                    
+                    // Notify adapter of data change
+                    bookingAdapter.notifyDataSetChanged()
+                }
+            },
+            onError = { error ->
+                requireActivity().runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    tvNoBookings.visibility = View.VISIBLE
+                    tvNoBookings.text = "Error loading bookings: $error"
+                    Toast.makeText(requireContext(), "Failed to load bookings: $error", Toast.LENGTH_SHORT).show()
                 }
             }
-        }.start()
+        )
     }
     
     // Adapter for displaying bookings
@@ -365,11 +128,19 @@ class BookingHistoryFragment : Fragment() {
         
         inner class BookingViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val tvServiceName: TextView = view.findViewById(R.id.tvServiceName)
+            val tvCustomerName: TextView = view.findViewById(R.id.tvCustomerName)
             val tvProviderName: TextView = view.findViewById(R.id.tvProviderName)
             val tvBookingDate: TextView = view.findViewById(R.id.tvBookingDate)
             val tvBookingTime: TextView = view.findViewById(R.id.tvBookingTime)
             val tvStatus: TextView = view.findViewById(R.id.tvStatus)
             val tvPrice: TextView = view.findViewById(R.id.tvPrice)
+            val tvPaymentMethod: TextView = view.findViewById(R.id.tvPaymentMethod)
+            val tvNotes: TextView = view.findViewById(R.id.tvNotes)
+            val notesContainer: LinearLayout = view.findViewById(R.id.notesContainer)
+            
+            // Add references for the review button layout
+            val writeReviewLayout: LinearLayout = view.findViewById(R.id.writeReviewLayout)
+            val btnWriteReview: Button = view.findViewById(R.id.btnWriteReview)
         }
         
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BookingViewHolder {
@@ -381,7 +152,19 @@ class BookingHistoryFragment : Fragment() {
         override fun onBindViewHolder(holder: BookingViewHolder, position: Int) {
             val booking = bookings[position]
             
+            // Service name
             holder.tvServiceName.text = booking.service?.serviceName ?: "Unknown Service"
+            
+            // Customer name - get the actual customer name from the booking
+            val firstName = booking.customer?.firstName ?: ""
+            val lastName = booking.customer?.lastName ?: ""
+            holder.tvCustomerName.text = if (firstName.isNotEmpty() || lastName.isNotEmpty()) {
+                "$firstName $lastName"
+            } else {
+                "Unknown Customer"
+            }
+            
+            // Provider name
             holder.tvProviderName.text = "Provider: ${booking.service?.provider?.businessName ?: booking.service?.provider?.firstName ?: "Unknown Provider"}"
             
             // Format the date
@@ -440,6 +223,9 @@ class BookingHistoryFragment : Fragment() {
                 else -> holder.tvStatus.setTextColor(resources.getColor(android.R.color.darker_gray))
             }
             
+            // Display payment method
+            holder.tvPaymentMethod.text = booking.paymentMethod ?: "Cash"
+            
             // Display total cost if available
             if (booking.totalCost > 0) {
                 holder.tvPrice.text = "Price: ₱${booking.totalCost.toInt()}"
@@ -448,63 +234,181 @@ class BookingHistoryFragment : Fragment() {
             } else {
                 holder.tvPrice.text = "Price: Not specified"
             }
+            
+            // Display special instructions (notes)
+            if (!booking.note.isNullOrEmpty()) {
+                holder.notesContainer.visibility = View.VISIBLE
+                holder.tvNotes.text = booking.note
+            } else {
+                holder.notesContainer.visibility = View.VISIBLE // Still keep visible but show default message
+                holder.tvNotes.text = "No special instructions provided."
+            }
+            
+            // Display Write Review button for completed bookings
+            val bookingId = booking.bookingId
+            if (booking.status?.lowercase() == "completed" && bookingId != null && !reviewedBookings.contains(bookingId)) {
+                holder.writeReviewLayout.visibility = View.VISIBLE
+                
+                // Set click listener for the review button
+                holder.btnWriteReview.setOnClickListener {
+                    checkIfCanReview(booking)
+                }
+            } else {
+                holder.writeReviewLayout.visibility = View.GONE
+            }
         }
         
         override fun getItemCount() = bookings.size
     }
     
-    // Improve onResume to check for recently_booked flag with multiple retries
-    override fun onResume() {
-        super.onResume()
+    // Check if user can review this booking (hasn't reviewed it already)
+    private fun checkIfCanReview(booking: Booking) {
+        val bookingId = booking.bookingId ?: return
+        val customerId = booking.customer?.customerId ?: userId
         
-        // Check if we recently created a booking
-        val sharedPref = requireActivity().getSharedPreferences("BookingState", android.content.Context.MODE_PRIVATE)
-        val recentlyBooked = sharedPref.getBoolean("recently_booked", false)
+        // Show loading toast
+        val loadingToast = Toast.makeText(requireContext(), "Checking review status...", Toast.LENGTH_SHORT)
+        loadingToast.show()
         
-        if (recentlyBooked) {
-            Log.d(TAG, "Recently booked flag detected in onResume, reloading bookings")
-            loadBookingHistory()
-            
-            // Schedule additional retries with increasing delays if needed
-            view?.postDelayed({
-                if (isAdded && !isDetached && bookings.isEmpty() && 
-                    sharedPref.getBoolean("recently_booked", false)) {
-                    Log.d(TAG, "First retry after onResume")
-                    loadBookingHistory()
+        // Use the ReviewApiClient to check if the user can review this booking
+        reviewApiClient.canCustomerReviewBooking(token, customerId, bookingId) { canReview: Boolean ->
+            requireActivity().runOnUiThread {
+                loadingToast.cancel()
+                
+                if (canReview) {
+                    showReviewDialog(booking)
+                } else {
+                    Toast.makeText(requireContext(), "You have already reviewed this booking", Toast.LENGTH_SHORT).show()
+                    // Add to reviewed bookings set to hide the button
+                    reviewedBookings.add(bookingId)
+                    bookingAdapter.notifyDataSetChanged()
                 }
-            }, 2000)
-            
-            view?.postDelayed({
-                if (isAdded && !isDetached && bookings.isEmpty() && 
-                    sharedPref.getBoolean("recently_booked", false)) {
-                    Log.d(TAG, "Second retry after onResume")
-                    loadBookingHistory()
-                    // After this final retry, clear the flag to prevent endless retries
-                    sharedPref.edit().putBoolean("recently_booked", false).apply()
-                }
-            }, 5000)
+            }
         }
     }
     
-    // Helper function to trace where a value appears in JSON
-    private fun findJsonPath(json: String, value: String): String {
-        // Simple implementation - just check common paths
-        val possiblePaths = listOf(
-            "customer.customerId", 
-            "customer.userAuth.userId",
-            "customer.id",
-            "customerId",
-            "userId"
-        )
+    // Show the review dialog
+    private fun showReviewDialog(booking: Booking) {
+        val dialog = Dialog(requireContext())
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setCancelable(true)
+        dialog.setContentView(R.layout.dialog_review)
         
-        for (path in possiblePaths) {
-            // Very simple check
-            val pattern = "\"${path.split(".").last()}\":\"?${value}\"?"
-            if (json.contains(pattern)) {
-                return "$path = $value"
-            }
+        // Get references to dialog views
+        val tvServiceName = dialog.findViewById<TextView>(R.id.tvReviewServiceName)
+        val tvProviderName = dialog.findViewById<TextView>(R.id.tvReviewProviderName)
+        val etComment = dialog.findViewById<EditText>(R.id.etReviewComment)
+        val btnCancel = dialog.findViewById<Button>(R.id.btnCancelReview)
+        val btnSubmit = dialog.findViewById<Button>(R.id.btnSubmitReview)
+        val tvRatingValue = dialog.findViewById<TextView>(R.id.tvRatingValue)
+        
+        // Get star ImageViews
+        val star1 = dialog.findViewById<ImageView>(R.id.star1)
+        val star2 = dialog.findViewById<ImageView>(R.id.star2)
+        val star3 = dialog.findViewById<ImageView>(R.id.star3)
+        val star4 = dialog.findViewById<ImageView>(R.id.star4)
+        val star5 = dialog.findViewById<ImageView>(R.id.star5)
+        
+        // Set initial values
+        tvServiceName.text = booking.service?.serviceName ?: "Unknown Service"
+        tvProviderName.text = booking.service?.provider?.businessName ?: 
+                             "${booking.service?.provider?.firstName ?: ""} ${booking.service?.provider?.lastName ?: ""}"
+        
+        // Variable to track the selected rating
+        var selectedRating = 5
+        
+        // Initialize with 5 stars
+        setStarRating(dialog, 5)
+        
+        // Set click listeners for stars
+        star1.setOnClickListener { setStarRating(dialog, 1); selectedRating = 1 }
+        star2.setOnClickListener { setStarRating(dialog, 2); selectedRating = 2 }
+        star3.setOnClickListener { setStarRating(dialog, 3); selectedRating = 3 }
+        star4.setOnClickListener { setStarRating(dialog, 4); selectedRating = 4 }
+        star5.setOnClickListener { setStarRating(dialog, 5); selectedRating = 5 }
+        
+        // Set cancel button click listener
+        btnCancel.setOnClickListener {
+            dialog.dismiss()
         }
         
-        return "unknown path"
+        // Set submit button click listener
+        btnSubmit.setOnClickListener {
+            val comment = etComment.text.toString()
+            if (comment.isBlank()) {
+                Toast.makeText(requireContext(), "Please enter your comments", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            
+            submitReview(booking, selectedRating, comment, dialog)
+        }
+        
+        dialog.show()
     }
-} 
+    
+    // Helper function to set star rating in the dialog
+    private fun setStarRating(dialog: Dialog, rating: Int) {
+        val star1 = dialog.findViewById<ImageView>(R.id.star1)
+        val star2 = dialog.findViewById<ImageView>(R.id.star2)
+        val star3 = dialog.findViewById<ImageView>(R.id.star3)
+        val star4 = dialog.findViewById<ImageView>(R.id.star4)
+        val star5 = dialog.findViewById<ImageView>(R.id.star5)
+        val tvRatingValue = dialog.findViewById<TextView>(R.id.tvRatingValue)
+        
+        // Update star images
+        star1.setImageResource(if (rating >= 1) android.R.drawable.btn_star_big_on else android.R.drawable.btn_star_big_off)
+        star2.setImageResource(if (rating >= 2) android.R.drawable.btn_star_big_on else android.R.drawable.btn_star_big_off)
+        star3.setImageResource(if (rating >= 3) android.R.drawable.btn_star_big_on else android.R.drawable.btn_star_big_off)
+        star4.setImageResource(if (rating >= 4) android.R.drawable.btn_star_big_on else android.R.drawable.btn_star_big_off)
+        star5.setImageResource(if (rating >= 5) android.R.drawable.btn_star_big_on else android.R.drawable.btn_star_big_off)
+        
+        // Update rating text
+        tvRatingValue.text = "$rating out of 5"
+        tvRatingValue.visibility = View.VISIBLE
+    }
+    
+    // Submit the review to the server
+    private fun submitReview(booking: Booking, rating: Int, comment: String, dialog: Dialog) {
+        val customerId = booking.customer?.customerId ?: userId
+        val providerId = booking.service?.provider?.providerId
+        val bookingId = booking.bookingId
+        
+        if (providerId == null || bookingId == null) {
+            Toast.makeText(requireContext(), "Missing provider or booking information", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        // Show loading indicator
+        val loadingToast = Toast.makeText(requireContext(), "Submitting your review...", Toast.LENGTH_LONG)
+        loadingToast.show()
+        
+        // Use the ReviewApiClient to submit the review
+        reviewApiClient.submitReview(
+            token = token,
+            customerId = customerId,
+            providerId = providerId,
+            bookingId = bookingId,
+            rating = rating,
+            comment = comment,
+            callback = { success: Boolean, errorMessage: String? ->
+                requireActivity().runOnUiThread {
+                    loadingToast.cancel()
+                    
+                    if (success) {
+                        Toast.makeText(requireContext(), "Review submitted successfully!", Toast.LENGTH_SHORT).show()
+                        
+                        // Add to reviewed bookings set
+                        reviewedBookings.add(bookingId)
+                        
+                        // Refresh adapter to hide review button
+                        bookingAdapter.notifyDataSetChanged()
+                        
+                        dialog.dismiss()
+                    } else {
+                        Toast.makeText(requireContext(), errorMessage ?: "Failed to submit review. Please try again.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        )
+    }
+}

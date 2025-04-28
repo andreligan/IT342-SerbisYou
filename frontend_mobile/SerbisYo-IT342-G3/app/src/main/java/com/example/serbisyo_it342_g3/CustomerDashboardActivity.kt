@@ -766,6 +766,9 @@ class CustomerDashboardActivity : AppCompatActivity(), NotificationsFragment.Not
                         
                         // Send notification to service provider
                         sendBookingNotificationToProvider(booking, customerName)
+                        
+                        // Log that we sent the notification
+                        Log.d(TAG, "Booking successful, notification sent to provider for booking ID: ${booking.bookingId}")
                     } else {
                         Toast.makeText(this, "Unknown error occurred while creating booking", Toast.LENGTH_LONG).show()
                     }
