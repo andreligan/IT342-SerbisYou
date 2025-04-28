@@ -9,9 +9,10 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.serbisyo_it342_g3.R
+import com.example.serbisyo_it342_g3.api.MessageApiClient
+import com.example.serbisyo_it342_g3.data.Message
 import com.example.serbisyo_it342_g3.data.Notification
 import com.example.serbisyo_it342_g3.data.UserData
-import com.example.serbisyo_it342_g3.utils.Constants
 import com.google.gson.Gson
 import de.hdodenhof.circleimageview.CircleImageView
 import java.text.ParseException
@@ -31,6 +32,16 @@ class NotificationAdapter(
     // Get current user ID from SharedPreferences
     private val currentUserId = context.getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
         .getLong("userId", 0)
+        
+    // Get token from SharedPreferences
+    private val token = context.getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+        .getString("token", "") ?: ""
+        
+    // Create MessageApiClient instance to fetch message details
+    private val messageApiClient = MessageApiClient(context)
+    
+    // Cache for message sender info to avoid redundant API calls
+    private val messageSenderCache = mutableMapOf<Long, Pair<Long, String>>() // messageId -> (senderId, senderName)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NotificationViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_notification, parent, false)
@@ -89,86 +100,99 @@ class NotificationAdapter(
         private fun setupMessageNotification(notification: Notification) {
             // Log initial notification data for debugging
             Log.d(TAG, "Processing message notification: id=${notification.notificationId}, " +
-                    "senderName=${notification.senderName}, message=${notification.message}, " +
-                    "user=${notification.user}")
+                    "referenceId=${notification.referenceId}, " + 
+                    "message=${notification.message}")
             
-            // Try to get sender name from multiple sources in priority order
-            var senderName = when {
-                // 1. Use senderName if it's already populated and not empty
-                !notification.senderName.isNullOrEmpty() -> {
-                    Log.d(TAG, "Using provided senderName: ${notification.senderName}")
-                    notification.senderName
-                }
-                
-                // 2. Extract from user object if it's a Map (from JSON)
-                notification.user is Map<*, *> -> {
-                    val userName = (notification.user as Map<*, *>)["userName"] as? String
-                        ?: (notification.user as Map<*, *>)["name"] as? String
-                    Log.d(TAG, "Extracted userName from Map: $userName")
-                    userName ?: "User"
-                }
-                
-                // 3. Try to convert user object to UserData class if possible
-                notification.user != null -> {
-                    try {
-                        val gson = Gson()
-                        val userJson = gson.toJson(notification.user)
-                        val userData = gson.fromJson(userJson, UserData::class.java)
-                        Log.d(TAG, "Converted user object to UserData: ${userData.userName}")
-                        userData.userName.ifEmpty { "User" }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to convert user object to UserData", e)
-                        "User"
-                    }
-                }
-                
-                // 4. Extract from message content if it follows pattern "X sent you a message"
-                notification.message?.contains(" sent you a message") == true -> {
-                    val extractedName = notification.message.substringBefore(" sent you a message")
-                    Log.d(TAG, "Extracted name from message: $extractedName")
-                    extractedName
-                }
-                
-                // 5. Fallback
-                else -> {
-                    Log.d(TAG, "Using default sender name")
-                    "User"
-                }
-            }
+            // First set default values that will be shown while we fetch the real sender info
+            tvSenderName.text = "Message"
+            tvMessage.text = notification.message ?: "New message"
+            ivProfileImage.setImageResource(R.drawable.ic_message_notification)
             
-            // Format the message text
-            val messageText = when {
-                // Use provided message if not empty
-                !notification.message.isNullOrEmpty() -> {
-                    // If message contains "sent you a message", clean it up to avoid repetition
-                    if (notification.message.contains("sent you a message")) {
-                        "sent you a message"
-                    } else {
-                        notification.message
-                    }
-                }
-                // Default fallback message
-                else -> "sent you a message"
-            }
-            
-            // Set the UI elements
-            tvSenderName.text = senderName
-            tvMessage.text = messageText
-            
-            // Set the profile image
-            if (!notification.senderProfileImage.isNullOrEmpty()) {
-                Log.d(TAG, "Loading profile image: ${notification.senderProfileImage}")
-                Glide.with(context)
-                    .load(notification.senderProfileImage)
-                    .placeholder(R.drawable.ic_message_notification)
-                    .error(R.drawable.ic_message_notification)
-                    .into(ivProfileImage)
+            // If we have the messageId (referenceId), use it to get the real sender info
+            if (notification.referenceId > 0) {
+                fetchAndSetMessageSenderInfo(notification)
             } else {
-                ivProfileImage.setImageResource(R.drawable.ic_message_notification)
+                // Try to extract sender info from the notification message
+                extractSenderFromMessage(notification.message ?: "")?.let { senderName ->
+                    tvSenderName.text = senderName
+                    tvMessage.text = "sent you a message"
+                }
             }
+        }
+        
+        private fun fetchAndSetMessageSenderInfo(notification: Notification) {
+            val messageId = notification.referenceId
+            
+            // Check if we already have this message's sender info in cache
+            if (messageSenderCache.containsKey(messageId)) {
+                val (senderId, senderName) = messageSenderCache[messageId]!!
+                displayMessageSender(senderName, notification.message)
+                return
+            }
+            
+            // Fetch message details to get the sender
+            messageApiClient.getMessageById(messageId, token) { message, error ->
+                if (error != null || message == null) {
+                    Log.e(TAG, "Failed to get message details: ${error?.message}")
+                    return@getMessageById
+                }
+                
+                // Get the sender name - this is the real name of the person who sent the message
+                val senderId = message.senderId
+                val senderName = message.senderName ?: "User $senderId"
+                
+                // Cache this information for future use
+                messageSenderCache[messageId] = Pair(senderId, senderName)
+                
+                // Update UI on main thread
+                itemView.post {
+                    displayMessageSender(senderName, notification.message)
+                }
+            }
+        }
+        
+        private fun displayMessageSender(senderName: String, messageText: String?) {
+            // Set the UI elements with the real sender name
+            tvSenderName.text = senderName
+            
+            // Extract just the message content without the sender prefix if possible
+            val message = extractMessageContent(messageText, senderName)
+            tvMessage.text = message
             
             // Log the final display values
-            Log.d(TAG, "Final display values - senderName: $senderName, message: $messageText")
+            Log.d(TAG, "Final display values - senderName: $senderName, message: $message")
+        }
+        
+        private fun extractMessageContent(messageText: String?, senderName: String): String {
+            if (messageText.isNullOrEmpty()) return "sent you a message"
+            
+            // Try to extract just the message content if it follows pattern "X sent you a message: [content]"
+            val regex = ".*sent you a message: (.+)".toRegex()
+            val match = regex.find(messageText)
+            
+            return if (match != null && match.groupValues.size > 1) {
+                // Return just the content part
+                "sent you: ${match.groupValues[1]}"
+            } else if (messageText.contains("sent you a message")) {
+                // If it's a generic "sent you a message" without content
+                "sent you a message"
+            } else {
+                // Otherwise return the whole message
+                messageText
+            }
+        }
+        
+        private fun extractSenderFromMessage(messageText: String): String? {
+            // Try to match pattern "[SenderName] sent you a message"
+            val regex = "(.+?) sent you a message".toRegex()
+            val match = regex.find(messageText)
+            
+            return if (match != null && match.groupValues.size > 1) {
+                val extractedName = match.groupValues[1]
+                if (extractedName != "Someone") extractedName else null
+            } else {
+                null
+            }
         }
         
         private fun setupBookingNotification(notification: Notification) {

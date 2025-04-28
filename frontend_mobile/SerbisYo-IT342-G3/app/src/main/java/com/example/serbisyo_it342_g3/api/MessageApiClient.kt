@@ -282,6 +282,26 @@ class MessageApiClient(private val context: Context) {
 
                         // Create a new Message object with the server-assigned ID
                         val sentMessage = message.copy(messageId = messageId)
+                        
+                        // Create a notification for the recipient
+                        if (messageId != null) {
+                            createNotificationForMessage(
+                                recipientUserId = message.recipientId,
+                                senderId = message.senderId,
+                                messageContent = message.content,
+                                messageId = messageId,
+                                senderName = message.senderName,
+                                token = token
+                            ) { success, error -> 
+                                if (error != null) {
+                                    // Just log the error, don't fail the whole operation
+                                    Log.e(TAG, "Error creating notification for message", error)
+                                } else {
+                                    Log.d(TAG, "Notification created successfully for message")
+                                }
+                            }
+                        }
+                        
                         callback(sentMessage, null)
                     } catch (e: Exception) {
                         Log.e(TAG, "Error parsing sent message", e)
@@ -298,6 +318,86 @@ class MessageApiClient(private val context: Context) {
                     }
 
                     callback(null, Exception(errorMessage))
+                }
+            }
+        })
+    }
+
+    // Create a notification for a message
+    private fun createNotificationForMessage(
+        recipientUserId: Long,
+        senderId: Long,
+        messageContent: String,
+        messageId: Long,
+        senderName: String?,
+        token: String,
+        callback: (Boolean, Exception?) -> Unit
+    ) {
+        if (token.isBlank()) {
+            Log.e(TAG, "Token is empty or blank")
+            callback(false, Exception("Authentication token is required"))
+            return
+        }
+
+        Log.d(TAG, "Creating notification for message from $senderId to $recipientUserId")
+
+        // Prepare the display name - use sender name if available, otherwise just say "Someone"
+        val displayName = senderName ?: "Someone"
+        
+        // Create the notification JSON object
+        val jsonObject = JSONObject().apply {
+            // Create a nested user JSON object (the recipient)
+            val userObject = JSONObject().apply {
+                put("userId", recipientUserId)
+            }
+            put("user", userObject)
+            
+            // Add sender information as separate fields
+            put("senderId", senderId)
+            put("senderName", displayName)
+            
+            // Set notification properties
+            put("type", "Message")
+            put("message", "$displayName sent you a message: $messageContent")
+            put("isRead", false)
+            put("createdAt", SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(Date()))
+            put("referenceId", messageId)
+            put("referenceType", "Message")
+        }
+
+        val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
+
+        val request = Request.Builder()
+            .url("$BASE_URL/api/notifications/create")
+            .post(requestBody)
+            .header("Authorization", "Bearer $token")
+            .header("Content-Type", "application/json")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to create notification", e)
+                callback(false, e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                Log.d(TAG, "Notification creation response code: ${response.code}")
+
+                if (response.isSuccessful) {
+                    Log.d(TAG, "Notification created successfully")
+                    callback(true, null)
+                } else {
+                    Log.e(TAG, "Error creating notification: ${response.code}")
+                    Log.e(TAG, "Error response body: $responseBody")
+
+                    val errorMessage = when (response.code) {
+                        401 -> "Authentication failed: Please log in again (401 Unauthorized)"
+                        403 -> "Permission denied: You don't have access to create notifications (403 Forbidden)"
+                        else -> "Failed to create notification: ${response.code}"
+                    }
+
+                    callback(false, Exception(errorMessage))
                 }
             }
         })
@@ -615,15 +715,17 @@ class MessageApiClient(private val context: Context) {
 
         Log.d(TAG, "Getting message with ID: $messageId")
 
+        // Since we don't have a direct endpoint for getting a message by ID,
+        // we'll fetch all messages and find the one we're looking for
         val request = Request.Builder()
-            .url("$BASE_URL/api/messages/$messageId")
+            .url("$BASE_URL/api/messages/getAll")
             .get()
             .header("Authorization", "Bearer $token")
             .build()
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                Log.e(TAG, "Failed to get message by ID", e)
+                Log.e(TAG, "Failed to get messages", e)
                 callback(null, e)
             }
 
@@ -633,20 +735,41 @@ class MessageApiClient(private val context: Context) {
 
                 if (response.isSuccessful && responseBody != null) {
                     try {
-                        // Parse the message data
-                        val messageData = gson.fromJson(responseBody, Map::class.java)
+                        // Parse all messages
+                        val type = object : TypeToken<List<Map<String, Any>>>() {}.type
+                        val messagesData = gson.fromJson<List<Map<String, Any>>>(responseBody, type)
+                        
+                        // Find the message with the matching ID
+                        val targetMessage = messagesData.find { messageData ->
+                            val id = messageData["messageId"]
+                            if (id is Number) {
+                                id.toLong() == messageId
+                            } else {
+                                val nestedMap = id as? Map<*, *>
+                                val nestedId = nestedMap?.get("messageId")
+                                nestedId is Number && nestedId.toLong() == messageId
+                            }
+                        }
+                        
+                        if (targetMessage == null) {
+                            Log.e(TAG, "Message with ID $messageId not found")
+                            callback(null, Exception("Message not found"))
+                            return@onResponse
+                        }
+                        
+                        Log.d(TAG, "Found message with ID $messageId")
                         
                         // Extract sender and recipient data
-                        val senderMap = messageData["sender"] as? Map<String, Any>
-                        val senderId = (senderMap?.get("userId") as? Double)?.toLong() ?: 0L
+                        val senderMap = targetMessage["sender"] as? Map<String, Any>
+                        val senderId = (senderMap?.get("userId") as? Number)?.toLong() ?: 0L
                         val senderName = senderMap?.get("userName") as? String
                         
-                        val receiverMap = messageData["receiver"] as? Map<String, Any>
-                        val recipientId = (receiverMap?.get("userId") as? Double)?.toLong() ?: 0L
+                        val receiverMap = targetMessage["receiver"] as? Map<String, Any>
+                        val recipientId = (receiverMap?.get("userId") as? Number)?.toLong() ?: 0L
                         
                         // Extract message content and timestamp
-                        val content = messageData["messageText"] as? String ?: ""
-                        val sentAtStr = messageData["sentAt"] as? String
+                        val content = targetMessage["messageText"] as? String ?: ""
+                        val sentAtStr = targetMessage["sentAt"] as? String
                         val timestamp = if (sentAtStr != null) {
                             SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
                                 .parse(sentAtStr) ?: Date()
@@ -672,14 +795,14 @@ class MessageApiClient(private val context: Context) {
                         callback(null, e)
                     }
                 } else {
-                    Log.e(TAG, "Error getting message: ${response.code}")
+                    Log.e(TAG, "Error getting messages: ${response.code}")
                     Log.e(TAG, "Error response body: $responseBody")
                     
                     val errorMessage = when (response.code) {
                         401 -> "Authentication failed: Please log in again (401 Unauthorized)"
-                        403 -> "Permission denied: You don't have access to this message (403 Forbidden)"
+                        403 -> "Permission denied: You don't have access to these messages (403 Forbidden)"
                         404 -> "Message not found"
-                        else -> "Failed to get message: ${response.code}"
+                        else -> "Failed to get messages: ${response.code}"
                     }
                     
                     callback(null, Exception(errorMessage))

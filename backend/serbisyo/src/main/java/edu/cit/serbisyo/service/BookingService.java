@@ -28,6 +28,9 @@ public class BookingService {
 
     @Autowired
     private TransactionRepository transactionRepository;
+    
+    @Autowired
+    private edu.cit.serbisyo.repository.ServiceRepository serviceRepository;
 
     public BookingService() {
         super();
@@ -36,11 +39,24 @@ public class BookingService {
     // CREATE a new booking
     @Transactional
     public BookingEntity createBooking(BookingEntity booking) {
+        // Check if we need to fully load the service with provider information
+        if (booking.getService() != null && booking.getService().getProvider() == null) {
+            Long serviceId = booking.getService().getServiceId();
+            // Load the complete service entity with provider
+            edu.cit.serbisyo.entity.ServiceEntity fullService = serviceRepository.findById(serviceId)
+                    .orElseThrow(() -> new NoSuchElementException("Service with ID " + serviceId + " not found"));
+            booking.setService(fullService);
+        }
+
         // First save the booking
         BookingEntity savedBooking = bookingRepository.save(booking);
 
         // Get the provider ID from the booking's service
         ServiceEntity service = booking.getService();
+        if (service == null || service.getProvider() == null) {
+            throw new IllegalStateException("Service or service provider not properly loaded for booking");
+        }
+        
         Long providerId = service.getProvider().getProviderId();
 
         // Get the day of week from the booking date
