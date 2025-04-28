@@ -16,6 +16,10 @@
         <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
         <!-- Customize your theme here. -->
         <item name="android:windowFullscreen">true</item>
+        <!-- Fix for OpenGLRenderer swap behavior warning -->
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowDisablePreview">false</item>
+        <item name="android:hardwareAccelerated">true</item>
     </style>
 
     <style name="Theme.SerbisYoIT342G3" parent="Theme.SerbisyoIT342G3" />
@@ -34,5 +38,9 @@
         <item name="android:statusBarColor">@color/primary_green</item>
         <!-- No need for fullscreen in payment page -->
         <item name="android:windowFullscreen">false</item>
+        <!-- Fix for OpenGLRenderer swap behavior warning -->
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowDisablePreview">false</item>
+        <item name="android:hardwareAccelerated">true</item>
     </style>
 </resources>

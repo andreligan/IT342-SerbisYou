@@ -1,7 +1,9 @@
 package com.example.serbisyo_it342_g3
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -29,8 +31,10 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var btnGoogleSignIn: Button
     private lateinit var baseApiClient: BaseApiClient
     private lateinit var googleSignInLauncher: ActivityResultLauncher<Intent>
+    private lateinit var sharedPreferences: SharedPreferences
     
     private val loginActivityTag = "LoginActivity"
+    private lateinit var username: String
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +45,9 @@ class LoginActivity : AppCompatActivity() {
         btnLogin = findViewById(R.id.btnLogin)
         tvSignUp = findViewById(R.id.tvSignUp)
         btnGoogleSignIn = findViewById(R.id.btnGoogleSignIn)
+
+        // Initialize SharedPreferences
+        sharedPreferences = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
 
         // Initialize BaseApiClient
         baseApiClient = BaseApiClient(this)
@@ -255,44 +262,14 @@ class LoginActivity : AppCompatActivity() {
                         val responseBody = response.body?.string() ?: ""
                         
                         try {
-                            val jsonResponse = Gson().fromJson(responseBody, Map::class.java)
+                            val jsonResponse = Gson().fromJson<Map<String, Any>>(responseBody, Map::class.java)
                             
-                            val token = jsonResponse["token"] as? String
-                            val role = jsonResponse["role"] as? String
-                            val userId = jsonResponse["userId"] as? String
+                            // Store the username (email) before calling handleSuccessfulLogin
+                            this.username = email
                             
-                            if (token != null && role != null) {
-                                // Save to shared preferences
-                                val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
-                                with(sharedPref.edit()) {
-                                    putString("token", token)
-                                    val userIdLong = userId?.toLongOrNull() ?: 0L
-                                    putLong("userId", userIdLong)
-                                    putString("username", email)
-                                    putString("role", role)
-                                    apply()
-                                }
-                                
-                                runOnUiThread {
-                                    // Navigate based on role
-                                    if (role.contains("Customer", ignoreCase = true)) {
-                                        val intent = Intent(this, CustomerDashboardActivity::class.java)
-                                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                        startActivity(intent)
-                                        finish()
-                                    } else if (role.contains("Service Provider", ignoreCase = true)) {
-                                        val intent = Intent(this, ServiceProviderDashboardActivity::class.java)
-                                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                        startActivity(intent)
-                                        finish()
-                                    } else {
-                                        Toast.makeText(this, "Unknown role: $role", Toast.LENGTH_LONG).show()
-                                    }
-                                }
-                            } else {
-                                runOnUiThread {
-                                    Toast.makeText(this, "Invalid response from server", Toast.LENGTH_LONG).show()
-                                }
+                            // Use the centralized method to handle successful login
+                            runOnUiThread {
+                                handleSuccessfulLogin(jsonResponse)
                             }
                         } catch (e: Exception) {
                             Log.e(loginActivityTag, "Error parsing response", e)
@@ -346,61 +323,15 @@ class LoginActivity : AppCompatActivity() {
                         Log.d(loginActivityTag, "Response body: $responseBody")
                         
                         try {
-                            val jsonResponse = Gson().fromJson(responseBody, Map::class.java)
+                            val jsonResponse = Gson().fromJson<Map<String, Any>>(responseBody, Map::class.java)
                             Log.d(loginActivityTag, "Parsed response: $jsonResponse")
                             
-                            // Extract data from response
-                            val token = jsonResponse["token"] as? String
-                            val role = jsonResponse["role"] as? String
-                            val userId = jsonResponse["userId"] as? String
+                            // Store the username in the class field before calling handleSuccessfulLogin
+                            this.username = username
                             
-                            Log.d(loginActivityTag, "Extracted data - Token: ${token?.take(20)}..., Role: $role, UserId: $userId")
-                            
-                            if (token == null || role == null) {
-                                runOnUiThread {
-                                    Toast.makeText(this, "Error: Invalid response from server", Toast.LENGTH_LONG).show()
-                                }
-                                return@use
-                            }
-                            
-                            // Save to shared preferences
-                            val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
-                            with(sharedPref.edit()) {
-                                putString("token", token)
-                                
-                                // Convert userId from String to Long before storing
-                                val userIdLong = userId?.toLongOrNull() ?: 0L
-                                putLong("userId", userIdLong)
-                                
-                                putString("username", username)
-                                putString("role", role)
-                                apply()
-                            }
-                            
+                            // Use our new centralized method to handle the successful login
                             runOnUiThread {
-                                // Navigate based on role
-                                if (role.contains("Customer", ignoreCase = true)) {
-                                    Log.d(loginActivityTag, "Navigating to CustomerDashboardActivity")
-                                    Toast.makeText(this, "Login successful as Customer", Toast.LENGTH_SHORT).show()
-                                    
-                                    val intent = Intent(this, CustomerDashboardActivity::class.java)
-                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                    startActivity(intent)
-                                    finish()
-                                } 
-                                else if (role.contains("Service Provider", ignoreCase = true)) {
-                                    Log.d(loginActivityTag, "Navigating to ServiceProviderDashboardActivity")
-                                    Toast.makeText(this, "Login successful as Service Provider", Toast.LENGTH_SHORT).show()
-                                    
-                                    val intent = Intent(this, ServiceProviderDashboardActivity::class.java)
-                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                    startActivity(intent)
-                                    finish()
-                                } 
-                                else {
-                                    Log.d(loginActivityTag, "Unknown role: $role")
-                                    Toast.makeText(this, "Unknown role: $role", Toast.LENGTH_LONG).show()
-                                }
+                                handleSuccessfulLogin(jsonResponse)
                             }
                         } catch (e: Exception) {
                             Log.e(loginActivityTag, "Error parsing response", e)
@@ -475,42 +406,19 @@ class LoginActivity : AppCompatActivity() {
                         Log.d(loginActivityTag, "OAuth status response: $responseBody")
                         
                         try {
-                            val jsonResponse = Gson().fromJson(responseBody, Map::class.java)
+                            val jsonResponse = Gson().fromJson<Map<String, Any>>(responseBody, Map::class.java)
                             val isAuthenticated = jsonResponse["authenticated"] as? Boolean ?: false
                             
                             if (isAuthenticated) {
-                                val token = jsonResponse["token"] as? String
-                                val userId = jsonResponse["userId"] as? String
-                                val role = jsonResponse["role"] as? String
+                                // Get the email for username
+                                val email = jsonResponse["email"] as? String ?: ""
                                 
-                                if (token != null && role != null) {
-                                    // Save auth data
-                                    val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
-                                    with(sharedPref.edit()) {
-                                        putString("token", token)
-                                        val userIdLong = userId?.toLongOrNull() ?: 0L
-                                        putLong("userId", userIdLong)
-                                        putString("role", role)
-                                        apply()
-                                    }
-                                    
-                                    // Navigate based on role
-                                    runOnUiThread {
-                                        if (role.contains("Customer", ignoreCase = true)) {
-                                            startActivity(Intent(this, CustomerDashboardActivity::class.java).apply {
-                                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                            })
-                                        } else {
-                                            startActivity(Intent(this, ServiceProviderDashboardActivity::class.java).apply {
-                                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                            })
-                                        }
-                                        finish()
-                                    }
-                                } else {
-                                    runOnUiThread {
-                                        Toast.makeText(this, "Authenticated, but missing token or role", Toast.LENGTH_SHORT).show()
-                                    }
+                                // Store the email as username
+                                this.username = email
+                                
+                                // Use our centralized method to handle login
+                                runOnUiThread {
+                                    handleSuccessfulLogin(jsonResponse)
                                 }
                             } else {
                                 runOnUiThread {
@@ -535,6 +443,56 @@ class LoginActivity : AppCompatActivity() {
                     Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
+        }
+    }
+
+    // Handle successful login response
+    private fun handleSuccessfulLogin(loginResponse: Map<String, Any>) {
+        val token = loginResponse["token"] as? String ?: ""
+        val userIdStr = loginResponse["userId"] as? String
+        val userIdLong = userIdStr?.toLongOrNull() ?: 0
+        val role = loginResponse["role"] as? String ?: ""
+
+        Log.d(loginActivityTag, "Extracted data - Token: ${token.take(10)}..., Role: $role, UserId: $userIdLong")
+
+        // Store user data in SharedPreferences
+        with(sharedPreferences.edit()) {
+            putString("token", token)
+            putLong("userId", userIdLong)
+            putString("username", username)  // from class field
+            putString("role", role)
+            
+            // IMPORTANT: Don't set providerId here - will be retrieved by API later
+            // Clear any existing providerId to avoid issues
+            remove("providerId")
+            apply()
+        }
+        
+        // Also clear from user_prefs if it exists
+        val userPrefs = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        with(userPrefs.edit()) {
+            remove("providerId")
+            apply()
+        }
+
+        // Navigate to appropriate dashboard based on role
+        if (role.equals("Service Provider", ignoreCase = true)) {
+            Log.d(loginActivityTag, "Navigating to ServiceProviderDashboardActivity")
+            val intent = Intent(this, ServiceProviderDashboardActivity::class.java)
+            startActivity(intent)
+            finish()
+        } else if (role.equals("Customer", ignoreCase = true)) {
+            Log.d(loginActivityTag, "Navigating to CustomerDashboardActivity")
+            val intent = Intent(this, CustomerDashboardActivity::class.java)
+            startActivity(intent)
+            finish()
+        } else if (role.equals("Admin", ignoreCase = true)) {
+            // Redirect to admin dashboard (if implemented)
+            Log.d(loginActivityTag, "Admin role detected but no Admin dashboard implemented")
+            Toast.makeText(this, "Admin dashboard not implemented yet", Toast.LENGTH_SHORT).show()
+        } else {
+            Log.e(loginActivityTag, "Unknown role: $role")
+            Toast.makeText(this, "Login successful but unknown role: $role", Toast.LENGTH_SHORT).show()
         }
     }
 }

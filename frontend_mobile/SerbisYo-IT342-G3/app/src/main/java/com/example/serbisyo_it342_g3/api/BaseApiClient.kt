@@ -20,7 +20,7 @@ class BaseApiClient(private val context: Context) {
         private const val EMULATOR_URL = "http://10.0.2.2:8080"
         
         // For Physical Device - Default IP for server (should be updated to match the actual server)
-        private const val PHYSICAL_DEVICE_URL = "http://192.168.112.136:8080"
+        private const val PHYSICAL_DEVICE_URL = "http://192.168.200.136:8080"
         
         // For Physical Device - Additional server IP options
         private const val ALTERNATE_SERVER_IP_1 = "http://192.168.1.100:8080"

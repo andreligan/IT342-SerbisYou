@@ -996,26 +996,39 @@ class UserApiClient(context: Context) {
         getAllServiceProviders(token) { providers, error ->
             if (error != null) {
                 Log.e(TAG, "Failed to get all providers for fallback", error)
-                callback(null, error)
+                try {
+                    callback(null, error)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error in callback after failing to get providers", e)
+                }
                 return@getAllServiceProviders
             }
             
             if (providers != null && providers.isNotEmpty()) {
-                // Find the provider with matching userAuth.userId
-                val matchingProvider = providers.find { 
-                    it.userAuth?.userId == userId 
-                }
-                
-                if (matchingProvider != null) {
-                    Log.d(TAG, "Found matching provider: ${matchingProvider.providerId}")
-                    callback(matchingProvider, null)
-                } else {
-                    Log.e(TAG, "No matching service provider found for user ID: $userId")
-                    callback(null, Exception("No service provider account exists for this user. Please contact support."))
+                try {
+                    // Find the provider with matching userAuth.userId
+                    val matchingProvider = providers.find { 
+                        it.userAuth?.userId == userId 
+                    }
+                    
+                    if (matchingProvider != null) {
+                        Log.d(TAG, "Found matching provider: ${matchingProvider.providerId}")
+                        callback(matchingProvider, null)
+                    } else {
+                        Log.e(TAG, "No matching service provider found for user ID: $userId")
+                        callback(null, Exception("No service provider account exists for this user. Please contact support."))
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error processing providers in fallback", e)
+                    callback(null, Exception("Error processing providers data: ${e.message}"))
                 }
             } else {
                 Log.e(TAG, "No service providers found in the system")
-                callback(null, Exception("No service providers found in the system. Please contact support."))
+                try {
+                    callback(null, Exception("No service providers found in the system. Please contact support."))
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error in callback when no providers found", e)
+                }
             }
         }
     }
@@ -1037,7 +1050,11 @@ class UserApiClient(context: Context) {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 Log.e(TAG, "Failed to get all providers", e)
-                callback(null, e)
+                try {
+                    callback(null, e)
+                } catch (e2: Exception) {
+                    Log.e(TAG, "Error in callback after network failure", e2)
+                }
             }
 
             override fun onResponse(call: Call, response: Response) {
@@ -1049,15 +1066,27 @@ class UserApiClient(context: Context) {
                         val type = object : TypeToken<List<ServiceProvider>>() {}.type
                         val providers = gson.fromJson<List<ServiceProvider>>(responseBody, type)
                         Log.d(TAG, "Found ${providers.size} providers in total")
-                        callback(providers, null)
+                        try {
+                            callback(providers, null)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error in callback after successful parsing", e)
+                        }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error parsing providers", e)
-                        callback(null, e)
+                        try {
+                            callback(null, e)
+                        } catch (e2: Exception) {
+                            Log.e(TAG, "Error in callback after parsing failure", e2)
+                        }
                     }
                 } else {
                     Log.e(TAG, "Error getting all providers: ${response.code}")
                     Log.e(TAG, "Error response body: $responseBody")
-                    callback(null, Exception("Failed to get all providers: ${response.code}"))
+                    try {
+                        callback(null, Exception("Failed to get all providers: ${response.code}"))
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error in callback after HTTP error", e)
+                    }
                 }
             }
         })

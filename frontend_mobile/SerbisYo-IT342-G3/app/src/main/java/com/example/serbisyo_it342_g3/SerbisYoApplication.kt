@@ -11,6 +11,11 @@ import android.net.NetworkRequest
 import android.util.Log
 import android.widget.Toast
 import com.example.serbisyo_it342_g3.api.BaseApiClient
+import android.os.Build
+import android.os.StrictMode
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 class SerbisYoApplication : Application() {
 
@@ -34,6 +39,9 @@ class SerbisYoApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         
+        // Configure hardware acceleration settings
+        configureHardwareAcceleration()
+        
         // Initialize the ConnectivityManager
         val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         
@@ -47,7 +55,7 @@ class SerbisYoApplication : Application() {
         if (network != null && capabilities != null && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
             try {
                 // For this specific app, we know the server should be at this IP and port
-                val serverIpAddress = "192.168.112.136" // Current server IP
+                val serverIpAddress = "192.168.200.136" // Current server IP
                 Log.d(TAG, "Connected to WiFi, setting server to: $serverIpAddress")
                 BaseApiClient.setBaseUrl("http://$serverIpAddress:8080")
             } catch (e: Exception) {
@@ -57,6 +65,26 @@ class SerbisYoApplication : Application() {
         
         // Set up network monitoring
         setupNetworkMonitoring()
+    }
+    
+    private fun configureHardwareAcceleration() {
+        try {
+            // Apply some StrictMode policies to help with OpenGL problems
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                StrictMode.setThreadPolicy(
+                    StrictMode.ThreadPolicy.Builder()
+                        .permitCustomSlowCalls()
+                        .permitDiskReads()
+                        .permitDiskWrites()
+                        .build()
+                )
+            }
+            
+            // Log that we've configured hardware acceleration
+            Log.d(TAG, "Hardware acceleration configured")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error configuring hardware acceleration", e)
+        }
     }
     
     private fun setupNetworkMonitoring() {

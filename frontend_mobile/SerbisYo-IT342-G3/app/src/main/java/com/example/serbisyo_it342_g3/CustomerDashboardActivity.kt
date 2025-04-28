@@ -46,7 +46,7 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import android.net.ConnectivityManager
 
-class CustomerDashboardActivity : AppCompatActivity() {
+class CustomerDashboardActivity : AppCompatActivity(), NotificationsFragment.NotificationBadgeListener {
     // Existing view variables
     private lateinit var tvWelcome: TextView
     private lateinit var tvNoServices: TextView
@@ -92,6 +92,17 @@ class CustomerDashboardActivity : AppCompatActivity() {
     // Special category for "All Categories"
     private val ALL_CATEGORIES = ServiceCategory(0, "All Categories")
 
+    // Add notification badge properties
+    private lateinit var notificationApiClient: NotificationApiClient
+    private var notificationBadge: TextView? = null
+    private val notificationHandler = Handler(Looper.getMainLooper())
+    private val notificationCheckRunnable = object : Runnable {
+        override fun run() {
+            checkForNotifications()
+            notificationHandler.postDelayed(this, 60000) // Check every minute
+        }
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_customer_dashboard)
@@ -99,6 +110,7 @@ class CustomerDashboardActivity : AppCompatActivity() {
         // Initialize ServiceApiClient with context
         serviceApiClient = ServiceApiClient(this)
         userApiClient = UserApiClient(this)
+        notificationApiClient = NotificationApiClient(this)
         
         // Get SharedPreferences
         val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
@@ -170,6 +182,9 @@ class CustomerDashboardActivity : AppCompatActivity() {
         
         // Load data after views are set up
         loadData()
+
+        // Start notification checking
+        startNotificationChecking()
     }
     
     private fun loadProfileImage() {
@@ -933,12 +948,16 @@ class CustomerDashboardActivity : AppCompatActivity() {
         super.onPause()
         // Stop slideshow when activity is paused
         slideshowHandler.removeCallbacks(slideshowRunnable)
+        // Stop notification checking when activity is paused
+        stopNotificationChecking()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         // Stop slideshow when activity is destroyed
         slideshowHandler.removeCallbacks(slideshowRunnable)
+        // Stop notification checking when activity is destroyed
+        stopNotificationChecking()
     }
 
     private fun startSlideshow() {
@@ -1065,5 +1084,52 @@ class CustomerDashboardActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing API URL", e)
         }
+    }
+
+    // Override the method from NotificationBadgeListener
+    override fun updateNotificationBadge(count: Int) {
+        runOnUiThread {
+            val menuItem = bottomNavigation.menu.findItem(R.id.navigation_notifications)
+            if (count > 0) {
+                if (notificationBadge == null) {
+                    // Initialize badge if not already done
+                    val actionView = LayoutInflater.from(this).inflate(R.layout.notification_badge_layout, null)
+                    notificationBadge = actionView.findViewById(R.id.notificationBadgeCount)
+                    menuItem.actionView = actionView
+                    
+                    // Make the action view clickable to navigate to notifications
+                    actionView.setOnClickListener {
+                        bottomNavigation.selectedItemId = R.id.navigation_notifications
+                    }
+                }
+                
+                notificationBadge?.text = if (count > 99) "99+" else count.toString()
+                notificationBadge?.visibility = View.VISIBLE
+            } else {
+                notificationBadge?.visibility = View.GONE
+            }
+        }
+    }
+    
+    private fun checkForNotifications() {
+        if (userId > 0 && token.isNotEmpty()) {
+            notificationApiClient.getUnreadNotificationCount(userId, token) { count, error ->
+                if (error != null) {
+                    Log.e(TAG, "Error checking notifications", error)
+                    return@getUnreadNotificationCount
+                }
+                updateNotificationBadge(count)
+            }
+        }
+    }
+
+    private fun startNotificationChecking() {
+        // Start periodic notification checking
+        notificationHandler.postDelayed(notificationCheckRunnable, 5000) // First check after 5 seconds
+    }
+
+    private fun stopNotificationChecking() {
+        // Remove callbacks to stop the periodic checking
+        notificationHandler.removeCallbacks(notificationCheckRunnable)
     }
 }

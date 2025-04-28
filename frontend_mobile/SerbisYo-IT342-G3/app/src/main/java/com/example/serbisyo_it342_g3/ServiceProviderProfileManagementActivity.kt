@@ -167,6 +167,9 @@ class ServiceProviderProfileManagementActivity : AppCompatActivity() {
                 3 -> {
                     // My Services Fragment
                     val fragment = ServiceProviderServicesFragment.newInstance(userId, token, providerId)
+                    // Set an option in arguments to show that this is launched from the profile management screen
+                    // This will help prevent redirection loops
+                    fragment.arguments?.putBoolean("fromProfileManagement", true)
                     fragment
                 }
                 4 -> {

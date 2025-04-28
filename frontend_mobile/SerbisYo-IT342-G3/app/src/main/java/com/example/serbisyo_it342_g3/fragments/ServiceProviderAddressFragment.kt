@@ -257,38 +257,62 @@ class ServiceProviderAddressFragment : Fragment() {
     }
     
     private fun getProviderIdFromUserProfile() {
-        progressBar.visibility = View.VISIBLE
-        
         userApiClient.getServiceProviderByAuthId(userId, token) { serviceProvider, error ->
-            requireActivity().runOnUiThread {
-                if (error != null) {
-                    Log.e(TAG, "Error getting provider profile", error)
-                    // Don't fall back to a default provider ID, just show empty state
-                    tvNoAddresses.visibility = View.VISIBLE
-                    rvAddresses.visibility = View.GONE
-                    tvNoAddresses.text = "No address information available for new account. Please add your first address."
-                    progressBar.visibility = View.GONE
-                } else if (serviceProvider != null) {
-                    providerId = serviceProvider.providerId ?: 0L
-                    // Save provider ID to SharedPreferences
-                    saveProviderIdToPrefs(providerId)
-                    Log.d(TAG, "Retrieved provider ID: $providerId")
-                    
-                    if (providerId > 0) {
-                        loadAddresses()
-                    } else {
-                        tvNoAddresses.visibility = View.VISIBLE
-                        rvAddresses.visibility = View.GONE
-                        tvNoAddresses.text = "No address information available for new account. Please add your first address."
-                        progressBar.visibility = View.GONE
-                    }
-                } else {
-                    // No provider found - this is a new account
-                    tvNoAddresses.visibility = View.VISIBLE
-                    rvAddresses.visibility = View.GONE
-                    tvNoAddresses.text = "No address information available for new account. Please add your first address." 
-                    progressBar.visibility = View.GONE
+            try {
+                // First check if fragment is still attached
+                if (!isAdded) {
+                    Log.w(TAG, "Fragment detached when receiving provider data")
+                    return@getServiceProviderByAuthId
                 }
+                
+                // Use activity safely
+                val activity = activity ?: run {
+                    Log.w(TAG, "Activity null when receiving provider data")
+                    return@getServiceProviderByAuthId
+                }
+                
+                activity.runOnUiThread {
+                    try {
+                        if (error != null) {
+                            Log.e(TAG, "Error getting provider profile", error)
+                            // Don't fall back to a default provider ID, just show empty state
+                            if (isAdded) {
+                                tvNoAddresses.visibility = View.VISIBLE
+                                rvAddresses.visibility = View.GONE
+                                tvNoAddresses.text = "No address information available for new account. Please add your first address."
+                                progressBar.visibility = View.GONE
+                            }
+                        } else if (serviceProvider != null) {
+                            providerId = serviceProvider.providerId ?: 0L
+                            // Save provider ID to SharedPreferences safely
+                            if (isAdded) {
+                                saveProviderIdToPrefs(providerId)
+                                Log.d(TAG, "Retrieved provider ID: $providerId")
+                                
+                                if (providerId > 0) {
+                                    loadAddresses()
+                                } else {
+                                    tvNoAddresses.visibility = View.VISIBLE
+                                    rvAddresses.visibility = View.GONE
+                                    tvNoAddresses.text = "No address information available for new account. Please add your first address."
+                                    progressBar.visibility = View.GONE
+                                }
+                            }
+                        } else {
+                            // No provider found - this is a new account
+                            if (isAdded) {
+                                tvNoAddresses.visibility = View.VISIBLE
+                                rvAddresses.visibility = View.GONE
+                                tvNoAddresses.text = "No address information available for new account. Please add your first address." 
+                                progressBar.visibility = View.GONE
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error updating UI with provider data", e)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in provider callback", e)
             }
         }
     }
@@ -296,54 +320,80 @@ class ServiceProviderAddressFragment : Fragment() {
     private fun saveProviderIdToPrefs(id: Long) {
         if (id <= 0) return // Don't save invalid IDs
         
-        val sharedPreferences = requireActivity().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
-        sharedPreferences.edit().putLong("providerId", id).apply()
-        
-        val userPrefs = requireActivity().getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
-        userPrefs.edit().putLong("providerId", id).apply()
+        try {
+            if (!isAdded) return
+            
+            val activity = activity ?: return
+            
+            val sharedPreferences = activity.getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+            sharedPreferences.edit().putLong("providerId", id).apply()
+            
+            val userPrefs = activity.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+            userPrefs.edit().putLong("providerId", id).apply()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving provider ID to preferences", e)
+        }
     }
     
     private fun getProviderIdFromAllProviders() {
         userApiClient.getAllServiceProviders(token) { providers, error ->
-            requireActivity().runOnUiThread {
-                progressBar.visibility = View.GONE
-                
-                if (error != null) {
-                    Log.e(TAG, "Error getting providers", error)
-                    // Show empty state instead of using default provider
-                    tvNoAddresses.visibility = View.VISIBLE
-                    rvAddresses.visibility = View.GONE
-                    tvNoAddresses.text = "No address information available. Please add your first address."
-                    return@runOnUiThread
+            try {
+                if (!isAdded) {
+                    Log.w(TAG, "Fragment detached when receiving all providers data")
+                    return@getAllServiceProviders
                 }
                 
-                if (providers != null) {
-                    val matchingProvider = providers.find { it.userAuth?.userId == userId }
-                    if (matchingProvider != null) {
-                        providerId = matchingProvider.providerId ?: 0L
-                        Log.d(TAG, "Found provider ID from list: $providerId")
+                val activity = activity ?: run {
+                    Log.w(TAG, "Activity null when receiving all providers data")
+                    return@getAllServiceProviders
+                }
+                
+                activity.runOnUiThread {
+                    try {
+                        progressBar.visibility = View.GONE
                         
-                        // Only save and load if we found a valid provider ID
-                        if (providerId > 0) {
-                            saveProviderIdToPrefs(providerId)
-                            loadAddresses()
-                        } else {
+                        if (error != null) {
+                            Log.e(TAG, "Error getting providers", error)
+                            // Show empty state instead of using default provider
                             tvNoAddresses.visibility = View.VISIBLE
                             rvAddresses.visibility = View.GONE
-                            tvNoAddresses.text = "No address information available for your account. Please add your first address."
+                            tvNoAddresses.text = "No address information available. Please add your first address."
+                            return@runOnUiThread
                         }
-                    } else {
-                        // No matching provider - new account
-                        tvNoAddresses.visibility = View.VISIBLE
-                        rvAddresses.visibility = View.GONE
-                        tvNoAddresses.text = "No address information available for new account. Please add your first address."
+                        
+                        if (providers != null) {
+                            val matchingProvider = providers.find { it.userAuth?.userId == userId }
+                            if (matchingProvider != null) {
+                                providerId = matchingProvider.providerId ?: 0L
+                                Log.d(TAG, "Found provider ID from list: $providerId")
+                                
+                                // Only save and load if we found a valid provider ID
+                                if (providerId > 0) {
+                                    saveProviderIdToPrefs(providerId)
+                                    loadAddresses()
+                                } else {
+                                    tvNoAddresses.visibility = View.VISIBLE
+                                    rvAddresses.visibility = View.GONE
+                                    tvNoAddresses.text = "No address information available for your account. Please add your first address."
+                                }
+                            } else {
+                                // No matching provider - new account
+                                tvNoAddresses.visibility = View.VISIBLE
+                                rvAddresses.visibility = View.GONE
+                                tvNoAddresses.text = "No address information available for new account. Please add your first address."
+                            }
+                        } else {
+                            // No providers returned from API
+                            tvNoAddresses.visibility = View.VISIBLE
+                            rvAddresses.visibility = View.GONE
+                            tvNoAddresses.text = "No address information available. Please add your first address."
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error updating UI with all providers data", e)
                     }
-                } else {
-                    // No providers returned from API
-                    tvNoAddresses.visibility = View.VISIBLE
-                    rvAddresses.visibility = View.GONE
-                    tvNoAddresses.text = "No address information available. Please add your first address."
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in all providers callback", e)
             }
         }
     }

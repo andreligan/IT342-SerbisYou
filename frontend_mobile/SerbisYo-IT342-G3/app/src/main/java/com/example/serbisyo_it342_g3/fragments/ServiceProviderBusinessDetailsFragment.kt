@@ -381,220 +381,406 @@ class ServiceProviderBusinessDetailsFragment : Fragment() {
     }
     
     private fun loadBusinessDetails() {
-        progressBar.visibility = View.VISIBLE
-        tvErrorMessage.visibility = View.GONE
-        
-        if (providerId <= 0) {
-            Log.e(tag, "Cannot load business details: provider ID is invalid ($providerId)")
+        try {
+            if (!isAdded) {
+                Log.w(tag, "Fragment not attached when trying to load business details")
+                return
+            }
             
-            // For new accounts, don't show error, just show empty form
-            checkIfProviderExists()
-            return
-        }
-        
-        Log.d(tag, "Loading business details for provider ID: $providerId")
-        userApiClient.getServiceProviderProfile(providerId, token) { provider, error ->
-            requireActivity().runOnUiThread {
-                progressBar.visibility = View.GONE
+            progressBar.visibility = View.VISIBLE
+            tvErrorMessage.visibility = View.GONE
+            
+            if (providerId <= 0) {
+                Log.e(tag, "Cannot load business details: provider ID is invalid ($providerId)")
                 
-                if (error != null) {
-                    Log.e(tag, "Error loading business details", error)
+                // For new accounts, don't show error, just show empty form
+                checkIfProviderExists()
+                return
+            }
+            
+            Log.d(tag, "Loading business details for provider ID: $providerId")
+            userApiClient.getServiceProviderProfile(providerId, token) { provider, error ->
+                try {
+                    if (!isAdded) {
+                        Log.w(tag, "Fragment not attached when receiving business details")
+                        return@getServiceProviderProfile
+                    }
                     
-                    // Don't display error message for new accounts
-                    checkIfProviderExists()
-                    return@runOnUiThread
+                    val activity = activity ?: run {
+                        Log.w(tag, "Activity null when receiving business details")
+                        return@getServiceProviderProfile
+                    }
+                    
+                    activity.runOnUiThread {
+                        try {
+                            if (!isAdded) {
+                                Log.w(tag, "Fragment not attached when updating UI with business details")
+                                return@runOnUiThread
+                            }
+                            
+                            progressBar.visibility = View.GONE
+                            
+                            if (error != null) {
+                                Log.e(tag, "Error loading business details", error)
+                                
+                                // Don't display error message for new accounts
+                                checkIfProviderExists()
+                                return@runOnUiThread
+                            }
+                            
+                            if (provider != null) {
+                                // Store the provider data
+                                updateBusinessDetailsUI(provider)
+                            } else {
+                                // Try to check if provider exists with a different ID
+                                checkIfProviderExists()
+                            }
+                        } catch (e: Exception) {
+                            Log.e(tag, "Error updating UI with business details", e)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(tag, "Error in provider profile callback", e)
                 }
-                
-                if (provider != null) {
-                    // Store the provider data
-                    updateBusinessDetailsUI(provider)
-                } else {
-                    // Try to check if provider exists with a different ID
-                    checkIfProviderExists()
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Error in loadBusinessDetails", e)
+            try {
+                if (isAdded) {
+                    progressBar.visibility = View.GONE
+                    tvErrorMessage.visibility = View.VISIBLE
+                    tvErrorMessage.text = "Error loading business details: ${e.message}"
                 }
+            } catch (e2: Exception) {
+                Log.e(tag, "Error handling exception in loadBusinessDetails", e2)
             }
         }
     }
     
     private fun checkIfProviderExists() {
-        // Check if the provider account exists by auth ID
-        userApiClient.getServiceProviderByAuthId(userId, token) { provider, error ->
-            requireActivity().runOnUiThread {
-                if (error != null) {
-                    // Provider account doesn't exist due to error
-                    Toast.makeText(
-                        requireContext(),
-                        "Error checking provider account: ${error.message}. Please contact support.",
-                        Toast.LENGTH_LONG
-                    ).show()
+        try {
+            if (!isAdded) {
+                Log.w(tag, "Fragment not attached when checking if provider exists")
+                return
+            }
+            
+            // Check if the provider account exists by auth ID
+            userApiClient.getServiceProviderByAuthId(userId, token) { provider, error ->
+                try {
+                    if (!isAdded) {
+                        Log.w(tag, "Fragment not attached when checking if provider exists")
+                        return@getServiceProviderByAuthId
+                    }
                     
-                    // Show empty form with defaults for new user
-                    setupEmptyBusinessDetails()
-                } else if (provider == null) {
-                    // Provider account doesn't exist - show empty form with defaults
-                    setupEmptyBusinessDetails()
+                    val activity = activity ?: run {
+                        Log.w(tag, "Activity null when checking if provider exists")
+                        return@getServiceProviderByAuthId
+                    }
                     
-                    Toast.makeText(
-                        requireContext(),
-                        "No provider account found. You'll need to set up your business details.",
-                        Toast.LENGTH_LONG
-                    ).show()
-                } else {
-                    // We found a provider but with a different ID - update it
-                    providerId = provider.providerId ?: 0L
-                    
-                    // Save provider ID to SharedPreferences
-                    val userPrefs = requireActivity().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
-                    userPrefs.edit().putLong("providerId", providerId).apply()
-                    
-                    Log.d(tag, "Updated provider ID to: $providerId")
-                    
-                    // Try loading again with the correct provider ID
-                    loadBusinessDetails()
+                    activity.runOnUiThread {
+                        try {
+                            if (!isAdded) {
+                                Log.w(tag, "Fragment not attached when updating UI after provider check")
+                                return@runOnUiThread
+                            }
+                            
+                            if (error != null) {
+                                // Provider account doesn't exist due to error
+                                if (context != null) {
+                                    Toast.makeText(
+                                        context,
+                                        "Error checking provider account: ${error.message}. Please contact support.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                                
+                                // Show empty form with defaults for new user
+                                setupEmptyBusinessDetails()
+                            } else if (provider == null) {
+                                // Provider account doesn't exist - show empty form with defaults
+                                setupEmptyBusinessDetails()
+                                
+                                if (context != null) {
+                                    Toast.makeText(
+                                        context,
+                                        "No provider account found. You'll need to set up your business details.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            } else {
+                                // We found a provider but with a different ID - update it
+                                providerId = provider.providerId ?: 0L
+                                
+                                // Save provider ID to SharedPreferences
+                                if (isAdded) {
+                                    val userPrefs = activity.getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+                                    userPrefs.edit().putLong("providerId", providerId).apply()
+                                    
+                                    Log.d(tag, "Updated provider ID to: $providerId")
+                                    
+                                    // Try loading again with the correct provider ID
+                                    loadBusinessDetails()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e(tag, "Error updating UI when checking provider", e)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(tag, "Error in checkIfProviderExists callback", e)
                 }
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Error in checkIfProviderExists", e)
+            try {
+                if (isAdded && context != null) {
+                    Toast.makeText(
+                        context,
+                        "Error checking provider: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    setupEmptyBusinessDetails()
+                }
+            } catch (e2: Exception) {
+                Log.e(tag, "Error handling exception in checkIfProviderExists", e2)
             }
         }
     }
     
     private fun setupEmptyBusinessDetails() {
-        // Set default values for a new business account
-        etBusinessName.setText("")
-        etBusinessDesc.setText("")
-        etBusinessCategory.setText("")
-        etYearEstablished.setText("")
-        etYearsExperience.setText("0")
-        etAvailabilitySchedule.setText("Monday-Friday, 9AM-5PM") // Default schedule
-        etPaymentMethod.setText("")
-        dropdownStatus.setText("Active", false)
-        
-        // Hide error message and progress bar
-        tvErrorMessage.visibility = View.GONE
-        progressBar.visibility = View.GONE
+        try {
+            if (!isAdded) {
+                Log.w(tag, "Fragment not attached when setting up empty business details")
+                return
+            }
+            
+            // Set default values for a new business account
+            etBusinessName.setText("")
+            etBusinessDesc.setText("")
+            etBusinessCategory.setText("")
+            etYearEstablished.setText("")
+            etYearsExperience.setText("0")
+            etAvailabilitySchedule.setText("Monday-Friday, 9AM-5PM") // Default schedule
+            etPaymentMethod.setText("")
+            dropdownStatus.setText("Active", false)
+            
+            // Hide error message and progress bar
+            tvErrorMessage.visibility = View.GONE
+            progressBar.visibility = View.GONE
+        } catch (e: Exception) {
+            Log.e(tag, "Error in setupEmptyBusinessDetails", e)
+        }
     }
     
     private fun updateBusinessDetailsUI(provider: ServiceProvider) {
-        // Fill form with business details - Safely handle nullable values
-        etBusinessName.setText(provider.businessName ?: "")
-        
-        // We're storing these fields in SharedPreferences temporarily until backend supports them
-        val prefs = requireActivity().getSharedPreferences("ProviderBusinessDetails", Context.MODE_PRIVATE)
-        
-        businessDescription = prefs.getString("businessDescription_$providerId", "") ?: ""
-        businessCategory = prefs.getString("businessCategory_$providerId", "") ?: ""
-        yearEstablished = prefs.getString("yearEstablished_$providerId", "") ?: ""
-        status = provider.status ?: prefs.getString("status_$providerId", "Active") ?: "Active"
-        
-        etBusinessDesc.setText(businessDescription)
-        etBusinessCategory.setText(businessCategory)
-        etYearEstablished.setText(yearEstablished)
-        
-        etYearsExperience.setText(provider.yearsOfExperience?.toString() ?: "0")
-        etAvailabilitySchedule.setText(provider.availabilitySchedule ?: "Monday-Friday, 9AM-5PM") // Default schedule
-        etPaymentMethod.setText(provider.paymentMethod ?: "")
-        
-        // Set status (use from API if available, otherwise from SharedPreferences)
-        dropdownStatus.setText(status.ifEmpty { "Active" }, false)
+        try {
+            if (!isAdded) {
+                Log.w(tag, "Fragment not attached when updating business UI")
+                return
+            }
+            
+            val activity = activity ?: run {
+                Log.w(tag, "Activity null when updating business UI")
+                return
+            }
+            
+            // Fill form with business details - Safely handle nullable values
+            etBusinessName.setText(provider.businessName ?: "")
+            
+            // We're storing these fields in SharedPreferences temporarily until backend supports them
+            val prefs = activity.getSharedPreferences("ProviderBusinessDetails", Context.MODE_PRIVATE)
+            
+            businessDescription = prefs.getString("businessDescription_$providerId", "") ?: ""
+            businessCategory = prefs.getString("businessCategory_$providerId", "") ?: ""
+            yearEstablished = prefs.getString("yearEstablished_$providerId", "") ?: ""
+            status = provider.status ?: prefs.getString("status_$providerId", "Active") ?: "Active"
+            
+            etBusinessDesc.setText(businessDescription)
+            etBusinessCategory.setText(businessCategory)
+            etYearEstablished.setText(yearEstablished)
+            
+            etYearsExperience.setText(provider.yearsOfExperience?.toString() ?: "0")
+            etAvailabilitySchedule.setText(provider.availabilitySchedule ?: "Monday-Friday, 9AM-5PM") // Default schedule
+            etPaymentMethod.setText(provider.paymentMethod ?: "")
+            
+            // Set status (use from API if available, otherwise from SharedPreferences)
+            dropdownStatus.setText(status.ifEmpty { "Active" }, false)
+        } catch (e: Exception) {
+            Log.e(tag, "Error updating business details UI", e)
+        }
     }
     
     private fun validateInputs(): Boolean {
-        var isValid = true
-        
-        if (etBusinessName.text.toString().trim().isEmpty()) {
-            (etBusinessName.parent.parent as? TextInputLayout)?.error = getString(R.string.error_business_name_empty)
-            isValid = false
-        } else {
-            (etBusinessName.parent.parent as? TextInputLayout)?.error = null
-        }
-        
-        val yearsExperience = etYearsExperience.text.toString().trim()
-        if (yearsExperience.isEmpty()) {
-            (etYearsExperience.parent.parent as? TextInputLayout)?.error = getString(R.string.error_years_experience_empty)
-            isValid = false
-        } else {
-            try {
-                val years = yearsExperience.toInt()
-                if (years < 0) {
-                    (etYearsExperience.parent.parent as? TextInputLayout)?.error = getString(R.string.error_years_experience_negative)
-                    isValid = false
-                } else {
-                    (etYearsExperience.parent.parent as? TextInputLayout)?.error = null
-                }
-            } catch (e: NumberFormatException) {
-                (etYearsExperience.parent.parent as? TextInputLayout)?.error = getString(R.string.error_years_experience_invalid)
-                isValid = false
+        try {
+            if (!isAdded) {
+                Log.w(tag, "Fragment not attached when validating inputs")
+                return false
             }
-        }
-        
-        if (etAvailabilitySchedule.text.toString().trim().isEmpty()) {
-            (etAvailabilitySchedule.parent.parent as? TextInputLayout)?.error = getString(R.string.error_availability_empty)
-            isValid = false
-        } else {
-            (etAvailabilitySchedule.parent.parent as? TextInputLayout)?.error = null
-        }
-        
-        // Validate year established if it's not empty
-        val yearEstablished = etYearEstablished.text.toString().trim()
-        if (yearEstablished.isNotEmpty()) {
-            try {
-                val year = yearEstablished.toInt()
-                val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
-                if (year < 1900 || year > currentYear) {
+            
+            var isValid = true
+            
+            if (etBusinessName.text.toString().trim().isEmpty()) {
+                (etBusinessName.parent.parent as? TextInputLayout)?.error = getString(R.string.error_business_name_empty)
+                isValid = false
+            } else {
+                (etBusinessName.parent.parent as? TextInputLayout)?.error = null
+            }
+            
+            val yearsExperience = etYearsExperience.text.toString().trim()
+            if (yearsExperience.isEmpty()) {
+                (etYearsExperience.parent.parent as? TextInputLayout)?.error = getString(R.string.error_years_experience_empty)
+                isValid = false
+            } else {
+                try {
+                    val years = yearsExperience.toInt()
+                    if (years < 0) {
+                        (etYearsExperience.parent.parent as? TextInputLayout)?.error = getString(R.string.error_years_experience_negative)
+                        isValid = false
+                    } else {
+                        (etYearsExperience.parent.parent as? TextInputLayout)?.error = null
+                    }
+                } catch (e: NumberFormatException) {
+                    (etYearsExperience.parent.parent as? TextInputLayout)?.error = getString(R.string.error_years_experience_invalid)
+                    isValid = false
+                }
+            }
+            
+            if (etAvailabilitySchedule.text.toString().trim().isEmpty()) {
+                (etAvailabilitySchedule.parent.parent as? TextInputLayout)?.error = getString(R.string.error_availability_empty)
+                isValid = false
+            } else {
+                (etAvailabilitySchedule.parent.parent as? TextInputLayout)?.error = null
+            }
+            
+            // Validate year established if it's not empty
+            val yearEstablished = etYearEstablished.text.toString().trim()
+            if (yearEstablished.isNotEmpty()) {
+                try {
+                    val year = yearEstablished.toInt()
+                    val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+                    if (year < 1900 || year > currentYear) {
+                        (etYearEstablished.parent.parent as? TextInputLayout)?.error = getString(R.string.error_year_established_invalid)
+                        isValid = false
+                    } else {
+                        (etYearEstablished.parent.parent as? TextInputLayout)?.error = null
+                    }
+                } catch (e: NumberFormatException) {
                     (etYearEstablished.parent.parent as? TextInputLayout)?.error = getString(R.string.error_year_established_invalid)
                     isValid = false
-                } else {
-                    (etYearEstablished.parent.parent as? TextInputLayout)?.error = null
                 }
-            } catch (e: NumberFormatException) {
-                (etYearEstablished.parent.parent as? TextInputLayout)?.error = getString(R.string.error_year_established_invalid)
-                isValid = false
             }
+            
+            return isValid
+        } catch (e: Exception) {
+            Log.e(tag, "Error validating inputs", e)
+            return false
         }
-        
-        return isValid
     }
     
     private fun updateBusinessDetails() {
+        try {
+            if (!isAdded) {
+                Log.w(tag, "Fragment not attached when updating business details")
+                return
+            }
+            
+            val activity = activity ?: run {
+                Log.w(tag, "Activity null when updating business details")
+                return
+            }
+            
+            progressBar.visibility = View.VISIBLE
+            
+            val businessName = etBusinessName.text.toString().trim()
+            val businessDesc = etBusinessDesc.text.toString().trim()
+            val businessCategory = etBusinessCategory.text.toString().trim()
+            val yearEstablished = etYearEstablished.text.toString().trim()
+            val yearsExperience = etYearsExperience.text.toString().trim().toIntOrNull() ?: 0
+            val availabilitySchedule = etAvailabilitySchedule.text.toString().trim()
+            val paymentMethod = etPaymentMethod.text.toString().trim().takeIf { it.isNotEmpty() } ?: ""
+            val status = dropdownStatus.text.toString()
+            
+            // Save extended fields in SharedPreferences until backend supports them
+            val prefs = activity.getSharedPreferences("ProviderBusinessDetails", Context.MODE_PRIVATE)
+            prefs.edit().apply {
+                putString("businessDescription_$providerId", businessDesc)
+                putString("businessCategory_$providerId", businessCategory)
+                putString("yearEstablished_$providerId", yearEstablished)
+                putString("status_$providerId", status)
+                apply()
+            }
+            
+            // If providerId is 0, try to get it from SharedPreferences
+            updateProvider()
+        } catch (e: Exception) {
+            Log.e(tag, "Error in updateBusinessDetails", e)
+        }
+    }
+    
+    private fun updateProvider() {
         progressBar.visibility = View.VISIBLE
         
-        val businessName = etBusinessName.text.toString().trim()
-        val businessDesc = etBusinessDesc.text.toString().trim()
-        val businessCategory = etBusinessCategory.text.toString().trim()
-        val yearEstablished = etYearEstablished.text.toString().trim()
-        val yearsExperience = etYearsExperience.text.toString().trim().toIntOrNull() ?: 0
-        val availabilitySchedule = etAvailabilitySchedule.text.toString().trim()
-        val paymentMethod = etPaymentMethod.text.toString().trim().takeIf { it.isNotEmpty() } ?: ""
-        val status = dropdownStatus.text.toString()
-        
-        // Save extended fields in SharedPreferences until backend supports them
-        val prefs = requireActivity().getSharedPreferences("ProviderBusinessDetails", Context.MODE_PRIVATE)
-        prefs.edit().apply {
-            putString("businessDescription_$providerId", businessDesc)
-            putString("businessCategory_$providerId", businessCategory)
-            putString("yearEstablished_$providerId", yearEstablished)
-            putString("status_$providerId", status)
-            apply()
-        }
-        
-        // If providerId is 0, try to get it from SharedPreferences
         if (providerId == 0L) {
-            val prefs = requireActivity().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+            val prefs = try {
+                if (!isAdded) {
+                    Log.w(tag, "Fragment not attached when trying to get prefs")
+                    progressBar.visibility = View.GONE
+                    return
+                }
+                requireActivity().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+            } catch (e: Exception) {
+                Log.e(tag, "Error accessing SharedPreferences", e)
+                progressBar.visibility = View.GONE
+                return
+            }
+            
             providerId = prefs.getLong("providerId", 0)
             
             if (providerId == 0L) {
                 // If still 0, try to find it by loading provider profile first
                 userApiClient.getServiceProviderProfile(userId, token) { provider, error ->
-                    if (provider != null && provider.providerId != null && provider.providerId > 0) {
-                        providerId = provider.providerId
-                        val userPrefs = requireActivity().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
-                        userPrefs.edit().putLong("providerId", providerId).apply()
-                        
-                        // Now proceed with the update using the found providerId
-                        directUpdateProvider(provider)
-                    } else {
-                        requireActivity().runOnUiThread {
-                            progressBar.visibility = View.GONE
-                            Toast.makeText(context, "Failed to find provider ID. Please refresh and try again.", Toast.LENGTH_SHORT).show()
+                    try {
+                        if (!isAdded) {
+                            Log.w(tag, "Fragment not attached in provider callback")
+                            return@getServiceProviderProfile
                         }
+                        
+                        val activity = activity ?: run {
+                            Log.w(tag, "Activity null in provider callback")
+                            return@getServiceProviderProfile
+                        }
+                        
+                        if (provider != null && provider.providerId != null && provider.providerId > 0) {
+                            providerId = provider.providerId
+                            try {
+                                val userPrefs = activity.getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+                                userPrefs.edit().putLong("providerId", providerId).apply()
+                                
+                                // Now proceed with the update using the found providerId
+                                directUpdateProvider(provider)
+                            } catch (e: Exception) {
+                                Log.e(tag, "Error saving providerId", e)
+                                activity.runOnUiThread {
+                                    try {
+                                        progressBar.visibility = View.GONE
+                                        Toast.makeText(context, "Error saving provider ID: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    } catch (e2: Exception) {
+                                        Log.e(tag, "Error updating UI", e2)
+                                    }
+                                }
+                            }
+                        } else {
+                            activity.runOnUiThread {
+                                try {
+                                    progressBar.visibility = View.GONE
+                                    Toast.makeText(context, "Failed to find provider ID. Please refresh and try again.", Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) {
+                                    Log.e(tag, "Error showing toast", e)
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(tag, "Error in getServiceProviderProfile callback", e)
                     }
                 }
                 return
@@ -603,59 +789,116 @@ class ServiceProviderBusinessDetailsFragment : Fragment() {
         
         // Try to direct update if we have a providerId
         userApiClient.getServiceProviderByAuthId(userId, token) { provider, error ->
-            if (error != null || provider == null) {
-                requireActivity().runOnUiThread {
-                    progressBar.visibility = View.GONE
-                    Toast.makeText(context, "Failed to get provider details", Toast.LENGTH_SHORT).show()
+            try {
+                if (!isAdded) {
+                    Log.w(tag, "Fragment not attached in getServiceProviderByAuthId callback")
+                    return@getServiceProviderByAuthId
                 }
-                return@getServiceProviderByAuthId
+                
+                val activity = activity ?: run {
+                    Log.w(tag, "Activity null in getServiceProviderByAuthId callback")
+                    return@getServiceProviderByAuthId
+                }
+                
+                if (error != null || provider == null) {
+                    activity.runOnUiThread {
+                        try {
+                            progressBar.visibility = View.GONE
+                            Toast.makeText(context, "Failed to get provider details", Toast.LENGTH_SHORT).show()
+                        } catch (e: Exception) {
+                            Log.e(tag, "Error showing toast", e)
+                        }
+                    }
+                    return@getServiceProviderByAuthId
+                }
+                
+                directUpdateProvider(provider)
+            } catch (e: Exception) {
+                Log.e(tag, "Error in getServiceProviderByAuthId callback", e)
             }
-            
-            directUpdateProvider(provider)
         }
     }
     
     private fun directUpdateProvider(provider: ServiceProvider) {
-        val businessName = etBusinessName.text.toString().trim()
-        val yearsExperience = etYearsExperience.text.toString().trim().toIntOrNull() ?: 0
-        val availabilitySchedule = etAvailabilitySchedule.text.toString().trim()
-        val paymentMethod = etPaymentMethod.text.toString().trim().takeIf { it.isNotEmpty() } ?: ""
-        val status = dropdownStatus.text.toString()
-        
-        // Create updated provider with new business details
-        val updatedProvider = ServiceProvider(
-            providerId = provider.providerId,
-            firstName = provider.firstName,
-            lastName = provider.lastName,
-            phoneNumber = provider.phoneNumber,
-            businessName = businessName,
-            yearsOfExperience = yearsExperience,
-            availabilitySchedule = availabilitySchedule,
-            paymentMethod = paymentMethod,
-            status = status, // Add status field to match web version
-            address = provider.address,
-            userAuth = provider.userAuth
-        )
-        
-        userApiClient.updateServiceProviderProfile(updatedProvider, token) { success, updateError ->
-            requireActivity().runOnUiThread {
-                progressBar.visibility = View.GONE
-                
-                if (updateError != null) {
-                    Toast.makeText(context, getString(R.string.error_business_update, updateError.message), Toast.LENGTH_SHORT).show()
-                    return@runOnUiThread
-                }
-                
-                if (success) {
-                    Toast.makeText(context, R.string.business_update_success, Toast.LENGTH_SHORT).show()
+        try {
+            if (!isAdded) {
+                Log.w(tag, "Fragment not attached in directUpdateProvider")
+                return
+            }
+            
+            val activity = activity ?: run {
+                Log.w(tag, "Activity null in directUpdateProvider")
+                return
+            }
+            
+            // Get values from form
+            val businessName = etBusinessName.text.toString().trim()
+            val yearsExperience = etYearsExperience.text.toString().trim().toIntOrNull() ?: 0
+            val availabilitySchedule = etAvailabilitySchedule.text.toString().trim()
+            val paymentMethod = etPaymentMethod.text.toString().trim().takeIf { it.isNotEmpty() } ?: ""
+            val status = dropdownStatus.text.toString()
+            
+            // Update provider object
+            val updatedProvider = ServiceProvider(
+                providerId = provider.providerId,
+                firstName = provider.firstName,
+                lastName = provider.lastName,
+                phoneNumber = provider.phoneNumber,
+                businessName = businessName,
+                yearsOfExperience = yearsExperience,
+                availabilitySchedule = availabilitySchedule,
+                paymentMethod = paymentMethod,
+                status = status,
+                address = provider.address,
+                userAuth = provider.userAuth,
+                profileImage = provider.profileImage
+            )
+            
+            // Make the API call
+            userApiClient.updateServiceProviderProfile(updatedProvider, token) { success, error ->
+                try {
+                    if (!isAdded) {
+                        Log.w(tag, "Fragment not attached in updateServiceProvider callback")
+                        return@updateServiceProviderProfile
+                    }
                     
-                    // Refresh the business details to show the updated data from the server
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        loadBusinessDetails()
-                    }, 500) // 500ms delay before refreshing
-                } else {
-                    Toast.makeText(context, R.string.business_update_failed, Toast.LENGTH_SHORT).show()
+                    activity.runOnUiThread {
+                        try {
+                            progressBar.visibility = View.GONE
+                            
+                            if (error != null) {
+                                Toast.makeText(context, getString(R.string.error_business_update, error.message), Toast.LENGTH_SHORT).show()
+                            } else if (success) {
+                                Toast.makeText(context, R.string.business_update_success, Toast.LENGTH_SHORT).show()
+                                
+                                // Refresh the business details to show the updated data from the server
+                                Handler(Looper.getMainLooper()).postDelayed({
+                                    if (isAdded) {
+                                        loadBusinessDetails()
+                                    }
+                                }, 500) // 500ms delay before refreshing
+                            } else {
+                                Toast.makeText(context, R.string.business_update_failed, Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (e: Exception) {
+                            Log.e(tag, "Error updating UI after business details update", e)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(tag, "Error in updateServiceProvider callback", e)
                 }
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Error in directUpdateProvider", e)
+            try {
+                if (isAdded) {
+                    requireActivity().runOnUiThread {
+                        progressBar.visibility = View.GONE
+                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e2: Exception) {
+                Log.e(tag, "Error updating UI after exception", e2)
             }
         }
     }

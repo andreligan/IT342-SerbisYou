@@ -93,31 +93,52 @@ class ServiceApiClient(private val context: Context) {
 
     // Get all services by provider ID
     fun getServicesByProviderId(providerId: Long, token: String, callback: (List<Service>?, Exception?) -> Unit) {
-        Log.d(TAG, "Getting services for provider: $providerId with token: $token")
+        if (providerId <= 0) {
+            Log.e(TAG, "Cannot get services: Invalid provider ID ($providerId)")
+            callback(null, Exception("Invalid provider ID"))
+            return
+        }
+        
+        // Add more explicit validation of the token
+        if (token.isBlank()) {
+            Log.e(TAG, "Cannot get services: Token is empty")
+            callback(null, Exception("Authentication token is required"))
+            return
+        }
+        
+        Log.d(TAG, "Getting services for provider: $providerId with token: ${token.take(20)}...")
+        
+        // Construct the URL with the current provider ID to ensure we're using the right one
+        val url = "${baseApiClient.getBaseUrl()}/api/services/provider/$providerId"
+        Log.d(TAG, "Request URL: $url")
         
         val request = Request.Builder()
-            .url("${baseApiClient.getBaseUrl()}/api/services/provider/$providerId")
+            .url(url)
             .get()
             .header("Authorization", "Bearer $token")
             .build()
 
-        Log.d(TAG, "Request URL: ${request.url}")
         Log.d(TAG, "Authorization header: Bearer ${token.take(20)}...")
         Log.d(TAG, "Request method: ${request.method}")
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                Log.e(TAG, "Failed to get services", e)
+                Log.e(TAG, "Failed to get services for provider ID $providerId", e)
                 callback(null, e)
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val responseBody = response.body?.string()
-                Log.d(TAG, "Response code: ${response.code}")
-                Log.d(TAG, "Response body: $responseBody")
+                Log.d(TAG, "Response code for provider $providerId: ${response.code}")
+                
+                if (responseBody != null && responseBody.length > 100) {
+                    Log.d(TAG, "Response body preview: ${responseBody.substring(0, 100)}...")
+                } else {
+                    Log.d(TAG, "Response body: $responseBody")
+                }
                 
                 if (response.isSuccessful) {
-                    Log.d(TAG, "Services response: $responseBody")
+                    Log.d(TAG, "Services response for provider $providerId success")
                     try {
                         val type = object : TypeToken<List<Service>>() {}.type
                         val services = gson.fromJson<List<Service>>(responseBody, type)
@@ -125,18 +146,34 @@ class ServiceApiClient(private val context: Context) {
                         // Log service details for debugging
                         Log.d(TAG, "Found ${services.size} services for provider ID $providerId")
                         for (service in services) {
+                            val actualProviderId = service.provider?.providerId ?: -1
                             Log.d(TAG, "Service: id=${service.serviceId}, name=${service.serviceName}, " +
-                                    "providerId=${service.provider?.providerId}, " +
+                                    "providerId=$actualProviderId (expected=$providerId), " +
                                     "serviceImage=${service.serviceImage}, imageUrl=${service.imageUrl}")
+                            
+                            // Add additional validation to ensure all services truly belong to this provider
+                            if (actualProviderId != providerId) {
+                                Log.w(TAG, "Warning: Service ${service.serviceId} has provider ID $actualProviderId but we requested provider ID $providerId")
+                            }
                         }
                         
-                        callback(services, null)
+                        // IMPORTANT: double-check that all services truly belong to this provider ID
+                        val filteredServices = services.filter { 
+                            val serviceProviderId = it.provider?.providerId
+                            serviceProviderId == providerId 
+                        }
+                        
+                        if (filteredServices.size != services.size) {
+                            Log.w(TAG, "Warning: Filtered out ${services.size - filteredServices.size} services that didn't match provider ID $providerId")
+                        }
+                        
+                        callback(filteredServices, null)
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error parsing services", e)
+                        Log.e(TAG, "Error parsing services for provider ID $providerId", e)
                         callback(null, e)
                     }
                 } else {
-                    Log.e(TAG, "Error getting services: ${response.code}")
+                    Log.e(TAG, "Error getting services for provider ID $providerId: ${response.code}")
                     Log.e(TAG, "Error response body: $responseBody")
                     
                     // If we get a 404 (endpoint not found) or other error, fall back to the old method
@@ -149,6 +186,13 @@ class ServiceApiClient(private val context: Context) {
     // Fallback method that uses the old approach of fetching all services and filtering
     private fun fallbackToAllServicesFiltering(providerId: Long, token: String, callback: (List<Service>?, Exception?) -> Unit) {
         Log.d(TAG, "Falling back to filtering all services for provider: $providerId")
+        
+        // Ensure we have a valid provider ID
+        if (providerId <= 0) {
+            Log.e(TAG, "Cannot filter services: Invalid provider ID ($providerId)")
+            callback(emptyList(), null)  // Return empty list, not an error
+            return
+        }
         
         val request = Request.Builder()
             .url("${baseApiClient.getBaseUrl()}/api/services/getAll")
@@ -170,8 +214,25 @@ class ServiceApiClient(private val context: Context) {
                         val type = object : TypeToken<List<Service>>() {}.type
                         val services = gson.fromJson<List<Service>>(responseBody, type)
                         
+                        // Log all services with their provider IDs for debugging
+                        Log.d(TAG, "Fallback found ${services.size} total services")
+                        for (service in services) {
+                            val serviceProviderId = service.provider?.providerId
+                            Log.d(TAG, "Service ID: ${service.serviceId}, Name: ${service.serviceName}, Provider ID: $serviceProviderId")
+                        }
+                        
                         // Filter services by the provider ID that was passed to this method
-                        val providerServices = services.filter { it.provider?.providerId == providerId }
+                        val providerServices = services.filter { 
+                            val serviceProviderId = it.provider?.providerId
+                            
+                            if (serviceProviderId == providerId) {
+                                Log.d(TAG, "Service ${it.serviceName} (ID: ${it.serviceId}) matches provider ID $providerId")
+                                true
+                            } else {
+                                Log.d(TAG, "Service ${it.serviceName} (ID: ${it.serviceId}) has provider ID $serviceProviderId - ignoring")
+                                false
+                            }
+                        }
                         
                         Log.d(TAG, "Fallback method found ${providerServices.size} services for provider ID $providerId out of ${services.size} total services")
                         
@@ -781,48 +842,106 @@ class ServiceApiClient(private val context: Context) {
     fun getProviderIdByUserId(userId: Long, token: String, callback: (Long, Exception?) -> Unit) {
         Log.d(TAG, "Getting provider ID for user ID: $userId")
         
+        // First try using the getAllServiceProviders endpoint and filter
+        getAllServiceProviders(token) { providers, error ->
+            if (error != null) {
+                Log.e(TAG, "Failed to get all service providers", error)
+                callback(0, error)
+                return@getAllServiceProviders
+            }
+            
+            if (providers != null && providers.isNotEmpty()) {
+                // Find the provider with matching userAuth.userId
+                val matchingProvider = providers.find { provider ->
+                    try {
+                        // Use a simple approach that works regardless of the actual type
+                        val userAuth = provider.userAuth
+                        
+                        if (userAuth != null) {
+                            // Convert the userAuth object to string and extract userId using regex
+                            val userAuthString = userAuth.toString()
+                            
+                            // Look for userId in the string representation
+                            val userIdRegex = "userId=([0-9]+)".toRegex()
+                            val match = userIdRegex.find(userAuthString)
+                            
+                            if (match != null) {
+                                val extractedUserId = match.groupValues[1].toLongOrNull()
+                                extractedUserId == userId
+                            } else {
+                                // Alternative: try to access as a map
+                                if (userAuthString.contains("userId")) {
+                                    try {
+                                        // This is safe because we're using toString first
+                                        val map = userAuth as? Map<*, *>
+                                        val mapUserId = map?.get("userId")
+                                        when (mapUserId) {
+                                            is Number -> mapUserId.toLong() == userId
+                                            is String -> mapUserId.toLong() == userId
+                                            else -> false
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Error accessing userId as map", e)
+                                        false
+                                    }
+                                } else {
+                                    false
+                                }
+                            }
+                        } else {
+                            false
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error matching provider", e)
+                        false
+                    }
+                }
+                
+                if (matchingProvider != null && matchingProvider.providerId != null) {
+                    Log.d(TAG, "Found matching provider ID: ${matchingProvider.providerId} for user ID: $userId")
+                    callback(matchingProvider.providerId, null)
+                    return@getAllServiceProviders
+                } else {
+                    Log.e(TAG, "No provider found with matching user ID: $userId")
+                    callback(0, Exception("No provider found for user ID: $userId"))
+                }
+            } else {
+                Log.e(TAG, "No providers found in the system")
+                callback(0, Exception("No providers found in the system"))
+            }
+        }
+    }
+    
+    // Get all service providers
+    private fun getAllServiceProviders(token: String, callback: (List<ServiceProvider>?, Exception?) -> Unit) {
         val request = Request.Builder()
-            .url("${baseApiClient.getBaseUrl()}/api/service-providers/by-user/$userId")
+            .url("${baseApiClient.getBaseUrl()}/api/service-providers/getAll")
             .get()
             .header("Authorization", "Bearer $token")
             .build()
-
+            
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                Log.e(TAG, "Failed to get provider ID for user", e)
-                callback(0, e)
+                Log.e(TAG, "Failed to get all service providers", e)
+                callback(null, e)
             }
-
+            
             override fun onResponse(call: Call, response: Response) {
                 val responseBody = response.body?.string()
-                Log.d(TAG, "Response code: ${response.code}")
                 
                 if (response.isSuccessful && responseBody != null) {
                     try {
-                        val provider = gson.fromJson(responseBody, ServiceProvider::class.java)
-                        val providerId = provider.providerId ?: 0
-                        Log.d(TAG, "Found provider ID: $providerId for user ID: $userId")
-                        callback(providerId, null)
+                        val type = object : TypeToken<List<ServiceProvider>>() {}.type
+                        val providers = gson.fromJson<List<ServiceProvider>>(responseBody, type)
+                        Log.d(TAG, "Found ${providers.size} service providers")
+                        callback(providers, null)
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error parsing provider data", e)
-                        // Try to extract provider ID directly if possible
-                        try {
-                            val jsonObject = JSONObject(responseBody)
-                            val providerId = jsonObject.optLong("providerId", 0)
-                            if (providerId > 0) {
-                                Log.d(TAG, "Extracted provider ID from JSON: $providerId")
-                                callback(providerId, null)
-                            } else {
-                                callback(0, e)
-                            }
-                        } catch (jsonEx: Exception) {
-                            Log.e(TAG, "Error extracting provider ID from JSON", jsonEx)
-                            callback(0, e)
-                        }
+                        Log.e(TAG, "Error parsing service providers", e)
+                        callback(null, e)
                     }
                 } else {
-                    Log.e(TAG, "Error getting provider ID: ${response.code}")
-                    callback(0, Exception("Failed to get provider ID: ${response.code}"))
+                    Log.e(TAG, "Error getting all service providers: ${response.code}")
+                    callback(null, Exception("Failed to get all service providers: ${response.code}"))
                 }
             }
         })

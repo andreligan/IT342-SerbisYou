@@ -32,6 +32,7 @@ import android.graphics.Bitmap
 import android.util.Base64
 import com.example.serbisyo_it342_g3.api.ImageUploadApiClient
 import com.example.serbisyo_it342_g3.utils.ImageUtils
+import android.content.Context
 
 class ServiceProviderServicesFragment : Fragment() {
     private val tag = "SPServicesFragment"
@@ -74,6 +75,24 @@ class ServiceProviderServicesFragment : Fragment() {
             userId = it.getLong("userId", 0)
             token = it.getString("token", "") ?: ""
             providerId = it.getLong("providerId", 0)
+            // Check if this fragment was launched from profile management screen
+            val fromProfileManagement = it.getBoolean("fromProfileManagement", false)
+            if (fromProfileManagement) {
+                Log.d(tag, "Fragment launched from profile management screen")
+            }
+        }
+
+        // If provider ID is still 0, try to get it from SharedPreferences
+        if (providerId <= 0) {
+            try {
+                val sharedPrefs = requireContext().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+                providerId = sharedPrefs.getLong("providerId", 0)
+                if (providerId > 0) {
+                    Log.d(tag, "Retrieved provider ID from SharedPreferences: $providerId")
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "Error retrieving provider ID from SharedPreferences", e)
+            }
         }
 
         // Initialize API clients
@@ -130,6 +149,12 @@ class ServiceProviderServicesFragment : Fragment() {
     }
     
     private fun loadServices() {
+        try {
+            if (!isAdded) {
+                Log.w(tag, "Fragment not attached when loading services")
+                return
+            }
+            
         progressBar.visibility = View.VISIBLE
         tvNoServices.visibility = View.GONE
         tvErrorMessage.visibility = View.GONE
@@ -140,16 +165,41 @@ class ServiceProviderServicesFragment : Fragment() {
             checkProviderExists()
             return
         }
+            
+            Log.d(tag, "Loading services for provider ID: $providerId")
         
         serviceApiClient.getServicesByProviderId(providerId, token) { services, error ->
-            requireActivity().runOnUiThread {
+                try {
+                    if (!isAdded) {
+                        Log.w(tag, "Fragment not attached when receiving services")
+                        return@getServicesByProviderId
+                    }
+                    
+                    val activity = activity ?: run {
+                        Log.w(tag, "Activity null when receiving services")
+                        return@getServicesByProviderId
+                    }
+                    
+                    activity.runOnUiThread {
+                        try {
+                            if (!isAdded) {
+                                Log.w(tag, "Fragment not attached in UI update")
+                                return@runOnUiThread
+                            }
+                            
                 progressBar.visibility = View.GONE
                 
                 if (error != null) {
                     Log.e(tag, "Error loading services", error)
                     
                     // Could be a new account - check if provider exists
+                                if (error.message?.contains("404") == true) {
+                                    // This is likely just an empty list, show no services message
+                                    showEmptyServicesUI()
+                                } else {
+                                    // For other errors, try to check if provider exists
                     checkProviderExists()
+                                }
                     return@runOnUiThread
                 }
                 
@@ -173,92 +223,225 @@ class ServiceProviderServicesFragment : Fragment() {
                     tvNoServices.visibility = View.GONE
                 } else {
                     // Show "No services" message for this provider
-                    tvNoServices.visibility = View.VISIBLE
-                    servicesContainer.visibility = View.GONE
+                                showEmptyServicesUI()
+                            }
+                        } catch (e: Exception) {
+                            Log.e(tag, "Error updating UI after loading services", e)
+                            try {
+                                // Fallback UI in case of error
+                                progressBar.visibility = View.GONE
+                                tvErrorMessage.text = "Error displaying services: ${e.message}"
+                                tvErrorMessage.visibility = View.VISIBLE
+                                
+                                // Make sure the Add Service button is visible even if there's an error
+                                btnAddService.visibility = View.VISIBLE
+                                fabAddService.visibility = View.VISIBLE
+                            } catch (e2: Exception) {
+                                Log.e(tag, "Error handling exception in loadServices", e2)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(tag, "Error in services callback", e)
+                    try {
+                        if (isAdded) {
+                            requireActivity().runOnUiThread {
+                                progressBar.visibility = View.GONE
+                                tvErrorMessage.text = "Error loading services: ${e.message}"
+                                tvErrorMessage.visibility = View.VISIBLE
+                                
+                                // Make sure the Add Service button is visible even if there's an error
+                                btnAddService.visibility = View.VISIBLE
+                                fabAddService.visibility = View.VISIBLE
+                            }
+                        }
+                    } catch (e2: Exception) {
+                        Log.e(tag, "Error handling exception in service callback", e2)
+                    }
                 }
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Error in loadServices", e)
+            try {
+                if (isAdded) {
+                    progressBar.visibility = View.GONE
+                    tvErrorMessage.text = "Error: ${e.message}"
+                    tvErrorMessage.visibility = View.VISIBLE
+                    
+                    // Make sure the Add Service button is visible even if there's an error
+                    btnAddService.visibility = View.VISIBLE
+                    fabAddService.visibility = View.VISIBLE
+                }
+            } catch (e2: Exception) {
+                Log.e(tag, "Fatal error updating UI", e2)
             }
         }
     }
     
+    private fun showEmptyServicesUI() {
+        tvNoServices.text = "You haven't added any services yet. Add your first service to get started!"
+        tvNoServices.visibility = View.VISIBLE
+        servicesContainer.visibility = View.GONE
+        
+        // Make sure the Add Service button is visible
+        btnAddService.visibility = View.VISIBLE
+        fabAddService.visibility = View.VISIBLE
+    }
+    
     private fun checkProviderExists() {
-        val serviceApiClient = ServiceApiClient(requireContext())
+        try {
+            if (!isAdded) {
+                Log.w(tag, "Fragment not attached when checking provider")
+                return
+            }
+            
+            // First try to get provider ID from SharedPreferences
+            val sharedPrefs = requireContext().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+            val savedProviderId = sharedPrefs.getLong("providerId", 0)
+            
+            if (savedProviderId > 0) {
+                Log.d(tag, "Found provider ID in SharedPreferences: $savedProviderId")
+                this.providerId = savedProviderId
+                loadServicesWithId(savedProviderId)
+                return
+            }
+            
+            Log.d(tag, "No provider ID in SharedPreferences, trying to find by user ID: $userId")
+            progressBar.visibility = View.VISIBLE
         
         // Try to find the provider by user ID
         serviceApiClient.getProviderIdByUserId(userId, token) { providerId, error ->
-            requireActivity().runOnUiThread {
-                progressBar.visibility = View.GONE
-                
-                if (error != null || providerId == 0L) {
-                    Log.e(tag, "Error getting provider ID: ${error?.message ?: "Provider ID is 0"}")
+                try {
+                    if (!isAdded) {
+                        Log.w(tag, "Fragment not attached when receiving provider ID")
+                        return@getProviderIdByUserId
+                    }
                     
-                    // This is likely a new account with no services
+                    val activity = activity ?: run {
+                        Log.w(tag, "Activity null when receiving provider ID")
+                        return@getProviderIdByUserId
+                    }
+                    
+                    activity.runOnUiThread {
+                        try {
+                            progressBar.visibility = View.GONE
+                            
+                            if (error != null) {
+                                Log.e(tag, "Error getting provider ID: ${error.message}")
+                                
+                                // Don't show error message for new accounts, show empty services UI
                     tvNoServices.text = "You haven't added any services yet. Add your first service to get started!"
                     tvNoServices.visibility = View.VISIBLE
                     servicesContainer.visibility = View.GONE
-                } else {
+                                
+                                // Make sure the Add Service button is visible
+                                btnAddService.visibility = View.VISIBLE
+                                fabAddService.visibility = View.VISIBLE
+                                
+                                // Check if we were launched from profile management screen
+                                val fromProfileManagement = arguments?.getBoolean("fromProfileManagement", false) ?: false
+                                if (fromProfileManagement) {
+                                    Log.d(tag, "Fragment launched from profile management, not redirecting")
+                                    return@runOnUiThread
+                                }
+                                
+                                // Don't redirect if providerId is in arguments - it means this fragment
+                                // was opened intentionally with this ID
+                                if (arguments?.containsKey("providerId") == true) {
+                                    return@runOnUiThread
+                                }
+                            } else if (providerId > 0) {
                     // Update the provider ID
-                    this.providerId = providerId
+                                this@ServiceProviderServicesFragment.providerId = providerId
                     
                     // Save to SharedPreferences for future use
                     saveProviderId(providerId)
                     
                     // Now try loading services again with the correct ID
                     loadServicesWithId(providerId)
+                            } else {
+                                // This is likely a new account with no services
+                                tvNoServices.text = "You haven't added any services yet. Add your first service to get started!"
+                                tvNoServices.visibility = View.VISIBLE
+                                servicesContainer.visibility = View.GONE
+                                
+                                // Make sure the Add Service button is visible
+                                btnAddService.visibility = View.VISIBLE
+                                fabAddService.visibility = View.VISIBLE
+                            }
+                        } catch (e: Exception) {
+                            Log.e(tag, "Error updating UI in checkProviderExists", e)
+                            // Show empty services UI to avoid crashes
+                            try {
+                                progressBar.visibility = View.GONE
+                                tvNoServices.text = "Unable to load services. Please try again."
+                                tvNoServices.visibility = View.VISIBLE
+                                servicesContainer.visibility = View.GONE
+                                btnAddService.visibility = View.VISIBLE
+                                fabAddService.visibility = View.VISIBLE
+                            } catch (e2: Exception) {
+                                Log.e(tag, "Failed to update UI after error", e2)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(tag, "Error in providerId callback", e)
+                    try {
+                        if (isAdded) {
+                            requireActivity().runOnUiThread {
+                                progressBar.visibility = View.GONE
+                                tvNoServices.text = "Error loading services: ${e.message}"
+                                tvNoServices.visibility = View.VISIBLE
+                                servicesContainer.visibility = View.GONE
+                                btnAddService.visibility = View.VISIBLE
+                                fabAddService.visibility = View.VISIBLE
+                            }
+                        }
+                    } catch (e2: Exception) {
+                        Log.e(tag, "Failed to update UI after exception", e2)
+                    }
                 }
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Error in checkProviderExists", e)
+            try {
+                if (isAdded) {
+                    progressBar.visibility = View.GONE
+                    tvNoServices.text = "Error checking provider: ${e.message}"
+                    tvNoServices.visibility = View.VISIBLE
+                    servicesContainer.visibility = View.GONE
+                    btnAddService.visibility = View.VISIBLE
+                    fabAddService.visibility = View.VISIBLE
+                }
+            } catch (e2: Exception) {
+                Log.e(tag, "Fatal error updating UI", e2)
             }
         }
     }
     
     private fun saveProviderId(providerId: Long) {
-        // Save in both SharedPreferences for consistency
-        val userPrefs = requireActivity().getSharedPreferences("UserPrefs", android.content.Context.MODE_PRIVATE)
-        userPrefs.edit().putLong("providerId", providerId).apply()
-        
-        val userPrefs2 = requireActivity().getSharedPreferences("user_prefs", android.content.Context.MODE_PRIVATE)
-        userPrefs2.edit().putLong("providerId", providerId).apply()
-        
-        Log.d(tag, "Saved provider ID: $providerId to SharedPreferences")
+        try {
+            if (!isAdded) return
+            
+            val activity = activity ?: return
+            
+            val sharedPreferences = activity.getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+            sharedPreferences.edit().putLong("providerId", providerId).apply()
+            
+            Log.d(tag, "Saved provider ID: $providerId to preferences")
+        } catch (e: Exception) {
+            Log.e(tag, "Error saving provider ID to preferences", e)
+        }
     }
     
     private fun loadServicesWithId(providerId: Long) {
-        progressBar.visibility = View.VISIBLE
-        
-        serviceApiClient.getServicesByProviderId(providerId, token) { services, error ->
-            requireActivity().runOnUiThread {
-                progressBar.visibility = View.GONE
-                
-                if (error != null) {
-                    Log.e(tag, "Error loading services with ID $providerId", error)
-                    tvErrorMessage.text = "Could not load services: ${error.message}"
-                    tvErrorMessage.visibility = View.VISIBLE
-                    return@runOnUiThread
-                }
-                
-                // Update the services list
-                servicesList.clear()
-                categorizedServices.clear()
-                
-                if (services != null && services.isNotEmpty()) {
-                    servicesList.addAll(services)
-                    
-                    // Group services by category
-                    categorizeServices(services)
-                    
-                    // Update TabLayout with categories
-                    updateTabsWithCategories()
-                    
-                    // Display services by category
-                    displayServicesByCategory()
-                    
-                    servicesContainer.visibility = View.VISIBLE
-                    tvNoServices.visibility = View.GONE
-                } else {
-                    // Show empty state for new provider
-                    tvNoServices.text = "You haven't added any services yet. Add your first service to get started!"
-                    tvNoServices.visibility = View.VISIBLE
-                    servicesContainer.visibility = View.GONE
-                }
-            }
+        try {
+            if (!isAdded) return
+            
+            this.providerId = providerId
+            loadServices()
+        } catch (e: Exception) {
+            Log.e(tag, "Error in loadServicesWithId", e)
         }
     }
     
@@ -515,19 +698,42 @@ class ServiceProviderServicesFragment : Fragment() {
     
     override fun onResume() {
         super.onResume()
+        
+        // Try to get provider ID from SharedPreferences if it's still 0
+        if (providerId <= 0) {
+            try {
+                val sharedPrefs = requireContext().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+                val savedProviderId = sharedPrefs.getLong("providerId", 0)
+                if (savedProviderId > 0) {
+                    Log.d(tag, "Got provider ID from SharedPreferences in onResume: $savedProviderId")
+                    providerId = savedProviderId
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "Error getting provider ID from SharedPreferences", e)
+            }
+        }
+        
         // Reload services when returning to this fragment
         loadServices()
     }
     
     companion object {
-        @JvmStatic
-        fun newInstance(userId: Long, token: String, providerId: Long) =
-            ServiceProviderServicesFragment().apply {
-                arguments = Bundle().apply {
-                    putLong("userId", userId)
-                    putString("token", token)
-                    putLong("providerId", providerId)
-                }
+        fun newInstance(userId: Long, token: String, providerId: Long): ServiceProviderServicesFragment {
+            val fragment = ServiceProviderServicesFragment()
+            val args = Bundle()
+            args.putLong("userId", userId)
+            args.putString("token", token)
+            args.putLong("providerId", providerId)
+            
+            // Set fromProfileManagement flag if the providerId is 0
+            // This helps prevent unnecessary redirections
+            if (providerId <= 0) {
+                args.putBoolean("fromProfileManagement", true)
+                Log.d("SPServicesFragment", "Creating fragment with no providerId, marking as fromProfileManagement")
+            }
+            
+            fragment.arguments = args
+            return fragment
             }
     }
 }

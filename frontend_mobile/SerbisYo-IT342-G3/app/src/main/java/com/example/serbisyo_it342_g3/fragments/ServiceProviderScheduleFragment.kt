@@ -539,24 +539,30 @@ class ServiceProviderScheduleFragment : Fragment() {
         scheduleApiClient.deleteSchedule(scheduleId, token) { success, error ->
             if (!isAdded) return@deleteSchedule
             
-            requireActivity().runOnUiThread {
-                progressBar.visibility = View.GONE
-                
-                if (error != null) {
-                    Log.e(tag, "Error deleting schedule", error)
-                    Toast.makeText(context, "Failed to delete schedule: ${error.message}", Toast.LENGTH_SHORT).show()
-                    return@runOnUiThread
-                }
-                
-                if (success) {
-                    // Show success message
-                    Toast.makeText(context, "Schedule deleted successfully", Toast.LENGTH_SHORT).show()
+            try {
+                val activity = requireActivity()
+                activity.runOnUiThread {
+                    progressBar.visibility = View.GONE
                     
-                    // Reload schedules
-                    loadSchedules()
-                } else {
-                    Toast.makeText(context, "Failed to delete schedule", Toast.LENGTH_SHORT).show()
+                    if (error != null) {
+                        Log.e(tag, "Error deleting schedule", error)
+                        Toast.makeText(context, "Failed to delete schedule: ${error.message}", Toast.LENGTH_SHORT).show()
+                        return@runOnUiThread
+                    }
+                    
+                    if (success) {
+                        // Show success message
+                        Toast.makeText(context, "Schedule deleted successfully", Toast.LENGTH_SHORT).show()
+                        
+                        // Reload schedules
+                        loadSchedules()
+                    } else {
+                        Toast.makeText(context, "Failed to delete schedule", Toast.LENGTH_SHORT).show()
+                    }
                 }
+            } catch (e: IllegalStateException) {
+                Log.e(tag, "Fragment not attached to activity when deleting schedule", e)
+                // Cannot update UI if fragment is detached
             }
         }
     }

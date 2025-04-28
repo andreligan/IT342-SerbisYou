@@ -129,12 +129,9 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
             }
         }
         
-        if (providerId == 0L) {
-            // Don't show a Toast yet - we'll try to fetch it in checkProviderId
-            // We're just setting a temporary value until we resolve it
-            providerId = userId
-        }
-
+        // DON'T set providerId = userId - this causes issues with service loading
+        // Instead, we'll get the correct provider ID in checkProviderId()
+        
         // Set welcome message
         tvProviderName.text = username
 
@@ -160,10 +157,7 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         // Setup category chips
         setupCategories()
 
-        // Load services - these will populate the horizontal layout
-        loadServices()
-
-        // Check provider ID
+        // Check provider ID first, then load services in the callback when we have the correct ID
         checkProviderId()
         
         // Setup "Manage All" link
@@ -439,7 +433,7 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         if (providerId <= 0) {
             Log.e(TAG, "Cannot load services: Provider ID is not valid ($providerId)")
             runOnUiThread {
-                Toast.makeText(this, "No service provider account found. Please contact support.", Toast.LENGTH_LONG).show()
+                // Removed confusing toast message - we'll just show the UI for "no services" instead
                 tvServiceCount.text = "0"
                 findViewById<TextView>(R.id.tvNoServices).visibility = View.VISIBLE
                 findViewById<HorizontalScrollView>(R.id.servicesScrollView).visibility = View.GONE
@@ -452,7 +446,14 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
             if (error != null) {
                 Log.e(TAG, "Error loading services", error)
                 runOnUiThread {
-                    Toast.makeText(this, "Error loading services: ${error.message ?: "Unknown error"}", Toast.LENGTH_SHORT).show()
+                    // Keep this toast for actual errors, but not 404 errors
+                    if (error.message?.contains("404") != true) {
+                        Toast.makeText(this, "Error loading services: ${error.message ?: "Unknown error"}", Toast.LENGTH_SHORT).show()
+                    }
+                    // Don't try to show services if there was an error
+                    tvServiceCount.text = "0"
+                    findViewById<TextView>(R.id.tvNoServices).visibility = View.VISIBLE
+                    findViewById<HorizontalScrollView>(R.id.servicesScrollView).visibility = View.GONE
                 }
                 return@getServicesByProviderId
             }
@@ -460,12 +461,19 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
             runOnUiThread {
                 services.clear()
                 if (servicesList != null) {
-                    services.addAll(servicesList)
+                    // Double check that these services actually belong to this provider
+                    val filteredServices = servicesList.filter { 
+                        it.provider?.providerId == providerId 
+                    }
+                    
+                    // Only add services that match this provider ID
+                    services.addAll(filteredServices)
+                    
                     // Update service count in dashboard
-                    tvServiceCount.text = servicesList.size.toString()
+                    tvServiceCount.text = filteredServices.size.toString()
                     
                     // Populate the horizontal services container
-                    populateServicesHorizontally(servicesList)
+                    populateServicesHorizontally(filteredServices)
                 } else {
                     // Set service count to 0 if servicesList is null
                     tvServiceCount.text = "0"
@@ -476,9 +484,11 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
 
                 if (services.isEmpty()) {
                     findViewById<TextView>(R.id.tvNoServices).visibility = View.VISIBLE
+                    findViewById<HorizontalScrollView>(R.id.servicesScrollView).visibility = View.GONE
                     rvServices.visibility = View.GONE
                 } else {
                     findViewById<TextView>(R.id.tvNoServices).visibility = View.GONE
+                    findViewById<HorizontalScrollView>(R.id.servicesScrollView).visibility = View.VISIBLE
                     rvServices.visibility = View.VISIBLE
                 }
             }
@@ -801,47 +811,25 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         val username = sharedPref.getString("username", "") ?: ""
         val role = sharedPref.getString("role", "") ?: ""
         
-        // First check providerId in both SharedPreferences
-        val providerId = try {
-            val id1 = sharedPref.getLong("providerId", 0)
-            val id2 = userPref.getLong("providerId", 0)
-            
-            // Use the non-zero value if available
-            if (id1 > 0) id1 else id2
-        } catch (e: ClassCastException) {
-            try {
-                val idStr1 = sharedPref.getString("providerId", "0") ?: "0"
-                val idStr2 = userPref.getString("providerId", "0") ?: "0"
-                
-                // Use the non-zero value if available
-                val id1 = idStr1.toLongOrNull() ?: 0
-                val id2 = idStr2.toLongOrNull() ?: 0
-                
-                if (id1 > 0) id1 else id2
-            } catch (e: Exception) {
-                0
-            }
+        // IMPORTANT: For debugging - clear any existing provider ID to ensure we get a fresh one from the API
+        with(sharedPref.edit()) {
+            remove("providerId")
+            apply()
         }
         
+        with(userPref.edit()) {
+            remove("providerId")
+            apply()
+        }
+        
+        // After clearing, check if we somehow still have a providerId (from old SharedPreferences)
+        var providerId = 0L
+
         Log.d(TAG, "User details - UserId: $userId, Username: $username, Role: $role, ProviderId: $providerId")
         
-        // Make sure the providerId is stored in SharedPreferences for later use
-        if (providerId > 0) {
-            // Save to both SharedPreferences to ensure consistency
-            with(sharedPref.edit()) {
-                putLong("providerId", providerId)
-                apply()
-            }
-            
-            with(userPref.edit()) {
-                putLong("providerId", providerId)
-                apply()
-            }
-            
-            // Update the class-level providerId variable
-            this.providerId = providerId
-        } else if (userId > 0) {
-            Log.w(TAG, "Provider ID is not set. Attempting to retrieve it from user profile.")
+        // Always prioritize getting the provider ID from the API - more reliable
+        if (userId > 0) {
+            Log.d(TAG, "Retrieving provider ID from API for user ID: $userId")
             
             // Attempt to get provider profile from API using userId
             userApiClient.getServiceProviderByAuthId(userId, token) { provider, error -> 
@@ -888,18 +876,28 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
                             "No service provider account was found. Please contact support.",
                             Toast.LENGTH_LONG
                         ).show()
+                        
+                        // Show empty dashboard
+                        tvServiceCount.text = "0"
+                        findViewById<TextView>(R.id.tvNoServices).visibility = View.VISIBLE
+                        findViewById<HorizontalScrollView>(R.id.servicesScrollView).visibility = View.GONE
                     }
                     // Don't continue to loadServices() if we don't have a valid provider ID
                 }
             }
         } else {
-            Log.e(TAG, "Both userId and providerId are invalid or missing")
+            Log.e(TAG, "UserId is invalid or missing")
             runOnUiThread {
                 Toast.makeText(
                     this@ServiceProviderDashboardActivity, 
                     "User account information is missing. Please login again.",
                     Toast.LENGTH_LONG
                 ).show()
+                
+                // Show empty dashboard
+                tvServiceCount.text = "0"
+                findViewById<TextView>(R.id.tvNoServices).visibility = View.VISIBLE
+                findViewById<HorizontalScrollView>(R.id.servicesScrollView).visibility = View.GONE
             }
         }
     }
