@@ -15,6 +15,9 @@ import com.example.serbisyo_it342_g3.data.ServiceCategory
 import com.example.serbisyo_it342_g3.data.Service
 import android.content.SharedPreferences
 import org.json.JSONObject
+import android.net.Uri
+import com.example.serbisyo_it342_g3.utils.ImageUtils
+import android.app.AlertDialog
 
 class AddServiceActivity : AppCompatActivity() {
     private lateinit var etServiceName: EditText
@@ -26,6 +29,8 @@ class AddServiceActivity : AppCompatActivity() {
     private lateinit var btnSelectImage: Button
     private lateinit var btnCancel: Button
     private lateinit var progressBar: ProgressBar
+    private lateinit var ivServiceImage: ImageView
+    private lateinit var tvImageStatus: TextView
     private lateinit var sharedPreferences: SharedPreferences
 
     private lateinit var serviceApiClient: ServiceApiClient
@@ -33,6 +38,8 @@ class AddServiceActivity : AppCompatActivity() {
     private var providerId: Long = 0
     private var token: String = ""
     private val TAG = "AddServiceActivity"
+    private var selectedImageBase64: String? = null
+    private var selectedImageUri: Uri? = null
 
     // Constants for image picker
     private val PICK_IMAGE_REQUEST = 1
@@ -69,6 +76,8 @@ class AddServiceActivity : AppCompatActivity() {
         btnSelectImage = findViewById(R.id.btnSelectImage)
         btnCancel = findViewById(R.id.btnCancel)
         progressBar = findViewById(R.id.progressBar)
+        ivServiceImage = findViewById(R.id.ivServiceImage)
+        tvImageStatus = findViewById(R.id.tvImageStatus)
 
         // Set up toolbar
         setSupportActionBar(findViewById(R.id.toolbar))
@@ -78,14 +87,20 @@ class AddServiceActivity : AppCompatActivity() {
         // Load categories for spinner
         loadCategories()
 
-        // Add service button click
+        // Add service button click - add with or without image
         btnAddService.setOnClickListener {
             if (validateInputs()) {
-                addService()
+                if (selectedImageBase64 != null) {
+                    // If image is selected, use it
+                    addServiceWithImage(selectedImageBase64)
+                } else {
+                    // Otherwise add without image
+                    addService()
+                }
             }
         }
 
-        // Select image button click
+        // Select image button click - just select the image, don't submit yet
         btnSelectImage.setOnClickListener {
             openImagePicker()
         }
@@ -103,25 +118,48 @@ class AddServiceActivity : AppCompatActivity() {
             runOnUiThread {
                 if (exception != null) {
                     Log.e(TAG, "Error loading categories", exception)
-                    Toast.makeText(this, "Error loading categories: ${exception.message}", Toast.LENGTH_SHORT).show()
+                    // Try to continue with mock categories if API call fails
+                    setupMockCategories()
+                    Toast.makeText(this, "Using default categories due to connection issue", Toast.LENGTH_LONG).show()
                     progressBar.visibility = View.GONE
                     return@runOnUiThread
                 }
 
-                if (categoriesList != null) {
+                if (categoriesList != null && categoriesList.isNotEmpty()) {
                     categories = categoriesList
                     val categoryNames = categories.map { it.categoryName }
                     val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, categoryNames)
                     adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
                     spinnerCategory.adapter = adapter
+                    
+                    Log.d(TAG, "Loaded ${categories.size} categories successfully")
                 } else {
-                    Log.e(TAG, "Categories list is null")
-                    Toast.makeText(this, "Failed to load categories", Toast.LENGTH_SHORT).show()
+                    Log.e(TAG, "Categories list is empty or null")
+                    // Use mock categories as fallback
+                    setupMockCategories()
+                    Toast.makeText(this, "No categories found, using defaults", Toast.LENGTH_SHORT).show()
                 }
 
                 progressBar.visibility = View.GONE
             }
         }
+    }
+
+    private fun setupMockCategories() {
+        // Create mock categories to allow the app to function without API
+        categories = listOf(
+            ServiceCategory(categoryId = 1, categoryName = "Home Repair"),
+            ServiceCategory(categoryId = 2, categoryName = "Cleaning"),
+            ServiceCategory(categoryId = 3, categoryName = "Food Delivery"),
+            ServiceCategory(categoryId = 4, categoryName = "Transportation")
+        )
+        
+        val categoryNames = categories.map { it.categoryName }
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, categoryNames)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerCategory.adapter = adapter
+        
+        Log.d(TAG, "Set up mock categories: ${categories.size}")
     }
 
     private fun validateInputs(): Boolean {
@@ -172,6 +210,7 @@ class AddServiceActivity : AppCompatActivity() {
                 serviceName = serviceName,
                 serviceDescription = serviceDescription,
                 priceRange = priceRange,
+                price = priceRange,
                 durationEstimate = durationEstimate
             ),
             token  // Pass the token
@@ -227,6 +266,14 @@ class AddServiceActivity : AppCompatActivity() {
 
         val selectedCategory = categories[categoryPosition]
 
+        // Create a progress dialog to show user what's happening
+        val progressDialog = AlertDialog.Builder(this)
+            .setTitle("Adding Service")
+            .setMessage("Please wait while we upload your service with image...")
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+
         progressBar.visibility = View.VISIBLE
         btnAddService.isEnabled = false
 
@@ -240,15 +287,19 @@ class AddServiceActivity : AppCompatActivity() {
             serviceName = serviceName,
             serviceDescription = serviceDescription,
             priceRange = priceRange,
+            price = priceRange,
             durationEstimate = durationEstimate
         )
 
         serviceApiClient.createServiceWithImage(providerId, selectedCategory.categoryId, newService, base64Image, token) { createdService, exception ->
             runOnUiThread {
+                progressDialog.dismiss()
                 progressBar.visibility = View.GONE
                 btnAddService.isEnabled = true
 
                 if (exception != null) {
+                    Log.e(TAG, "Error adding service with image", exception)
+                    
                     var errorMessage = "Error adding service: ${exception.message}"
                     try {
                         val errorBody = exception.message?.substringAfter("{")?.let { "{$it" }
@@ -262,8 +313,18 @@ class AddServiceActivity : AppCompatActivity() {
                         Log.e(TAG, "Error parsing error response: ${e.message}")
                     }
 
-                    Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
-                    Log.e(TAG, "Add service with image error: ${exception.message}")
+                    // If endpoint not found, try adding without image as fallback
+                    if (exception.message?.contains("404") == true || exception.message?.contains("Not Found") == true) {
+                        AlertDialog.Builder(this)
+                            .setTitle("Image Upload Failed")
+                            .setMessage("We couldn't upload the image with the service. Would you like to add the service without an image?")
+                            .setPositiveButton("Yes") { _, _ -> addService() }
+                            .setNegativeButton("No", null)
+                            .show()
+                    } else {
+                        Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
+                        Log.e(TAG, "Add service with image error: ${exception.message}")
+                    }
                     return@runOnUiThread
                 }
 
@@ -271,7 +332,12 @@ class AddServiceActivity : AppCompatActivity() {
                     Toast.makeText(this, "Service added successfully with image", Toast.LENGTH_SHORT).show()
                     finish()
                 } else {
-                    Toast.makeText(this, "Failed to add service with image. Please try again.", Toast.LENGTH_LONG).show()
+                    AlertDialog.Builder(this)
+                        .setTitle("Image Upload Issue")
+                        .setMessage("We had trouble adding the service with the image. Would you like to try adding the service without an image?")
+                        .setPositiveButton("Yes") { _, _ -> addService() }
+                        .setNegativeButton("No", null)
+                        .show()
                     Log.e(TAG, "Add service with image returned null result without error")
                 }
             }
@@ -321,18 +387,57 @@ class AddServiceActivity : AppCompatActivity() {
             val imageUri = data.data
             try {
                 Log.d(TAG, "Image selected: $imageUri")
-                val base64Image = convertImageToBase64(imageUri)
-                if (base64Image != null) {
-                    addServiceWithImage(base64Image)
-                } else {
-                    Toast.makeText(this, "Failed to process image", Toast.LENGTH_SHORT).show()
-                    addService() // Fall back to adding without image
-                }
+                
+                // Store the selected image URI
+                selectedImageUri = imageUri
+                
+                // Show processing status
+                tvImageStatus.visibility = View.VISIBLE
+                tvImageStatus.text = "Processing image..."
+                
+                // Show the selected image directly
+                ivServiceImage.setImageURI(imageUri)
+                
+                // Process image in background to avoid UI blocking
+                Thread {
+                    try {
+                        // Convert to bitmap and resize for upload
+                        val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, imageUri)
+                        val resizedBitmap = ImageUtils.resizeBitmap(bitmap, 800, 800)
+                        
+                        // Convert to Base64 for upload using our utility class
+                        selectedImageBase64 = ImageUtils.bitmapToBase64(resizedBitmap)
+                        
+                        runOnUiThread {
+                            if (selectedImageBase64 == null) {
+                                tvImageStatus.text = "Image processing failed"
+                                Toast.makeText(this, "Failed to process image. You can still add the service without an image.", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Log.d(TAG, "Successfully converted image to base64, length: ${selectedImageBase64!!.length}")
+                                tvImageStatus.text = "Image ready for upload"
+                                Toast.makeText(this, "Image selected successfully!", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error processing image: ${e.message}", e)
+                        runOnUiThread {
+                            tvImageStatus.text = "Image processing failed"
+                            Toast.makeText(this, "Error processing image: ${e.message}", Toast.LENGTH_SHORT).show()
+                            selectedImageBase64 = null
+                            selectedImageUri = null
+                        }
+                    }
+                }.start()
             } catch (e: Exception) {
                 Log.e(TAG, "Error processing image: ${e.message}", e)
+                tvImageStatus.text = "Image processing failed"
                 Toast.makeText(this, "Error processing image: ${e.message}", Toast.LENGTH_SHORT).show()
-                addService() // Fall back to adding without image
+                selectedImageBase64 = null
+                selectedImageUri = null
             }
+        } else if (requestCode == PICK_IMAGE_REQUEST) {
+            // User cancelled image selection
+            Log.d(TAG, "Image selection cancelled or failed")
         }
     }
 
@@ -340,15 +445,10 @@ class AddServiceActivity : AppCompatActivity() {
         if (imageUri == null) return null
 
         try {
-            val inputStream = contentResolver.openInputStream(imageUri)
-            val bytes = inputStream?.readBytes()
-            inputStream?.close()
-
-            if (bytes != null) {
-                val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.DEFAULT)
-                Log.d(TAG, "Converted image to base64 string (length: ${base64.length})")
-                return base64
-            }
+            // Use our utility class that properly resizes and encodes images
+            val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, imageUri)
+            val resizedBitmap = ImageUtils.resizeBitmap(bitmap, 800, 800)
+            return ImageUtils.bitmapToBase64(resizedBitmap)
         } catch (e: Exception) {
             Log.e(TAG, "Error converting image to base64: ${e.message}", e)
         }

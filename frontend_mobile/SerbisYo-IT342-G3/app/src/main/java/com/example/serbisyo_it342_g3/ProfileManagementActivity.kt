@@ -34,8 +34,16 @@ class ProfileManagementActivity : AppCompatActivity() {
         // Get user data from SharedPreferences
         val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
         token = sharedPref.getString("token", "") ?: ""
-        val userIdStr = sharedPref.getString("userId", "0") ?: "0"
-        userId = userIdStr.toLongOrNull() ?: 0
+        
+        // Fix userId retrieval using try-catch
+        userId = try {
+            // Try to get as Long first (new format)
+            sharedPref.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            // If that fails, try the String format (old format) and convert
+            val userIdStr = sharedPref.getString("userId", "0")
+            userIdStr?.toLongOrNull() ?: 0
+        }
         
         // Initialize views
         viewPager = findViewById(R.id.viewPager)
@@ -55,6 +63,12 @@ class ProfileManagementActivity : AppCompatActivity() {
                 else -> null
             }
         }.attach()
+        
+        // Check if a specific tab was requested
+        val tabIndex = intent.getIntExtra("tab_index", -1)
+        if (tabIndex >= 0 && tabIndex < pagerAdapter.itemCount) {
+            viewPager.setCurrentItem(tabIndex, false)
+        }
     }
     
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

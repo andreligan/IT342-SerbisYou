@@ -154,6 +154,23 @@ class ProfileFragment : Fragment() {
         // Try to load profile image from shared preferences if available
         loadProfileImageFromPrefs()
         
+        // Get any stored user profile data from preferences
+        val prefs = requireActivity().getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
+        val savedFirstName = prefs.getString("firstName_${userId}", null)
+        val savedLastName = prefs.getString("lastName_${userId}", null)
+        val savedPhoneNumber = prefs.getString("phoneNumber_${userId}", null)
+        
+        // If we have locally saved data, use it first
+        if (!savedFirstName.isNullOrBlank()) {
+            etFirstName.setText(savedFirstName)
+        }
+        if (!savedLastName.isNullOrBlank()) {
+            etLastName.setText(savedLastName)
+        }
+        if (!savedPhoneNumber.isNullOrBlank()) {
+            etPhoneNumber.setText(savedPhoneNumber)
+        }
+        
         userApiClient.getCustomerProfile(userId, token) { customer, error -> 
             requireActivity().runOnUiThread {
                 progressBar.visibility = View.GONE
@@ -169,9 +186,33 @@ class ProfileFragment : Fragment() {
                     // Fill form with customer data
                     etUsername.setText(customer.username)
                     etEmail.setText(customer.email)
-                    etFirstName.setText(customer.firstName)
-                    etLastName.setText(customer.lastName)
-                    etPhoneNumber.setText(customer.phoneNumber)
+                    
+                    // Only set these fields from server if we don't have locally saved values
+                    // or if the server values are not placeholders
+                    
+                    // Handle firstName
+                    if (savedFirstName.isNullOrBlank() && customer.firstName != "First Name") {
+                        etFirstName.setText(customer.firstName)
+                    } else if (savedFirstName.isNullOrBlank() && customer.firstName == "First Name") {
+                        etFirstName.setText("")
+                        etFirstName.hint = "First Name"
+                    }
+                    
+                    // Handle lastName
+                    if (savedLastName.isNullOrBlank() && customer.lastName != "Last Name") {
+                        etLastName.setText(customer.lastName)
+                    } else if (savedLastName.isNullOrBlank() && customer.lastName == "Last Name") {
+                        etLastName.setText("")
+                        etLastName.hint = "Last Name"
+                    }
+                    
+                    // Handle phoneNumber
+                    if (savedPhoneNumber.isNullOrBlank() && customer.phoneNumber != "Phone Number") {
+                        etPhoneNumber.setText(customer.phoneNumber)
+                    } else if (savedPhoneNumber.isNullOrBlank() && customer.phoneNumber == "Phone Number") {
+                        etPhoneNumber.setText("")
+                        etPhoneNumber.hint = "Phone Number"
+                    }
                     
                     // If the customer has a profile image URL from the server
                     if (!customer.profileImage.isNullOrEmpty()) {
@@ -331,6 +372,15 @@ class ProfileFragment : Fragment() {
                 }
 
                 if (success) {
+                    // Store the latest values in shared preferences to ensure persistence
+                    // even if the server has issues
+                    val prefs = requireActivity().getSharedPreferences("profile_prefs", Context.MODE_PRIVATE)
+                    prefs.edit()
+                        .putString("firstName_${userId}", firstName)
+                        .putString("lastName_${userId}", lastName)
+                        .putString("phoneNumber_${userId}", phoneNumber)
+                        .apply()
+                    
                     // If image was selected, upload it
                     if (selectedImageUri != null) {
                         uploadProfileImage(selectedImageUri!!)
@@ -431,5 +481,8 @@ class ProfileFragment : Fragment() {
         
         // Reload the profile image from shared preferences when the fragment is resumed
         loadProfileImageFromPrefs()
+        
+        // Also refresh the profile data
+        loadUserProfile()
     }
 }

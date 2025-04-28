@@ -99,9 +99,16 @@ class ChatsFragment : Fragment() {
     
     private fun getUserCredentials() {
         val sharedPref = requireActivity().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
-        val userIdStr = sharedPref.getString("userId", "0")
         token = sharedPref.getString("token", "") ?: ""
-        userId = userIdStr?.toLongOrNull() ?: 0L
+        // Fix userId retrieval using try-catch
+        userId = try {
+            // Try to get as Long first (new format)
+            sharedPref.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            // If that fails, try the String format (old format) and convert
+            val userIdStr = sharedPref.getString("userId", "0")
+            userIdStr?.toLongOrNull() ?: 0L
+        }
         
         Log.d(TAG, "Retrieved credentials - UserID: $userId, Token: ${token.take(15)}...")
     }

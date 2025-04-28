@@ -16,6 +16,7 @@ import com.example.serbisyo_it342_g3.data.Address
 import com.example.serbisyo_it342_g3.data.Barangay
 import com.example.serbisyo_it342_g3.data.Municipality
 import com.example.serbisyo_it342_g3.data.Province
+import androidx.core.content.ContextCompat
 
 class AddressFragment : Fragment() {
     private val TAG = "AddressFragment"
@@ -26,6 +27,7 @@ class AddressFragment : Fragment() {
     private lateinit var spinnerBarangay: Spinner
     private lateinit var etZipCode: EditText
     private lateinit var btnSaveAddress: Button
+    private lateinit var btnCancelEdit: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var rvAddresses: RecyclerView
     private lateinit var tvNoAddresses: TextView
@@ -39,6 +41,10 @@ class AddressFragment : Fragment() {
     private var userId: Long = 0
     private var addresses = mutableListOf<Address>()
     private lateinit var addressAdapter: AddressAdapter
+    
+    // Edit mode variables
+    private var isEditMode = false
+    private var editingAddressId: Long? = null
     
     // Lists for the spinners
     private val provinces = mutableListOf<Province>()
@@ -79,6 +85,7 @@ class AddressFragment : Fragment() {
         spinnerBarangay = view.findViewById(R.id.spinnerBarangay)
         etZipCode = view.findViewById(R.id.etZipCode)
         btnSaveAddress = view.findViewById(R.id.btnSaveAddress)
+        btnCancelEdit = view.findViewById(R.id.btnCancelEdit)
         progressBar = view.findViewById(R.id.progressBar)
         rvAddresses = view.findViewById(R.id.rvAddresses)
         tvNoAddresses = view.findViewById(R.id.tvNoAddresses)
@@ -92,9 +99,12 @@ class AddressFragment : Fragment() {
         
         // Setup recycler view
         rvAddresses.layoutManager = LinearLayoutManager(context)
-        addressAdapter = AddressAdapter(addresses) { address ->
-            deleteAddress(address.addressId?.toInt() ?: 0)
-        }
+        addressAdapter = AddressAdapter(
+            addresses,
+            onDeleteClick = { address -> deleteAddress(address.addressId?.toInt() ?: 0) },
+            onSetMainClick = { address -> setAddressAsMain(address) },
+            onEditClick = { address -> editAddress(address) }
+        )
         rvAddresses.adapter = addressAdapter
         
         // Setup empty spinners initially
@@ -112,9 +122,22 @@ class AddressFragment : Fragment() {
         // Set save button click listener
         btnSaveAddress.setOnClickListener {
             if (validateInputs()) {
-                saveAddress()
+                if (isEditMode) {
+                    updateAddress()
+                } else {
+                    saveAddress()
+                }
             }
         }
+        
+        // Set cancel button click listener
+        btnCancelEdit.setOnClickListener {
+            // Reset form and exit edit mode
+            resetForm()
+        }
+        
+        // Initially hide cancel button
+        btnCancelEdit.visibility = View.GONE
         
         return view
     }
@@ -412,12 +435,17 @@ class AddressFragment : Fragment() {
         val province = selectedProvince?.name ?: ""
         val zipCode = etZipCode.text.toString().trim()
         
+        // Log the address being saved
+        Log.d(TAG, "Saving new address - street=$street, barangay=$barangay, city=$city, province=$province, zipCode=$zipCode")
+        
         val newAddress = Address(
             street = street,
             barangay = barangay,
             city = city,
             province = province,
-            postalCode = zipCode
+            postalCode = zipCode,
+            // Also set zipCode field to ensure it's available
+            zipCode = zipCode
         )
         
         addressApiClient.addAddress(userId, newAddress, token) { success, error -> 
@@ -526,16 +554,313 @@ class AddressFragment : Fragment() {
             return
         }
         
-        // Launch the AddressUpdateActivity with the address details
-        val intent = android.content.Intent(requireContext(), com.example.serbisyo_it342_g3.AddressUpdateActivity::class.java)
-        intent.putExtra("address_id", addressId)
-        startActivity(intent)
+        // Set edit mode state
+        isEditMode = true
+        editingAddressId = address.addressId
+        
+        // Change UI for edit mode
+        btnSaveAddress.text = "Update Address"
+        btnCancelEdit.visibility = View.VISIBLE
+        
+        // Show loading indicator
+        progressBar.visibility = View.VISIBLE
+        
+        // Immediately populate the simple fields
+        etStreet.setText(address.street ?: address.streetName)
+        etZipCode.setText(address.postalCode ?: address.zipCode)
+        
+        // Log the address details for debugging
+        Log.d(TAG, "Editing address: ${address.addressId}")
+        Log.d(TAG, "Province: ${address.province}, City: ${address.city}, Barangay: ${address.barangay}")
+        Log.d(TAG, "Street: ${address.street}, ZipCode: ${address.postalCode ?: address.zipCode}")
+        
+        // We need to load provinces, municipalities, and barangays in sequence to populate the spinners
+        loadProvincesForEdit(address)
+    }
+    
+    private fun loadProvincesForEdit(address: Address) {
+        psgcApiClient.getProvinces { provinceList, error ->
+            if (error != null || provinceList == null) {
+                requireActivity().runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(context, "Failed to load provinces for editing", Toast.LENGTH_SHORT).show()
+                }
+                return@getProvinces
+            }
+            
+            provinces.clear()
+            provinces.addAll(provinceList.sortedBy { it.name })
+            
+            // Find matching province - try exact match first, then fuzzy match
+            var matchingProvince = provinces.find { it.name.equals(address.province, ignoreCase = true) }
+            
+            // If no exact match, try to find by contains
+            if (matchingProvince == null) {
+                matchingProvince = provinces.find { 
+                    it.name.contains(address.province, ignoreCase = true) || 
+                    address.province.contains(it.name, ignoreCase = true) 
+                }
+                
+                if (matchingProvince != null) {
+                    Log.d(TAG, "Found province by fuzzy match: ${matchingProvince.name} for ${address.province}")
+                }
+            }
+            
+            if (matchingProvince == null) {
+                requireActivity().runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(context, "Could not find matching province", Toast.LENGTH_SHORT).show()
+                    updateProvinceSpinner()
+                }
+                return@getProvinces
+            }
+            
+            selectedProvince = matchingProvince
+            
+            // Update UI on main thread
+            requireActivity().runOnUiThread {
+                updateProvinceSpinner()
+                
+                // Select the province in the spinner (add 1 for placeholder)
+                val provinceIndex = findProvinceIndex(matchingProvince)
+                if (provinceIndex > 0) {
+                    spinnerProvince.setSelection(provinceIndex)
+                    
+                    // Now load municipalities for the selected province
+                    loadMunicipalitiesForEdit(matchingProvince.code, address)
+                } else {
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(context, "Could not select province in dropdown", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    
+    private fun findProvinceIndex(province: Province): Int {
+        // Add 1 because the first item is the placeholder
+        val index = provinces.indexOf(province) + 1
+        // Debug log
+        Log.d(TAG, "Province ${province.name} found at index $index (list size: ${provinces.size})")
+        return index
+    }
+    
+    private fun loadMunicipalitiesForEdit(provinceCode: String, address: Address) {
+        psgcApiClient.getMunicipalitiesByProvince(provinceCode) { municipalityList, error ->
+            if (error != null || municipalityList == null) {
+                requireActivity().runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(context, "Failed to load cities for editing", Toast.LENGTH_SHORT).show()
+                }
+                return@getMunicipalitiesByProvince
+            }
+            
+            municipalities.clear()
+            municipalities.addAll(municipalityList.sortedBy { it.name })
+            spinnerCity.isEnabled = true
+            
+            // Find matching city - try exact match first, then fuzzy match
+            var matchingCity = municipalities.find { it.name.equals(address.city, ignoreCase = true) }
+            
+            // If no exact match, try to find by contains
+            if (matchingCity == null) {
+                matchingCity = municipalities.find { 
+                    it.name.contains(address.city, ignoreCase = true) || 
+                    address.city.contains(it.name, ignoreCase = true) 
+                }
+                
+                if (matchingCity != null) {
+                    Log.d(TAG, "Found city by fuzzy match: ${matchingCity.name} for ${address.city}")
+                }
+            }
+            
+            if (matchingCity == null) {
+                requireActivity().runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(context, "Could not find matching city", Toast.LENGTH_SHORT).show()
+                    updateMunicipalitySpinner()
+                }
+                return@getMunicipalitiesByProvince
+            }
+            
+            selectedMunicipality = matchingCity
+            
+            // Update UI on main thread
+            requireActivity().runOnUiThread {
+                updateMunicipalitySpinner()
+                
+                // Select the city in the spinner (add 1 for placeholder)
+                val cityIndex = findMunicipalityIndex(matchingCity)
+                if (cityIndex > 0) {
+                    spinnerCity.setSelection(cityIndex)
+                    
+                    // Now load barangays for the selected city
+                    loadBarangaysForEdit(matchingCity.code, address)
+                } else {
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(context, "Could not select city in dropdown", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    
+    private fun findMunicipalityIndex(municipality: Municipality): Int {
+        // Add 1 because the first item is the placeholder
+        val index = municipalities.indexOf(municipality) + 1
+        // Debug log
+        Log.d(TAG, "Municipality ${municipality.name} found at index $index (list size: ${municipalities.size})")
+        return index
+    }
+    
+    private fun loadBarangaysForEdit(municipalityCode: String, address: Address) {
+        psgcApiClient.getBarangaysByMunicipality(municipalityCode) { barangayList, error ->
+            if (error != null || barangayList == null) {
+                requireActivity().runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(context, "Failed to load barangays for editing", Toast.LENGTH_SHORT).show()
+                }
+                return@getBarangaysByMunicipality
+            }
+            
+            barangays.clear()
+            barangays.addAll(barangayList.sortedBy { it.name })
+            spinnerBarangay.isEnabled = true
+            
+            // If barangay is empty, we can't match it
+            if (address.barangay.isNullOrEmpty()) {
+                requireActivity().runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    updateBarangaySpinner()
+                    // Just enable the spinner for selection
+                    spinnerBarangay.setSelection(0)
+                }
+                return@getBarangaysByMunicipality
+            }
+            
+            // Find matching barangay - try exact match first, then fuzzy match
+            var matchingBarangay = barangays.find { it.name.equals(address.barangay, ignoreCase = true) }
+            
+            // If no exact match, try to find by contains
+            if (matchingBarangay == null) {
+                matchingBarangay = barangays.find { 
+                    it.name.contains(address.barangay, ignoreCase = true) || 
+                    address.barangay.contains(it.name, ignoreCase = true) 
+                }
+                
+                if (matchingBarangay != null) {
+                    Log.d(TAG, "Found barangay by fuzzy match: ${matchingBarangay.name} for ${address.barangay}")
+                }
+            }
+            
+            if (matchingBarangay == null) {
+                requireActivity().runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(context, "Could not find matching barangay", Toast.LENGTH_SHORT).show()
+                    updateBarangaySpinner()
+                }
+                return@getBarangaysByMunicipality
+            }
+            
+            selectedBarangay = matchingBarangay
+            
+            // Update UI on main thread
+            requireActivity().runOnUiThread {
+                progressBar.visibility = View.GONE
+                updateBarangaySpinner()
+                
+                // Select the barangay in the spinner (add 1 for placeholder)
+                val barangayIndex = findBarangayIndex(matchingBarangay)
+                if (barangayIndex > 0) {
+                    spinnerBarangay.setSelection(barangayIndex)
+                } else {
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(context, "Could not select barangay in dropdown", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    
+    private fun findBarangayIndex(barangay: Barangay): Int {
+        // Add 1 because the first item is the placeholder
+        val index = barangays.indexOf(barangay) + 1
+        // Debug log
+        Log.d(TAG, "Barangay ${barangay.name} found at index $index (list size: ${barangays.size})")
+        return index
+    }
+
+    private fun updateAddress() {
+        progressBar.visibility = View.VISIBLE
+        
+        val street = etStreet.text.toString().trim()
+        val barangay = selectedBarangay?.name ?: ""
+        val city = selectedMunicipality?.name ?: ""
+        val province = selectedProvince?.name ?: ""
+        val zipCode = etZipCode.text.toString().trim()
+        
+        // Log the address being updated
+        Log.d(TAG, "Updating address - street=$street, barangay=$barangay, city=$city, province=$province, zipCode=$zipCode")
+        
+        val updatedAddress = Address(
+            addressId = editingAddressId,
+            street = street,
+            barangay = barangay,
+            city = city,
+            province = province,
+            postalCode = zipCode,
+            zipCode = zipCode
+        )
+        
+        addressApiClient.updateAddress(updatedAddress, token) { success, error -> 
+            requireActivity().runOnUiThread {
+                progressBar.visibility = View.GONE
+                
+                if (error != null) {
+                    // Show detailed error message
+                    Toast.makeText(context, error.message, Toast.LENGTH_LONG).show()
+                    Log.e(TAG, "Address update error: ${error.message}")
+                    return@runOnUiThread
+                }
+                
+                if (success) {
+                    Toast.makeText(context, "Address updated successfully", Toast.LENGTH_SHORT).show()
+                    // Clear inputs
+                    etStreet.text.clear()
+                    etZipCode.text.clear()
+                    
+                    // Reset spinners
+                    resetSpinners()
+                    
+                    // Reload addresses
+                    loadAddresses()
+                } else {
+                    Toast.makeText(context, "Failed to update address", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun resetForm() {
+        // Reset all form fields
+        etStreet.text.clear()
+        etZipCode.text.clear()
+        
+        // Reset spinners
+        resetSpinners()
+        
+        // Exit edit mode
+        isEditMode = false
+        editingAddressId = null
+        
+        // Update UI for add mode
+        btnSaveAddress.text = "Save Address"
+        btnCancelEdit.visibility = View.GONE
     }
 
     // Adapter for displaying addresses
     inner class AddressAdapter(
         private val addresses: List<Address>,
-        private val onDeleteClick: (Address) -> Unit
+        private val onDeleteClick: (Address) -> Unit,
+        private val onSetMainClick: (Address) -> Unit,
+        private val onEditClick: (Address) -> Unit
     ) : RecyclerView.Adapter<AddressAdapter.AddressViewHolder>() {
         
         inner class AddressViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -556,6 +881,15 @@ class AddressFragment : Fragment() {
         override fun onBindViewHolder(holder: AddressViewHolder, position: Int) {
             val address = addresses[position]
             
+            // Log all address data for debugging
+            Log.d(TAG, "Address #${position}: ID=${address.addressId}, " +
+                "postalCode='${address.postalCode}', " +
+                "zipCode='${address.zipCode}', " +
+                "street='${address.street}', " +
+                "streetName='${address.streetName}', " +
+                "barangay='${address.barangay}', " +
+                "main=${address.main}")
+            
             // Use the correct field depending on which one is populated
             val displayStreet = when {
                 !address.streetName.isNullOrEmpty() -> address.streetName
@@ -563,33 +897,68 @@ class AddressFragment : Fragment() {
                 else -> "No street specified"
             }
             
-            // Use the correct zipcode field depending on which one is populated
-            val displayZipCode = when {
-                address.postalCode.isNotEmpty() -> address.postalCode
-                address.zipCode != null && address.zipCode.isNotEmpty() -> address.zipCode
-                else -> "No ZIP code specified"
+            // Add barangay to the street display if available
+            val streetWithBarangay = if (!address.barangay.isNullOrEmpty()) {
+                "$displayStreet, ${address.barangay}"
+            } else {
+                displayStreet
             }
             
-            holder.tvStreet.text = displayStreet
-            holder.tvCityProvince.text = "${address.city}, ${address.province} $displayZipCode"
+            // Direct approach to get ZIP code
+            var displayZipCode = ""
             
-            // Show/hide the main address indicator
+            if (!address.postalCode.isNullOrBlank()) {
+                displayZipCode = address.postalCode
+                Log.d(TAG, "Using postalCode: ${address.postalCode}")
+            } else if (!address.zipCode.isNullOrBlank()) {
+                displayZipCode = address.zipCode
+                Log.d(TAG, "Using zipCode: ${address.zipCode}")
+            } else {
+                displayZipCode = "No ZIP code specified"
+                // Debug log the raw values
+                try {
+                    val rawPostal = address.postalCode
+                    val rawZip = address.zipCode
+                    Log.d(TAG, "Raw postalCode='$rawPostal', rawZip='$rawZip'")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error accessing zip fields", e)
+                }
+            }
+            
+            holder.tvStreet.text = streetWithBarangay
+            holder.tvCityProvince.text = "${address.city}, ${address.province}, $displayZipCode"
+            
+            // Show/hide the main address indicator and apply yellow border
             if (address.main) {
                 holder.mainAddressIndicator.visibility = View.VISIBLE
                 holder.btnSetAsMain.visibility = View.GONE
+                // Change the background of the card to have a yellow border
+                (holder.itemView as androidx.cardview.widget.CardView).setCardBackgroundColor(android.graphics.Color.WHITE)
+                holder.itemView.background = ContextCompat.getDrawable(requireContext(), R.drawable.main_address_card_background)
+                // Hide delete button for main address
+                holder.btnDelete.visibility = View.GONE
             } else {
                 holder.mainAddressIndicator.visibility = View.GONE
                 holder.btnSetAsMain.visibility = View.VISIBLE
+                // Reset the background
+                (holder.itemView as androidx.cardview.widget.CardView).setCardBackgroundColor(android.graphics.Color.WHITE)
+                holder.itemView.background = null
+                // Show delete button for non-main addresses
+                holder.btnDelete.visibility = View.VISIBLE
             }
+            
+            // Use custom edit and delete icons
+            holder.btnEdit.setImageResource(R.drawable.ic_edit)
+            holder.btnDelete.setImageResource(R.drawable.ic_delete)
             
             // Set as main button click listener
             holder.btnSetAsMain.setOnClickListener {
-                setAddressAsMain(address)
+                onSetMainClick(address)
             }
             
             // Edit button click listener
             holder.btnEdit.setOnClickListener {
-                editAddress(address)
+                onEditClick(address)
             }
             
             // Delete button click listener

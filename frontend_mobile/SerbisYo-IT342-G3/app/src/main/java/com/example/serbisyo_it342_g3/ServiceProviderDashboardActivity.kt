@@ -3,6 +3,7 @@ package com.example.serbisyo_it342_g3
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -28,6 +29,8 @@ import com.example.serbisyo_it342_g3.fragments.NotificationsFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.example.serbisyo_it342_g3.api.NotificationApiClient
+import com.example.serbisyo_it342_g3.api.UserApiClient
+import com.example.serbisyo_it342_g3.utils.ImageUtils
 
 class ServiceProviderDashboardActivity : AppCompatActivity() {
     private lateinit var tvProviderName: TextView
@@ -58,46 +61,79 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
     private val services = mutableListOf<Service>()
     private lateinit var serviceApiClient: ServiceApiClient
     private lateinit var notificationApiClient: NotificationApiClient
+    private lateinit var userApiClient: UserApiClient
     private var providerId: Long = 0
     private var token: String = ""
     private val TAG = "ProviderDashboard"
     private var unreadNotificationsCount = 0
+    private var userId: Long = 0
+    private var username: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_service_provider_dashboard)
 
-        // Initialize ServiceApiClient with context
+        // Initialize UI elements
+        initViews()
+        
+        // Setup RecyclerView
+        rvServices.layoutManager = LinearLayoutManager(this)
+        
+        // Initialize ServiceApiClient
         serviceApiClient = ServiceApiClient(this)
-
+        
         // Initialize NotificationApiClient
         notificationApiClient = NotificationApiClient(this)
-
-        // Get SharedPreferences
-        sharedPreferences = getSharedPreferences("UserPrefs", MODE_PRIVATE)
-        token = sharedPreferences.getString("token", "") ?: ""
-
-        Log.d(TAG, "Retrieved token: $token")
-
-        // Initialize views
-        initViews()
-
+        
+        // Initialize UserApiClient with context
+        userApiClient = UserApiClient(this)
+        
         // Set up toolbar
         setSupportActionBar(findViewById(R.id.toolbar))
         supportActionBar?.title = "Service Provider Dashboard"
-
-        // Get user data from shared preferences
-        val username = sharedPreferences.getString("username", "Provider")
-        val userIdStr = sharedPreferences.getString("userId", "0")
-
-        providerId = userIdStr?.toLongOrNull() ?: 0
-
-        if (providerId == 0L) {
-            Toast.makeText(this, "Error: Provider ID not found", Toast.LENGTH_LONG).show()
+        
+        // Get SharedPreferences
+        sharedPreferences = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+        val userPrefs = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        
+        // Get user data from SharedPreferences
+        userId = try {
+            sharedPreferences.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            val userIdStr = sharedPreferences.getString("userId", "0")
+            userIdStr?.toLongOrNull() ?: 0
         }
-
+        
+        username = sharedPreferences.getString("username", "") ?: ""
+        token = sharedPreferences.getString("token", "") ?: ""
+        
+        Log.d(TAG, "Retrieved token: $token")
+        
+        // Check both SharedPreferences for provider ID
+        providerId = try {
+            val id1 = sharedPreferences.getLong("providerId", 0)
+            val id2 = userPrefs.getLong("providerId", 0)
+            
+            if (id1 > 0) id1 else if (id2 > 0) id2 else 0
+        } catch (e: ClassCastException) {
+            try {
+                val idStr1 = sharedPreferences.getString("providerId", "0") ?: "0"
+                val idStr2 = userPrefs.getString("providerId", "0") ?: "0"
+                
+                val id1 = idStr1.toLongOrNull() ?: 0
+                val id2 = idStr2.toLongOrNull() ?: 0
+                
+                if (id1 > 0) id1 else if (id2 > 0) id2 else 0
+            } catch (e: Exception) {
+                0
+            }
+        }
+        
+        // DON'T set providerId = userId - this causes issues with service loading
+        // Instead, we'll get the correct provider ID in checkProviderId()
+        
         // Set welcome message
-        tvProviderName.text = username ?: "Provider"
+        tvProviderName.text = username
 
         // Hide the vertical RecyclerView - we'll only use the horizontal layout
         rvServices.visibility = View.GONE
@@ -121,18 +157,16 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         // Setup category chips
         setupCategories()
 
-        // Load services - these will populate the horizontal layout
-        loadServices()
-
-        // Check provider ID
+        // Check provider ID first, then load services in the callback when we have the correct ID
         checkProviderId()
         
         // Setup "Manage All" link
         tvManageAll.setOnClickListener {
-            val intent = Intent(this, ManageServicesActivity::class.java)
-            intent.putExtra("PROVIDER_ID", providerId)
-            startActivity(intent)
+            navigateToMyServices()
         }
+
+        // Check for notifications
+        checkForNotifications()
     }
     
     private fun initViews() {
@@ -183,10 +217,15 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         
         // Manage services button click
         btnManageServices.setOnClickListener {
-            val intent = Intent(this, ManageServicesActivity::class.java)
-            intent.putExtra("PROVIDER_ID", providerId)
-            startActivity(intent)
+            navigateToMyServices()
         }
+    }
+    
+    // Helper function to navigate to the My Services tab
+    private fun navigateToMyServices() {
+        val intent = Intent(this, ServiceProviderProfileManagementActivity::class.java)
+        intent.putExtra("SELECTED_TAB", ServiceProviderProfileManagementActivity.SERVICES_TAB)
+        startActivity(intent)
     }
     
     private fun setupSlideshow() {
@@ -340,8 +379,8 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
                     true
                 }
                 R.id.navigation_profile -> {
-                    // Launch ServiceProviderProfileActivity
-                    val intent = Intent(this, ServiceProviderProfileActivity::class.java)
+                    // Launch ServiceProviderProfileManagementActivity instead of ServiceProviderProfileActivity
+                    val intent = Intent(this, ServiceProviderProfileManagementActivity::class.java)
                     startActivity(intent)
                     true
                 }
@@ -358,9 +397,20 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        loadServices() // Refresh services list when returning to this activity
-        checkForNotifications() // Check for new notifications
-        startSlideshow() // Resume slideshow animation
+        
+        // Check provider ID again when resuming the activity
+        // This ensures we pick up any provider ID set by fragments
+        checkProviderId()
+        
+        // Also check for notifications
+        checkForNotifications()
+        
+        // If the user returned from adding/editing a service, refresh the list
+        loadServices()
+        
+        // Resume slideshow animation
+        startSlideshow()
+        
         // Ensure home tab is selected when returning to this activity
         bottomNavigation.selectedItemId = R.id.navigation_home
     }
@@ -379,11 +429,31 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
     }
 
     private fun loadServices() {
+        // Check if we have a valid provider ID first
+        if (providerId <= 0) {
+            Log.e(TAG, "Cannot load services: Provider ID is not valid ($providerId)")
+            runOnUiThread {
+                // Removed confusing toast message - we'll just show the UI for "no services" instead
+                tvServiceCount.text = "0"
+                findViewById<TextView>(R.id.tvNoServices).visibility = View.VISIBLE
+                findViewById<HorizontalScrollView>(R.id.servicesScrollView).visibility = View.GONE
+            }
+            return
+        }
+        
+        Log.d(TAG, "Loading services for provider ID: $providerId")
         serviceApiClient.getServicesByProviderId(providerId, token) { servicesList, error -> 
             if (error != null) {
                 Log.e(TAG, "Error loading services", error)
                 runOnUiThread {
-                    Toast.makeText(this, "Error loading services: ${error.message}", Toast.LENGTH_SHORT).show()
+                    // Keep this toast for actual errors, but not 404 errors
+                    if (error.message?.contains("404") != true) {
+                        Toast.makeText(this, "Error loading services: ${error.message ?: "Unknown error"}", Toast.LENGTH_SHORT).show()
+                    }
+                    // Don't try to show services if there was an error
+                    tvServiceCount.text = "0"
+                    findViewById<TextView>(R.id.tvNoServices).visibility = View.VISIBLE
+                    findViewById<HorizontalScrollView>(R.id.servicesScrollView).visibility = View.GONE
                 }
                 return@getServicesByProviderId
             }
@@ -391,12 +461,22 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
             runOnUiThread {
                 services.clear()
                 if (servicesList != null) {
-                    services.addAll(servicesList)
+                    // Double check that these services actually belong to this provider
+                    val filteredServices = servicesList.filter { 
+                        it.provider?.providerId == providerId 
+                    }
+                    
+                    // Only add services that match this provider ID
+                    services.addAll(filteredServices)
+                    
                     // Update service count in dashboard
-                    tvServiceCount.text = servicesList.size.toString()
+                    tvServiceCount.text = filteredServices.size.toString()
                     
                     // Populate the horizontal services container
-                    populateServicesHorizontally(servicesList)
+                    populateServicesHorizontally(filteredServices)
+                } else {
+                    // Set service count to 0 if servicesList is null
+                    tvServiceCount.text = "0"
                 }
                 
                 // Update the original RecyclerView (kept for backward compatibility)
@@ -404,9 +484,11 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
 
                 if (services.isEmpty()) {
                     findViewById<TextView>(R.id.tvNoServices).visibility = View.VISIBLE
+                    findViewById<HorizontalScrollView>(R.id.servicesScrollView).visibility = View.GONE
                     rvServices.visibility = View.GONE
                 } else {
                     findViewById<TextView>(R.id.tvNoServices).visibility = View.GONE
+                    findViewById<HorizontalScrollView>(R.id.servicesScrollView).visibility = View.VISIBLE
                     rvServices.visibility = View.VISIBLE
                 }
             }
@@ -441,26 +523,95 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         val inflater = LayoutInflater.from(this)
         val cardView = inflater.inflate(R.layout.item_service_card, servicesContainer, false)
         
+        // Add proper layout parameters for consistent display
+        val layoutParams = LinearLayout.LayoutParams(
+            resources.getDimensionPixelSize(R.dimen.service_card_width),
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        layoutParams.marginEnd = resources.getDimensionPixelSize(R.dimen.service_card_margin)
+        cardView.layoutParams = layoutParams
+        
         // Find views in card
         val serviceImage = cardView.findViewById<ImageView>(R.id.ivServiceImage)
         val serviceName = cardView.findViewById<TextView>(R.id.tvServiceName)
-        val serviceCategory = cardView.findViewById<TextView>(R.id.tvServiceCategory)
-        val servicePrice = cardView.findViewById<TextView>(R.id.tvServicePrice)
+        val serviceCategory = cardView.findViewById<TextView>(R.id.tvCategory)
+        val servicePrice = cardView.findViewById<TextView>(R.id.tvPrice)
         val btnEdit = cardView.findViewById<ImageButton>(R.id.btnEdit)
         val btnDelete = cardView.findViewById<ImageButton>(R.id.btnDelete)
-        val categoryColor = cardView.findViewById<View>(R.id.categoryColorIndicator)
+        val btnAddImage = cardView.findViewById<Button>(R.id.btnAddImage)
+        val tvNoImage = cardView.findViewById<TextView>(R.id.tvNoImage)
+        
+        // Hide the "ADD IMAGE" button - we don't need it in dashboard
+        btnAddImage.visibility = View.GONE
         
         // Set service data
         serviceName.text = service.serviceName
         serviceCategory.text = service.category?.categoryName ?: "Uncategorized"
-        servicePrice.text = service.priceRange
         
-        // Set service image based on category
-        val imageResource = getCategoryImage(service.category?.categoryName)
-        serviceImage.setImageResource(imageResource)
+        // Format price to have a currency symbol and show it more prominently
+        val formattedPrice = if (service.effectivePrice.isNotEmpty()) {
+            if (service.effectivePrice.contains("-")) {
+                // For price ranges
+                "₱${service.effectivePrice}"
+            } else {
+                // For single prices
+                "₱${service.effectivePrice}"
+            }
+        } else {
+            "₱0"
+        }
+        servicePrice.text = formattedPrice
+        // Set price text color to a green color like in the frontend_web
+        servicePrice.setTextColor(ContextCompat.getColor(this, R.color.primary_green))
         
-        // Set category color
-        categoryColor.setBackgroundColor(getCategoryColor(service.category?.categoryName))
+        // Set the duration estimate
+        val tvDuration = cardView.findViewById<TextView>(R.id.tvDuration)
+        val formattedDuration = if (service.durationEstimate.isNotEmpty()) {
+            if (service.durationEstimate.endsWith("hrs") || service.durationEstimate.endsWith("hours") || 
+                service.durationEstimate.contains("hour") || service.durationEstimate.contains("hr")) {
+                service.durationEstimate
+            } else {
+                "${service.durationEstimate} hours"
+            }
+        } else {
+            "1 hour"
+        }
+        tvDuration.text = formattedDuration
+        
+        // Set the service description
+        val tvDescription = cardView.findViewById<TextView>(R.id.tvDescription)
+        tvDescription.text = service.serviceDescription
+        
+        // Always hide the "No Image" text
+        tvNoImage.visibility = View.GONE
+        serviceImage.visibility = View.VISIBLE
+        
+        // Check if service has an image URL and use ImageUtils to load it
+        if (!service.imageUrl.isNullOrEmpty()) {
+            Log.d(TAG, "Loading image from URL: ${service.imageUrl}")
+            
+            // Get the full image URL
+            val fullImageUrl = ImageUtils.getFullImageUrl(service.imageUrl, this)
+            if (fullImageUrl != null) {
+                // Load image using ImageUtils
+                ImageUtils.loadImageAsync(fullImageUrl, serviceImage)
+            } else {
+                // Fallback to category image if URL processing fails
+                val imageResource = getCategoryImage(service.category?.categoryName)
+                serviceImage.setImageResource(imageResource)
+            }
+        } else {
+            // If no image URL, use a category-based placeholder
+            Log.d(TAG, "No image URL, using placeholder for category: ${service.category?.categoryName}")
+            val imageResource = getCategoryImage(service.category?.categoryName)
+            serviceImage.setImageResource(imageResource)
+        }
+        
+        // Set category color (applying to the category TextView background color)
+        // Instead of replacing the background drawable, we're just tinting the existing background
+        val drawable = serviceCategory.background.mutate()
+        drawable.setTint(getCategoryColor(service.category?.categoryName))
+        serviceCategory.background = drawable
         
         // Set click listeners for edit and delete
         btnEdit.setOnClickListener {
@@ -512,7 +663,7 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         intent.putExtra("CATEGORY_ID", service.category?.categoryId)
         intent.putExtra("SERVICE_NAME", service.serviceName)
         intent.putExtra("SERVICE_DESCRIPTION", service.serviceDescription)
-        intent.putExtra("PRICE_RANGE", service.priceRange)
+        intent.putExtra("PRICE_RANGE", service.effectivePrice)
         intent.putExtra("DURATION_ESTIMATE", service.durationEstimate)
         startActivity(intent)
     }
@@ -522,7 +673,7 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
             if (error != null) {
                 Log.e(TAG, "Error deleting service", error)
                 runOnUiThread {
-                    Toast.makeText(this, "Error deleting service: ${error.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Error deleting service: ${error.message ?: "Unknown error"}", Toast.LENGTH_SHORT).show()
                 }
                 return@deleteService
             }
@@ -554,7 +705,7 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
             return // Skip if we don't have a valid user ID
         }
         
-        if (token.isBlank()) {
+        if (token.isEmpty()) {
             Log.e(TAG, "Auth token is blank. Cannot check for notifications.")
             return // Skip if we don't have a valid token
         }
@@ -563,7 +714,7 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         
         notificationApiClient.getNotificationsByUserId(userId, token) { notifications, error -> 
             if (error != null) {
-                Log.e(TAG, "Error checking notifications: ${error.message}", error)
+                Log.e(TAG, "Error checking notifications: ${error.message ?: ""}", error)
                 return@getNotificationsByUserId
             }
             
@@ -594,10 +745,15 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         }
     }
 
-    // Add a helper method to get the user ID (not provider ID)
     private fun getUserId(): Long {
         val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
-        val userId = sharedPref.getString("userId", "0")?.toLongOrNull() ?: 0
+        val userId = try {
+            // Try to get as Long first (new format)
+            sharedPref.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            // If that fails, try the String format (old format) and convert
+            sharedPref.getString("userId", "0")?.toLongOrNull() ?: 0
+        }
         Log.d(TAG, "Retrieving user ID: $userId")
         return userId
     }
@@ -641,17 +797,108 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
 
     private fun checkProviderId() {
         val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
-        val userId = sharedPref.getString("userId", "0")?.toLongOrNull() ?: 0
-        val username = sharedPref.getString("username", "")
-        val role = sharedPref.getString("role", "")
-        val providerId = sharedPref.getString("providerId", "0")?.toLongOrNull() ?: 0
+        val userPref = getSharedPreferences("user_prefs", MODE_PRIVATE)
         
+        // Fix the type mismatch by using getLong instead of getString for userId
+        val userId = try {
+            // Try to get as Long first (new format)
+            sharedPref.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            // If that fails, try the String format (old format) and convert
+            sharedPref.getString("userId", "0")?.toLongOrNull() ?: 0
+        }
+        
+        val username = sharedPref.getString("username", "") ?: ""
+        val role = sharedPref.getString("role", "") ?: ""
+        
+        // IMPORTANT: For debugging - clear any existing provider ID to ensure we get a fresh one from the API
+        with(sharedPref.edit()) {
+            remove("providerId")
+            apply()
+        }
+        
+        with(userPref.edit()) {
+            remove("providerId")
+            apply()
+        }
+        
+        // After clearing, check if we somehow still have a providerId (from old SharedPreferences)
+        var providerId = 0L
+
         Log.d(TAG, "User details - UserId: $userId, Username: $username, Role: $role, ProviderId: $providerId")
         
-        // Make sure the providerId is stored in SharedPreferences for later use
-        if (providerId == 0L && userId > 0) {
-            Log.w(TAG, "Provider ID is not set. Attempting to retrieve it from user profile.")
-            // Here you could make an API call to get the provider profile if needed
+        // Always prioritize getting the provider ID from the API - more reliable
+        if (userId > 0) {
+            Log.d(TAG, "Retrieving provider ID from API for user ID: $userId")
+            
+            // Attempt to get provider profile from API using userId
+            userApiClient.getServiceProviderByAuthId(userId, token) { provider, error -> 
+                if (error != null) {
+                    Log.e(TAG, "Error getting provider profile", error)
+                    // Show error message instead of using fallback
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@ServiceProviderDashboardActivity, 
+                            "Could not find your service provider account. Please contact support.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    return@getServiceProviderByAuthId
+                }
+                
+                if (provider != null && provider.providerId != null) {
+                    val newProviderId = provider.providerId
+                    Log.d(TAG, "Retrieved provider ID from API: $newProviderId")
+                    
+                    // Save to both SharedPreferences
+                    with(sharedPref.edit()) {
+                        putLong("providerId", newProviderId)
+                        apply()
+                    }
+                    
+                    with(userPref.edit()) {
+                        putLong("providerId", newProviderId)
+                        apply()
+                    }
+                    
+                    // Update the class-level providerId variable
+                    runOnUiThread {
+                        this.providerId = newProviderId
+                        
+                        // Reload services with the correct provider ID
+                        loadServices()
+                    }
+                } else {
+                    Log.e(TAG, "Could not retrieve provider ID from user profile API call")
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@ServiceProviderDashboardActivity, 
+                            "No service provider account was found. Please contact support.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        
+                        // Show empty dashboard
+                        tvServiceCount.text = "0"
+                        findViewById<TextView>(R.id.tvNoServices).visibility = View.VISIBLE
+                        findViewById<HorizontalScrollView>(R.id.servicesScrollView).visibility = View.GONE
+                    }
+                    // Don't continue to loadServices() if we don't have a valid provider ID
+                }
+            }
+        } else {
+            Log.e(TAG, "UserId is invalid or missing")
+            runOnUiThread {
+                Toast.makeText(
+                    this@ServiceProviderDashboardActivity, 
+                    "User account information is missing. Please login again.",
+                    Toast.LENGTH_LONG
+                ).show()
+                
+                // Show empty dashboard
+                tvServiceCount.text = "0"
+                findViewById<TextView>(R.id.tvNoServices).visibility = View.VISIBLE
+                findViewById<HorizontalScrollView>(R.id.servicesScrollView).visibility = View.GONE
+            }
         }
     }
 }

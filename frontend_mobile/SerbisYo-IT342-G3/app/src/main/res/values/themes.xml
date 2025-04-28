@@ -16,7 +16,31 @@
         <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
         <!-- Customize your theme here. -->
         <item name="android:windowFullscreen">true</item>
+        <!-- Fix for OpenGLRenderer swap behavior warning -->
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowDisablePreview">false</item>
+        <item name="android:hardwareAccelerated">true</item>
     </style>
 
     <style name="Theme.SerbisYoIT342G3" parent="Theme.SerbisyoIT342G3" />
+    
+    <!-- Theme used by PaymentWebViewActivity -->
+    <style name="Theme.SerbisYo" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/primary_green</item>
+        <item name="colorPrimaryVariant">@color/primary_green</item>
+        <item name="colorOnPrimary">@color/primary_yellow</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/primary_yellow</item>
+        <item name="colorSecondaryVariant">@color/primary_yellow</item>
+        <item name="colorOnSecondary">@color/primary_green</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">@color/primary_green</item>
+        <!-- No need for fullscreen in payment page -->
+        <item name="android:windowFullscreen">false</item>
+        <!-- Fix for OpenGLRenderer swap behavior warning -->
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowDisablePreview">false</item>
+        <item name="android:hardwareAccelerated">true</item>
+    </style>
 </resources>

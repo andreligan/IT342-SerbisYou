@@ -27,7 +27,7 @@ class MessageApiClient(private val context: Context) {
     private val EMULATOR_URL = "http://10.0.2.2:8080"
 
     // For Physical Device - Use your computer's actual IP address from ipconfig
-    private val PHYSICAL_DEVICE_URL = "http://172.20.10.2:8080"
+    private val PHYSICAL_DEVICE_URL = "http://192.168.200.136:8080"
 
     // SWITCH BETWEEN CONNECTION TYPES:
     // Uncomment the one you need and comment out the other
@@ -379,7 +379,7 @@ class MessageApiClient(private val context: Context) {
 
         // Instead of using a search endpoint that doesn't exist, fetch all users and filter locally
         // We'll need to fetch both customers and service providers
-        fetchAllUsers(token) { users, error ->
+        fetchAllUsers(token) { users, error -> 
             if (error != null) {
                 Log.e(TAG, "Failed to fetch users for search", error)
                 callback(null, error)
@@ -603,5 +603,88 @@ class MessageApiClient(private val context: Context) {
         }
 
         return results
+    }
+
+    // Get message by ID
+    fun getMessageById(messageId: Long, token: String, callback: (Message?, Exception?) -> Unit) {
+        if (token.isBlank()) {
+            Log.e(TAG, "Token is empty or blank")
+            callback(null, Exception("Authentication token is required"))
+            return
+        }
+
+        Log.d(TAG, "Getting message with ID: $messageId")
+
+        val request = Request.Builder()
+            .url("$BASE_URL/api/messages/$messageId")
+            .get()
+            .header("Authorization", "Bearer $token")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to get message by ID", e)
+                callback(null, e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                Log.d(TAG, "Response code: ${response.code}")
+
+                if (response.isSuccessful && responseBody != null) {
+                    try {
+                        // Parse the message data
+                        val messageData = gson.fromJson(responseBody, Map::class.java)
+                        
+                        // Extract sender and recipient data
+                        val senderMap = messageData["sender"] as? Map<String, Any>
+                        val senderId = (senderMap?.get("userId") as? Double)?.toLong() ?: 0L
+                        val senderName = senderMap?.get("userName") as? String
+                        
+                        val receiverMap = messageData["receiver"] as? Map<String, Any>
+                        val recipientId = (receiverMap?.get("userId") as? Double)?.toLong() ?: 0L
+                        
+                        // Extract message content and timestamp
+                        val content = messageData["messageText"] as? String ?: ""
+                        val sentAtStr = messageData["sentAt"] as? String
+                        val timestamp = if (sentAtStr != null) {
+                            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                                .parse(sentAtStr) ?: Date()
+                        } else {
+                            Date()
+                        }
+                        
+                        // Create Message object
+                        val message = Message(
+                            messageId = messageId,
+                            senderId = senderId,
+                            recipientId = recipientId,
+                            content = content,
+                            timestamp = timestamp,
+                            read = false,
+                            senderName = senderName,
+                            senderRole = null
+                        )
+                        
+                        callback(message, null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing message data", e)
+                        callback(null, e)
+                    }
+                } else {
+                    Log.e(TAG, "Error getting message: ${response.code}")
+                    Log.e(TAG, "Error response body: $responseBody")
+                    
+                    val errorMessage = when (response.code) {
+                        401 -> "Authentication failed: Please log in again (401 Unauthorized)"
+                        403 -> "Permission denied: You don't have access to this message (403 Forbidden)"
+                        404 -> "Message not found"
+                        else -> "Failed to get message: ${response.code}"
+                    }
+                    
+                    callback(null, Exception(errorMessage))
+                }
+            }
+        })
     }
 }

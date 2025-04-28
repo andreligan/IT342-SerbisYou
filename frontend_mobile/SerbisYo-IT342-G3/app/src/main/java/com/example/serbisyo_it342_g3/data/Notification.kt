@@ -1,12 +1,27 @@
 package com.example.serbisyo_it342_g3.data
 
-import java.util.Date
+import com.google.gson.annotations.SerializedName
+import java.io.Serializable
 
 data class Notification(
-    val notificationId: Long = 0,
-    val userId: Long = 0,  // The user who will receive the notification
-    val type: String? = null,
-    val message: String? = null,
-    val isRead: Boolean = false,
-    val createdAt: String? = null  // Represented as ISO date string in format yyyy-MM-dd'T'HH:mm:ss
-) 
+    @SerializedName("notificationId") val notificationId: Long = 0,
+    @SerializedName("userId") val userId: Long? = null,
+    @SerializedName("user") val user: Any? = null, // Changed to Any to handle both UserData and Map<String, Any>
+    @SerializedName("type") val type: String? = "", // Changed to nullable
+    @SerializedName("message") val message: String? = "", // Changed to nullable
+    @SerializedName("isRead") val isRead: Boolean = false,
+    @SerializedName("read") val read: Boolean = false, // Backend might return either isRead or read
+    @SerializedName("createdAt") val createdAt: String = "",
+    @SerializedName("referenceId") val referenceId: Long = 0,
+    @SerializedName("referenceType") val referenceType: String = "",
+    @SerializedName("senderName") val senderName: String = "", // Added for UI display
+    @SerializedName("senderProfileImage") val senderProfileImage: String? = null // Added for UI display
+) : Serializable
+
+// Simple data class to parse nested user object from server
+data class UserData(
+    @SerializedName("userId") val userId: Long = 0,
+    @SerializedName("userName") val userName: String = "",
+    @SerializedName("email") val email: String? = null,
+    @SerializedName("role") val role: String? = null
+) : Serializable

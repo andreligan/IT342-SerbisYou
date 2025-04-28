@@ -88,7 +88,7 @@
             android:id="@+id/tvCityProvince"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="City, Province 12345"
+            android:text="City, Province, 12345"
             android:textSize="14sp"
             android:layout_marginBottom="16dp" />
 

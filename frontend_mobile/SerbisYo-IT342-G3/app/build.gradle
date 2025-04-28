@@ -40,11 +40,18 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
 
+    // Google Sign-In dependencies - using explicit and fixed versions
+    implementation 'com.google.android.gms:play-services-auth:20.4.1'
+    implementation 'com.google.android.gms:play-services-base:18.1.0'
+    
     // Retrofit for API calls
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
     implementation 'com.squareup.okhttp3:okhttp:4.11.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.11.0'
+
+    //for google integration
+    implementation 'androidx.browser:browser:1.4.0'
 
     // Fuel HTTP Networking library
     implementation 'com.github.kittinunf.fuel:fuel:2.3.1'
@@ -56,7 +63,8 @@ dependencies {
     implementation 'de.hdodenhof:circleimageview:3.1.0'
     
     // Glide for image loading
-    implementation 'com.github.bumptech.glide:glide:4.16.0'
+    implementation 'com.github.bumptech.glide:glide:4.15.1'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.15.1'
     
     // ViewModel and LiveData
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2'

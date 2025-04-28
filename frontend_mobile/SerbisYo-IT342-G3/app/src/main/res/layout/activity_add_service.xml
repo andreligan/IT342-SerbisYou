@@ -122,27 +122,6 @@
                 android:text="Service Image"
                 android:textColor="@color/primary_green"
                 android:textSize="16sp" />
-                
-            <Button
-                android:id="@+id/btnSelectImage"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:drawableStart="@android:drawable/ic_menu_gallery"
-                android:text="Select Image"
-                android:textColor="@color/primary_green"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp" />
-
-            <!-- New Image Upload Section -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="Service Image"
-                android:textColor="@color/primary_green"
-                android:textSize="16sp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -160,16 +139,26 @@
                     android:src="@drawable/ic_image_placeholder"
                     android:contentDescription="Service Image Preview" />
 
+                <TextView
+                    android:id="@+id/tvImageStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textAlignment="center"
+                    android:textColor="@color/primary_green"
+                    android:textSize="14sp"
+                    android:visibility="gone"
+                    android:text="Select an image" />
+
                 <Button
                     android:id="@+id/btnSelectImage"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:backgroundTint="@color/primary_green"
-                    android:text="Select Image"
+                    android:text="SELECT IMAGE"
                     android:textColor="@color/primary_yellow" />
             </LinearLayout>
-            <!-- End of Image Upload Section -->
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -183,7 +172,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="8dp"
                     android:layout_weight="1"
-                    android:text="Cancel"
+                    android:text="CANCEL"
                     android:textColor="@color/primary_green"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
@@ -195,7 +184,7 @@
                     android:layout_weight="1"
                     android:backgroundTint="@color/primary_green"
                     android:textColor="@color/primary_yellow"
-                    android:text="Add Service" />
+                    android:text="ADD SERVICE" />
             </LinearLayout>
         </LinearLayout>
     </ScrollView>

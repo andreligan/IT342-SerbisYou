@@ -37,8 +37,16 @@ class CustomerProfileEditActivity : AppCompatActivity() {
         // Get SharedPreferences
         val sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE)
         token = sharedPref.getString("token", "") ?: ""
-        val userIdStr = sharedPref.getString("userId", "0")
-        userId = userIdStr?.toLongOrNull() ?: 0
+        
+        // Fix userId retrieval using try-catch
+        userId = try {
+            // Try to get as Long first (new format)
+            sharedPref.getLong("userId", 0)
+        } catch (e: ClassCastException) {
+            // If that fails, try the String format (old format) and convert
+            val userIdStr = sharedPref.getString("userId", "0")
+            userIdStr?.toLongOrNull() ?: 0
+        }
         
         // Debug SharedPreferences
         val allPrefs = sharedPref.all

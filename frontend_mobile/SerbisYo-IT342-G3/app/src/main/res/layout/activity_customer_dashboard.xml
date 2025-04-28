@@ -164,7 +164,6 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
-
                 <!-- Categories Spinner -->
                 <Spinner
                     android:id="@+id/spinnerCategories"
@@ -174,53 +173,6 @@
                     android:background="@drawable/edit_text_border"
                     android:paddingStart="12dp"
                     android:paddingEnd="12dp" />
-
-                <!-- Featured Home Categories Section -->
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    android:text="Featured Home Categories"
-                    android:textColor="@color/primary_green"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-
-                <HorizontalScrollView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:scrollbars="none">
-
-                    <LinearLayout
-                        android:id="@+id/categoriesContainer"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal" />
-                </HorizontalScrollView>
-
-                <!-- Book Service Button -->
-                <Button
-                    android:id="@+id/btnBookService"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:background="@drawable/yellow_button_background"
-                    android:padding="12dp"
-                    android:text="Book a Service"
-                    android:textAllCaps="false"
-                    android:textColor="@color/white" />
-
-                <!-- View Bookings Button -->
-                <Button
-                    android:id="@+id/btnViewBookings"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:background="@drawable/secondary_button_background"
-                    android:padding="12dp"
-                    android:text="View My Bookings"
-                    android:textAllCaps="false"
-                    android:textColor="@android:color/white" />
 
                 <!-- Services Header -->
                 <TextView
@@ -253,12 +205,18 @@
                     android:layout_marginTop="16dp"
                     android:visibility="visible" />
 
-                <!-- Services List -->
+                <!-- Services RecyclerView -->
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/rvServices"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:nestedScrollingEnabled="false" />
+                    android:clipToPadding="false"
+                    android:orientation="horizontal"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="16dp"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                    android:nestedScrollingEnabled="true" />
             </LinearLayout>
         </LinearLayout>
     </ScrollView>

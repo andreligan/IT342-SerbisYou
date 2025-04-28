@@ -5,6 +5,7 @@ import com.example.serbisyo_it342_g3.data.LoginResponse
 import com.example.serbisyo_it342_g3.data.ServiceProvider
 import com.example.serbisyo_it342_g3.data.User
 import com.example.serbisyo_it342_g3.data.*
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -23,4 +24,17 @@ interface ApiService {
     // Service Provider
     @GET("service-provider/{id}")
     suspend fun getServiceProviderProfile(@Path("id") id: Long): Response<ServiceProvider>
+    
+    // Schedule
+    @GET("schedules/provider/{providerId}")
+    suspend fun getProviderSchedules(@Path("providerId") providerId: Long): Response<ResponseBody>
+    
+    @POST("schedules/provider/{providerId}")
+    suspend fun createSchedule(
+        @Path("providerId") providerId: Long, 
+        @Body schedule: Schedule
+    ): Response<ResponseBody>
+    
+    @DELETE("schedules/{scheduleId}")
+    suspend fun deleteSchedule(@Path("scheduleId") scheduleId: Long): Response<String>
 }
