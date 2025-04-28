@@ -37,6 +37,7 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
     private lateinit var btnAddService: Button
     private lateinit var btnAddServiceHero: Button
     private lateinit var btnManageServices: Button
+    private lateinit var btnManageBookings: Button
     private lateinit var rvServices: RecyclerView
     private lateinit var serviceAdapter: ServiceAdapter
     private lateinit var sharedPreferences: SharedPreferences
@@ -185,6 +186,7 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         btnAddService = findViewById(R.id.btnAddService)
         btnAddServiceHero = findViewById(R.id.btnAddServiceHero)
         btnManageServices = findViewById(R.id.btnManageServices)
+        btnManageBookings = findViewById(R.id.btnManageBookings)
         
         // Services container for horizontal layout
         servicesContainer = findViewById(R.id.servicesContainer)
@@ -219,12 +221,24 @@ class ServiceProviderDashboardActivity : AppCompatActivity() {
         btnManageServices.setOnClickListener {
             navigateToMyServices()
         }
+        
+        // Manage bookings button click
+        btnManageBookings.setOnClickListener {
+            navigateToBookings()
+        }
     }
     
     // Helper function to navigate to the My Services tab
     private fun navigateToMyServices() {
         val intent = Intent(this, ServiceProviderProfileManagementActivity::class.java)
         intent.putExtra("SELECTED_TAB", ServiceProviderProfileManagementActivity.SERVICES_TAB)
+        startActivity(intent)
+    }
+    
+    // Helper function to navigate to the bookings management screen
+    private fun navigateToBookings() {
+        val intent = Intent(this, ProviderBookingsActivity::class.java)
+        intent.putExtra("PROVIDER_ID", providerId)
         startActivity(intent)
     }
     

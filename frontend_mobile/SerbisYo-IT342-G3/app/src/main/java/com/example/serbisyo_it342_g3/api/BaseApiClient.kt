@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
  * BaseApiClient provides common functionality for all API clients
  * including base URL configuration and network utility methods.
  */
-class BaseApiClient(private val context: Context) {
+open class BaseApiClient(private val context: Context) {
     companion object {
         private const val TAG = "BaseApiClient"
         

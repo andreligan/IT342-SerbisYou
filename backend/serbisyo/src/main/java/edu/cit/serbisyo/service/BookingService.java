@@ -1,10 +1,13 @@
 package edu.cit.serbisyo.service;
 
 import edu.cit.serbisyo.entity.BookingEntity;
+import edu.cit.serbisyo.entity.NotificationEntity;
 import edu.cit.serbisyo.entity.ScheduleEntity;
 import edu.cit.serbisyo.entity.ServiceEntity;
 import edu.cit.serbisyo.entity.TransactionEntity;
+import edu.cit.serbisyo.entity.UserAuthEntity;
 import edu.cit.serbisyo.repository.BookingRepository;
+import edu.cit.serbisyo.repository.NotificationRepository;
 import edu.cit.serbisyo.repository.ScheduleRepository;
 import edu.cit.serbisyo.repository.TransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +34,9 @@ public class BookingService {
     
     @Autowired
     private edu.cit.serbisyo.repository.ServiceRepository serviceRepository;
+    
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     public BookingService() {
         super();
@@ -50,6 +56,14 @@ public class BookingService {
 
         // First save the booking
         BookingEntity savedBooking = bookingRepository.save(booking);
+
+        try {
+            // Create notification for service provider
+            createBookingNotificationForProvider(savedBooking);
+        } catch (Exception e) {
+            // Log the error but don't prevent the booking from being created
+            System.err.println("Failed to create notification: " + e.getMessage());
+        }
 
         // Get the provider ID from the booking's service
         ServiceEntity service = booking.getService();
@@ -89,6 +103,45 @@ public class BookingService {
         }
 
         return savedBooking;
+    }
+
+    // Create notification for the service provider
+    private void createBookingNotificationForProvider(BookingEntity booking) {
+        if (booking == null || booking.getService() == null || booking.getService().getProvider() == null 
+                || booking.getService().getProvider().getUserAuth() == null) {
+            // Skip notification if any required object is null
+            return;
+        }
+        
+        // Create a notification for the service provider
+        NotificationEntity notification = new NotificationEntity();
+        
+        // Set the user (service provider) who will receive the notification
+        UserAuthEntity providerUser = booking.getService().getProvider().getUserAuth();
+        notification.setUser(providerUser);
+        
+        // Set notification type and reference information
+        notification.setType("booking");
+        notification.setReferenceId(booking.getBookingId());
+        notification.setReferenceType("Booking");
+        
+        // Get customer and service information for the message
+        String customerName = booking.getCustomer() != null && booking.getCustomer().getUserAuth() != null 
+                ? booking.getCustomer().getUserAuth().getUserName() 
+                : "A customer";
+                
+        // Use getServiceName() instead of getTitle() which doesn't exist
+        String serviceName = booking.getService().getServiceName();
+        
+        // Create notification message
+        notification.setMessage(customerName + " has booked your service: " + serviceName);
+        
+        // Set other notification properties
+        notification.setRead(false);
+        notification.setCreatedAt(LocalDateTime.now());
+        
+        // Save the notification
+        notificationRepository.save(notification);
     }
 
     // Helper method to create a transaction record

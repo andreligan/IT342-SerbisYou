@@ -302,4 +302,229 @@ class BookingApiClient(private val context: Context) {
             }
         })
     }
-} 
+
+    // Get bookings by provider ID (for service providers)
+    fun getBookingsByProviderId(providerId: Long, token: String, callback: (List<Booking>?, Exception?) -> Unit) {
+        if (token.isBlank()) {
+            Log.e(TAG, "Token is empty or blank")
+            callback(null, Exception("Authentication token is required"))
+            return
+        }
+
+        Log.d(TAG, "Getting bookings for provider: $providerId")
+        
+        // First try the direct endpoint for provider bookings
+        val providerEndpoint = "${baseApiClient.getBaseUrl()}/api/bookings/getProviderBookings"
+        
+        val request = Request.Builder()
+            .url(providerEndpoint)
+            .get()
+            .header("Authorization", "Bearer $token")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to get provider bookings from direct endpoint", e)
+                // Fallback to getting all bookings and filtering
+                getAllBookingsAndFilterByProvider(providerId, token, callback)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                Log.d(TAG, "Response code from provider endpoint: ${response.code}")
+                
+                if (response.isSuccessful) {
+                    try {
+                        val type = object : TypeToken<List<Booking>>() {}.type
+                        val providerBookings = gson.fromJson<List<Booking>>(responseBody, type) ?: emptyList()
+                        
+                        Log.d(TAG, "Directly received ${providerBookings.size} bookings for provider $providerId")
+                        callback(providerBookings, null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing bookings from provider endpoint", e)
+                        // Fallback to getting all bookings and filtering
+                        getAllBookingsAndFilterByProvider(providerId, token, callback)
+                    }
+                } else {
+                    Log.d(TAG, "Provider endpoint returned ${response.code}, falling back to filtering")
+                    getAllBookingsAndFilterByProvider(providerId, token, callback)
+                }
+            }
+        })
+    }
+
+    // Fallback method to get all bookings and filter for a provider
+    private fun getAllBookingsAndFilterByProvider(providerId: Long, token: String, callback: (List<Booking>?, Exception?) -> Unit) {
+        val request = Request.Builder()
+            .url("${baseApiClient.getBaseUrl()}/api/bookings/getAll")
+            .get()
+            .header("Authorization", "Bearer $token")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to get all bookings", e)
+                callback(null, e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                Log.d(TAG, "Response code from getAll: ${response.code}")
+                
+                if (response.isSuccessful) {
+                    try {
+                        val type = object : TypeToken<List<Booking>>() {}.type
+                        val allBookings = gson.fromJson<List<Booking>>(responseBody, type) ?: emptyList()
+                        
+                        Log.d(TAG, "Received ${allBookings.size} total bookings")
+                        
+                        // Filter bookings by service provider ID
+                        val providerBookings = allBookings.filter { booking ->
+                            val service = booking.service ?: return@filter false
+                            val provider = service.provider ?: return@filter false
+                            provider.providerId == providerId
+                        }
+                        
+                        Log.d(TAG, "Found ${providerBookings.size} bookings for provider $providerId after filtering")
+                        callback(providerBookings, null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing bookings", e)
+                        callback(null, e)
+                    }
+                } else {
+                    Log.e(TAG, "Error getting all bookings: ${response.code}")
+                    callback(null, Exception("Failed to get bookings: ${response.code}"))
+                }
+            }
+        })
+    }
+
+    // Update booking status (for confirming, rejecting, completing bookings)
+    fun updateBookingStatus(bookingId: Long, newStatus: String, token: String, callback: (Booking?, Exception?) -> Unit) {
+        if (token.isBlank()) {
+            Log.e(TAG, "Token is empty or blank")
+            callback(null, Exception("Authentication token is required"))
+            return
+        }
+
+        Log.d(TAG, "Updating booking $bookingId status to $newStatus")
+
+        val jsonObject = JSONObject().apply {
+            put("status", newStatus)
+        }
+
+        val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
+
+        val request = Request.Builder()
+            .url("${baseApiClient.getBaseUrl()}/api/bookings/updateStatus/$bookingId")
+            .put(requestBody)
+            .header("Authorization", "Bearer $token")
+            .header("Content-Type", "application/json")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to update booking status", e)
+                callback(null, e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                Log.d(TAG, "Response code: ${response.code}")
+                Log.d(TAG, "Response body: $responseBody")
+
+                if (response.isSuccessful) {
+                    try {
+                        val updatedBooking = gson.fromJson(responseBody, Booking::class.java)
+                        callback(updatedBooking, null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing updated booking", e)
+                        callback(null, e)
+                    }
+                } else {
+                    Log.e(TAG, "Error updating booking status: ${response.code}")
+                    callback(null, Exception("Failed to update booking status: ${response.code}"))
+                }
+            }
+        })
+    }
+    
+    // Mark booking as completed (automatically releases schedule for provider)
+    fun completeBooking(bookingId: Long, token: String, callback: (Booking?, Exception?) -> Unit) {
+        if (token.isBlank()) {
+            Log.e(TAG, "Token is empty or blank")
+            callback(null, Exception("Authentication token is required"))
+            return
+        }
+
+        Log.d(TAG, "Marking booking $bookingId as completed")
+
+        val request = Request.Builder()
+            .url("${baseApiClient.getBaseUrl()}/api/bookings/complete/$bookingId")
+            .put("".toRequestBody(null))
+            .header("Authorization", "Bearer $token")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to complete booking", e)
+                callback(null, e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                Log.d(TAG, "Response code: ${response.code}")
+                Log.d(TAG, "Response body: $responseBody")
+
+                if (response.isSuccessful) {
+                    try {
+                        val completedBooking = gson.fromJson(responseBody, Booking::class.java)
+                        callback(completedBooking, null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing completed booking", e)
+                        callback(null, e)
+                    }
+                } else {
+                    Log.e(TAG, "Error completing booking: ${response.code}")
+                    callback(null, Exception("Failed to complete booking: ${response.code}"))
+                }
+            }
+        })
+    }
+
+    // Get bookings for a user (handles both customer and provider roles)
+    fun getUserBookings(
+        token: String,
+        userId: Long,
+        onSuccess: (List<Booking>?) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        if (token.isBlank()) {
+            Log.e(TAG, "Token is empty or blank")
+            onError("Authentication token is required")
+            return
+        }
+
+        Log.d(TAG, "Getting bookings for user: $userId")
+        
+        // Try to get bookings as a customer first
+        getBookingsByCustomerId(userId, token) { customerBookings, customerError ->
+            if (customerError == null && customerBookings != null) {
+                Log.d(TAG, "Retrieved ${customerBookings.size} bookings for customer $userId")
+                onSuccess(customerBookings)
+            } else {
+                // If that fails or returns no results, try as a provider
+                getBookingsByProviderId(userId, token) { providerBookings, providerError ->
+                    if (providerError == null && providerBookings != null) {
+                        Log.d(TAG, "Retrieved ${providerBookings.size} bookings for provider $userId")
+                        onSuccess(providerBookings)
+                    } else {
+                        // Both attempts failed
+                        Log.e(TAG, "Failed to get bookings for user $userId")
+                        onError(customerError?.message ?: providerError?.message ?: "Unknown error")
+                    }
+                }
+            }
+        }
+    }
+}

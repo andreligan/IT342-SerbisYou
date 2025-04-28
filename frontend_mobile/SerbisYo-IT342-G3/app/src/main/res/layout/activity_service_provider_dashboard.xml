@@ -292,31 +292,49 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="16dp"
                 android:layout_marginEnd="16dp"
-                android:orientation="horizontal"
-                android:weightSum="2"
+                android:orientation="vertical"
                 app:layout_constraintTop_toBottomOf="@+id/categoryScrollView">
 
-                <Button
-                    android:id="@+id/btnAddService"
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
-                    android:layout_weight="1"
-                    android:backgroundTint="@color/primary_yellow"
-                    android:text="Add New Service"
+                    android:orientation="horizontal"
+                    android:weightSum="2">
+
+                    <Button
+                        android:id="@+id/btnAddService"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:backgroundTint="@color/primary_yellow"
+                        android:text="Add New Service"
+                        android:textAllCaps="false"
+                        android:textColor="@color/white" />
+
+                    <Button
+                        android:id="@+id/btnManageServices"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/secondary_button_background"
+                        android:text="Manage Services"
+                        android:textAllCaps="false"
+                        android:textColor="@android:color/white" />
+                </LinearLayout>
+
+                <!-- New Customer Bookings Button -->
+                <Button
+                    android:id="@+id/btnManageBookings"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="@color/primary_green"
+                    android:text="Customer Bookings"
                     android:textAllCaps="false"
                     android:textColor="@color/white" />
 
-                <Button
-                    android:id="@+id/btnManageServices"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/secondary_button_background"
-                    android:text="Manage Services"
-                    android:textAllCaps="false"
-                    android:textColor="@android:color/white" />
             </LinearLayout>
 
             <!-- Horizontal Services Section -->
