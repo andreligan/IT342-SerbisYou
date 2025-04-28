@@ -15,7 +15,8 @@ data class Notification(
     @SerializedName("referenceId") val referenceId: Long = 0,
     @SerializedName("referenceType") val referenceType: String = "",
     @SerializedName("senderName") val senderName: String = "", // Added for UI display
-    @SerializedName("senderProfileImage") val senderProfileImage: String? = null // Added for UI display
+    @SerializedName("senderProfileImage") val senderProfileImage: String? = null, // Added for UI display
+    @SerializedName("senderId") val senderId: Long = 0 // Added to identify the original sender
 ) : Serializable
 
 // Simple data class to parse nested user object from server

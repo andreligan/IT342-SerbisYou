@@ -22,6 +22,10 @@ public class NotificationEntity {
 
     private Long referenceId; // ID of the related entity
     private String referenceType; // Type of the related entity (e.g., "Review", "Booking")
+    
+    // New fields to store sender information for message notifications
+    private Long senderId; // ID of the message sender
+    private String senderName; // Username or display name of the sender
 
     // Getters and Setters
 
@@ -87,5 +91,22 @@ public class NotificationEntity {
 
     public void setReferenceType(String referenceType) {
         this.referenceType = referenceType;
+    }
+    
+    // Getters and setters for new fields
+    public Long getSenderId() {
+        return senderId;
+    }
+
+    public void setSenderId(Long senderId) {
+        this.senderId = senderId;
+    }
+
+    public String getSenderName() {
+        return senderName;
+    }
+
+    public void setSenderName(String senderName) {
+        this.senderName = senderName;
     }
 }

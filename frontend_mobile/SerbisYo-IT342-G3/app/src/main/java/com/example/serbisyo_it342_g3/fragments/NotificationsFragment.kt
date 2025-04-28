@@ -355,9 +355,11 @@ class NotificationsFragment : Fragment() {
                 return@getMessageById
             }
             
-            // Determine if the sender is the current user or the other user
-            val senderId = if (message.senderId != userId) message.senderId else message.recipientId
+            // Always use the original sender information, not the "other person" in the conversation
+            val senderId = message.senderId
             val senderName = message.senderName ?: "User"
+            
+            Log.d(TAG, "Message sender: ID=$senderId, Name=$senderName")
             
             callback(senderId, senderName)
         }
