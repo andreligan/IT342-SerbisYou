@@ -49,6 +49,7 @@ public class SecurityConfig {
                 .csrf(customizer -> customizer.disable())
                 // Configure authorization rules
                 .authorizeHttpRequests(request -> request
+                        // Public endpoints
                         .requestMatchers("/api/user-auth/register", "/api/user-auth/login", "/api/oauth/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/", "/error").permitAll()
@@ -62,7 +63,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // Add OAuth2 login
                 .oauth2Login(oauth2 -> oauth2
-                        .loginPage("/oauth2/authorization/google")  // Change this
+                        .loginPage("/oauth2/authorization/google")
                         .successHandler(oAuth2LoginSuccessHandler))
                 // Add JWT filter
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
@@ -85,14 +86,30 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Allow both localhost and deployed frontend URL
+        // Allow requests from multiple origins
         configuration.setAllowedOrigins(Arrays.asList(
             frontendUrl,
-            "https://serbisyo.vercel.app"
+            "https://serbisyo.vercel.app",
+            "http://localhost:5173"
         ));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
+        // Allow all common HTTP methods
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        // Allow all common headers
+        configuration.setAllowedHeaders(Arrays.asList(
+            "Authorization", 
+            "Content-Type", 
+            "X-Requested-With", 
+            "Accept", 
+            "Origin", 
+            "Access-Control-Request-Method", 
+            "Access-Control-Request-Headers"
+        ));
+        // Allow cookies and credentials
         configuration.setAllowCredentials(true);
+        // Expose the Authorization header
+        configuration.setExposedHeaders(Arrays.asList("Authorization"));
+        // Set max age for preflight requests
+        configuration.setMaxAge(3600L);
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
