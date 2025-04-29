@@ -16,11 +16,11 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/serbisyo_logo"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@drawable/serbisyo_logo"
         android:supportsRtl="true"
-        android:theme="@style/Theme.SerbisYoIT342G3"
+        android:theme="@style/Theme.Serbisyo"
         android:usesCleartextTraffic="true"
         android:hardwareAccelerated="true"
         android:enableOnBackInvokedCallback="true"
@@ -92,7 +92,7 @@
             android:name=".OAuthWebViewActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize"
-            android:theme="@style/Theme.SerbisYoIT342G3" />
+            android:theme="@style/Theme.Serbisyo" />
         <activity
             android:name=".OAuth2RedirectHandlerActivity"
             android:exported="true">
@@ -133,6 +133,9 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="http" android:host="localhost" android:path="/payment-success" />
+
+                <!-- Uncomment the following line if you want to handle the success URL in production -->
+               <!-- <data android:scheme="https" android:host="your-deployed-frontend.com" android:path="/payment-success" />-->
             </intent-filter>
             <!-- Handle cancel URL -->
             <intent-filter>
@@ -140,6 +143,9 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="http" android:host="localhost" android:path="/payment-cancel" />
+                
+                <!-- Uncomment the following line if you want to handle the cancel URL in production -->
+                <!--<data android:scheme="https" android:host="your-deployed-frontend.com" android:path="/payment-cancel" />-->
             </intent-filter>
         </activity>
     </application>

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">SerbisYo-IT342-G3</string>
+    <string name="app_name">Serbisyo</string>
     
     <!-- Profile Fragment -->
     <string name="profile_not_found">Customer profile not found. Please contact support.</string>

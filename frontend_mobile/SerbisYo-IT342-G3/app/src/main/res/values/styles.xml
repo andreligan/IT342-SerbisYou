@@ -1,10 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Custom styles can be added here -->
+    <!-- Base styles for the application -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <!-- Use app theme defaults -->
+    </style>
     
-    <!-- Style for circular image view -->
-    <style name="circleImageView">
+    <!-- Circle image view style for profile pics -->
+    <style name="circleImageView" parent="">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">50%</item>
+    </style>
+    
+    <!-- Custom styles for TextInputLayout - Outlined style -->
+    <style name="Widget.SerbisYo.TextInputLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/text_input_box_stroke</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxStrokeWidthFocused">2dp</item>
+        <item name="boxCornerRadiusBottomEnd">12dp</item>
+        <item name="boxCornerRadiusBottomStart">12dp</item>
+        <item name="boxCornerRadiusTopEnd">12dp</item>
+        <item name="boxCornerRadiusTopStart">12dp</item>
+        <item name="hintTextColor">@color/primary_green</item>
+        <item name="android:textColorHint">@color/light_gray</item>
+    </style>
+    
+    <!-- Custom button style with animation -->
+    <style name="Widget.SerbisYo.Button" parent="Widget.MaterialComponents.Button">
+        <item name="android:textColor">@color/primary_green</item>
+        <item name="backgroundTint">@color/primary_yellow</item>
+        <item name="cornerRadius">12dp</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    
+    <!-- Login screen specific animations -->
+    <style name="LoginAnimation">
+        <item name="android:windowEnterAnimation">@anim/fade_in</item>
     </style>
 </resources>

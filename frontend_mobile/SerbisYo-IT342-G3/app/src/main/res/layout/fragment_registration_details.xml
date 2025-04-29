@@ -3,113 +3,163 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp">
+    android:padding="16dp"
+    android:fitsSystemWindows="true"
+    android:windowSoftInputMode="adjustResize">
 
-    <ScrollView
+    <TextView
+        android:id="@+id/tvInstructions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Enter your personal details"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="@color/colorPrimary"
+        android:gravity="center"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/nestedScrollView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/navigationButtons">
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintTop_toBottomOf="@id/tvInstructions"
+        app:layout_constraintBottom_toTopOf="@id/navigationButtons"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:fillViewport="true">
 
-        <LinearLayout
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/tvInstructions"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Enter your personal details"
-                android:textSize="18sp"
-                android:textColor="@color/black"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="16dp" />
+            android:layout_height="wrap_content">
 
             <!-- First Name -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilFirstName"
+                style="@style/Widget.SerbisYo.TextInputLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
                 android:hint="First Name"
-                app:errorEnabled="true">
+                app:startIconDrawable="@drawable/ic_person"
+                app:startIconTint="@color/primary_green"
+                app:errorEnabled="true"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etFirstName"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textPersonName" />
+                    android:inputType="textPersonName"
+                    android:textSize="16sp" />
 
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Last Name -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilLastName"
+                style="@style/Widget.SerbisYo.TextInputLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:hint="Last Name"
-                app:errorEnabled="true">
+                app:startIconDrawable="@drawable/ic_person"
+                app:startIconTint="@color/primary_green"
+                app:errorEnabled="true"
+                app:layout_constraintTop_toBottomOf="@id/tilFirstName"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etLastName"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textPersonName" />
+                    android:inputType="textPersonName"
+                    android:textSize="16sp" />
 
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Phone Number -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilPhoneNumber"
+                style="@style/Widget.SerbisYo.TextInputLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:hint="Phone Number"
-                app:errorEnabled="true">
+                app:startIconDrawable="@android:drawable/ic_menu_call"
+                app:startIconTint="@color/primary_green"
+                app:errorEnabled="true"
+                app:layout_constraintTop_toBottomOf="@id/tilLastName"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etPhoneNumber"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="phone" />
+                    android:inputType="phone"
+                    android:textSize="16sp" />
 
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Business Name (For Service Providers) -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilBusinessName"
+                style="@style/Widget.SerbisYo.TextInputLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:hint="Business Name"
+                app:startIconDrawable="@drawable/ic_work"
+                app:startIconTint="@color/primary_green"
                 android:visibility="gone"
-                app:errorEnabled="true">
+                app:errorEnabled="true"
+                app:layout_constraintTop_toBottomOf="@id/tilPhoneNumber"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etBusinessName"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="text" />
+                    android:inputType="text"
+                    android:textSize="16sp" />
 
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Years of Experience (For Service Providers) -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilYearsExperience"
+                style="@style/Widget.SerbisYo.TextInputLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:hint="Years of Experience"
+                app:startIconDrawable="@android:drawable/ic_menu_recent_history"
+                app:startIconTint="@color/primary_green"
                 android:visibility="gone"
-                app:errorEnabled="true">
+                app:errorEnabled="true"
+                app:layout_constraintTop_toBottomOf="@id/tilBusinessName"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etYearsExperience"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="number" />
+                    android:inputType="number"
+                    android:textSize="16sp" />
 
             </com.google.android.material.textfield.TextInputLayout>
-        </LinearLayout>
-    </ScrollView>
+        
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.core.widget.NestedScrollView>
 
     <!-- Navigation Buttons -->
     <LinearLayout
@@ -117,7 +167,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -126,25 +176,31 @@
         <Button
             android:id="@+id/btnBack"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="56dp"
             android:layout_weight="1"
-            android:text="Back"
+            android:text="BACK"
             android:textColor="@color/primary_green"
             android:layout_marginEnd="8dp"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:padding="12dp" />
+            app:strokeColor="@color/primary_green"
+            app:strokeWidth="1dp"
+            app:cornerRadius="12dp"
+            android:textStyle="bold"
+            android:textSize="16sp" />
 
         <!-- Next Button -->
         <Button
             android:id="@+id/btnNext"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="56dp"
             android:layout_weight="1"
-            android:text="Continue"
-            android:backgroundTint="@color/primary_green"
-            android:textColor="@color/white"
+            android:text="CONTINUE"
+            android:backgroundTint="@color/primary_yellow"
+            android:textColor="@color/primary_green"
             android:layout_marginStart="8dp"
-            android:padding="12dp" />
+            android:textStyle="bold"
+            android:textSize="16sp"
+            app:cornerRadius="12dp" />
 
     </LinearLayout>
 
