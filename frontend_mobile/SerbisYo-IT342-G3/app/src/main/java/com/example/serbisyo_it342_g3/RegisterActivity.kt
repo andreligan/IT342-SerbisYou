@@ -187,8 +187,10 @@ class RegisterActivity : AppCompatActivity() {
 
                 val request = Request.Builder()
 
-                    .url("http://192.168.254.103:8080/api/user-auth/register")
+                    //.url("http://192.168.254.103:8080/api/user-auth/register")
 
+                     //Replace lng if mag kinaunsa
+                    //.url(com.example.serbisyo_it342_g3.utils.Constants.BASE_URL + "user-auth/register")
                     .post(requestBody)
                     .build()
 

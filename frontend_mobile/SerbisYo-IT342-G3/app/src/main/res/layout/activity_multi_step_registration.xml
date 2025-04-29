@@ -7,232 +7,341 @@
     android:background="@color/white"
     tools:context=".MultiStepRegistrationActivity">
 
-    <!-- Green header with curved bottom -->
+    <!-- Modern gradient header with curved bottom - enhanced with deeper gradient -->
     <View
         android:id="@+id/headerBackground"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:background="@drawable/login_header_background"
-        app:layout_constraintHeight_percent="0.18"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintHeight_percent="0.22"
+        app:layout_constraintTop_toTopOf="parent"
+        android:elevation="4dp" />
 
-    <!-- App Title -->
-    <TextView
-        android:id="@+id/tvAppName"
+    <!-- App Logo and Title with improved spacing and animation properties -->
+    <LinearLayout
+        android:id="@+id/appTitleContainer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="SerbisYo"
-        android:textColor="@color/primary_yellow"
-        android:textSize="36sp"
-        android:textStyle="bold"
-        android:layout_marginTop="24dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="32dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        android:elevation="6dp">
 
-    <!-- Registration Title -->
-    <TextView
-        android:id="@+id/tvTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Get Started"
-        android:textColor="@color/primary_green"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:layout_marginTop="16dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/headerBackground" />
-
-    <!-- Progress Indicator -->
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/stepIndicatorLayout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:layout_marginHorizontal="24dp"
-        app:layout_constraintTop_toBottomOf="@id/tvTitle">
-
-        <!-- Step 1 Circle -->
-        <View
-            android:id="@+id/step1Circle"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/circle_active"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+        <ImageView
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:src="@drawable/shield_illustration"
+            android:contentDescription="App Logo"
+            android:alpha="0.95"/>
 
         <TextView
-            android:id="@+id/step1Text"
+            android:id="@+id/tvAppName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="1"
-            android:textColor="@color/primary_green"
-            android:textSize="18sp"
+            android:text="SerbisYo"
+            android:textColor="@color/primary_yellow"
+            android:textSize="38sp"
             android:textStyle="bold"
-            app:layout_constraintBottom_toBottomOf="@id/step1Circle"
-            app:layout_constraintEnd_toEndOf="@id/step1Circle"
-            app:layout_constraintStart_toStartOf="@id/step1Circle"
-            app:layout_constraintTop_toTopOf="@id/step1Circle" />
+            android:letterSpacing="0.02"
+            android:layout_marginStart="10dp"
+            android:shadowColor="#50000000"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="2" />
+    </LinearLayout>
 
-        <!-- Line between Step 1 and 2 -->
-        <View
-            android:id="@+id/line1to2"
-            android:layout_width="0dp"
-            android:layout_height="2dp"
-            android:background="@color/light_gray"
-            app:layout_constraintBottom_toBottomOf="@id/step1Circle"
-            app:layout_constraintEnd_toStartOf="@id/step2Circle"
-            app:layout_constraintStart_toEndOf="@id/step1Circle"
-            app:layout_constraintTop_toTopOf="@id/step1Circle" />
-
-        <!-- Step 2 Circle -->
-        <View
-            android:id="@+id/step2Circle"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/circle_inactive"
-            app:layout_constraintEnd_toStartOf="@id/step3Circle"
-            app:layout_constraintStart_toEndOf="@id/step1Circle"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <TextView
-            android:id="@+id/step2Text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="2"
-            android:textColor="@color/light_gray"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            app:layout_constraintBottom_toBottomOf="@id/step2Circle"
-            app:layout_constraintEnd_toEndOf="@id/step2Circle"
-            app:layout_constraintStart_toStartOf="@id/step2Circle"
-            app:layout_constraintTop_toTopOf="@id/step2Circle" />
-
-        <!-- Line between Step 2 and 3 -->
-        <View
-            android:id="@+id/line2to3"
-            android:layout_width="0dp"
-            android:layout_height="2dp"
-            android:background="@color/light_gray"
-            app:layout_constraintBottom_toBottomOf="@id/step2Circle"
-            app:layout_constraintEnd_toStartOf="@id/step3Circle"
-            app:layout_constraintStart_toEndOf="@id/step2Circle"
-            app:layout_constraintTop_toTopOf="@id/step2Circle" />
-
-        <!-- Step 3 Circle -->
-        <View
-            android:id="@+id/step3Circle"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/circle_inactive"
-            app:layout_constraintEnd_toStartOf="@id/step4Circle"
-            app:layout_constraintStart_toEndOf="@id/step2Circle"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <TextView
-            android:id="@+id/step3Text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="3"
-            android:textColor="@color/light_gray"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            app:layout_constraintBottom_toBottomOf="@id/step3Circle"
-            app:layout_constraintEnd_toEndOf="@id/step3Circle"
-            app:layout_constraintStart_toStartOf="@id/step3Circle"
-            app:layout_constraintTop_toTopOf="@id/step3Circle" />
-
-        <!-- Line between Step 3 and 4 -->
-        <View
-            android:id="@+id/line3to4"
-            android:layout_width="0dp"
-            android:layout_height="2dp"
-            android:background="@color/light_gray"
-            app:layout_constraintBottom_toBottomOf="@id/step3Circle"
-            app:layout_constraintEnd_toStartOf="@id/step4Circle"
-            app:layout_constraintStart_toEndOf="@id/step3Circle"
-            app:layout_constraintTop_toTopOf="@id/step3Circle" />
-
-        <!-- Step 4 Circle -->
-        <View
-            android:id="@+id/step4Circle"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/circle_inactive"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <TextView
-            android:id="@+id/step4Text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="4"
-            android:textColor="@color/light_gray"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            app:layout_constraintBottom_toBottomOf="@id/step4Circle"
-            app:layout_constraintEnd_toEndOf="@id/step4Circle"
-            app:layout_constraintStart_toStartOf="@id/step4Circle"
-            app:layout_constraintTop_toTopOf="@id/step4Circle" />
-
-        <!-- Step Labels -->
-        <TextView
-            android:id="@+id/step1Label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Type"
-            android:textColor="@color/primary_green"
-            android:textSize="12sp"
-            android:layout_marginTop="4dp"
-            app:layout_constraintTop_toBottomOf="@id/step1Circle"
-            app:layout_constraintStart_toStartOf="@id/step1Circle"
-            app:layout_constraintEnd_toEndOf="@id/step1Circle" />
-
-        <TextView
-            android:id="@+id/step2Label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Details"
-            android:textColor="@color/light_gray"
-            android:textSize="12sp"
-            android:layout_marginTop="4dp"
-            app:layout_constraintTop_toBottomOf="@id/step2Circle"
-            app:layout_constraintStart_toStartOf="@id/step2Circle"
-            app:layout_constraintEnd_toEndOf="@id/step2Circle" />
-
-        <TextView
-            android:id="@+id/step3Label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Credentials"
-            android:textColor="@color/light_gray"
-            android:textSize="12sp"
-            android:layout_marginTop="4dp"
-            app:layout_constraintTop_toBottomOf="@id/step3Circle"
-            app:layout_constraintStart_toStartOf="@id/step3Circle"
-            app:layout_constraintEnd_toEndOf="@id/step3Circle" />
-
-        <TextView
-            android:id="@+id/step4Label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Complete"
-            android:textColor="@color/light_gray"
-            android:textSize="12sp"
-            android:layout_marginTop="4dp"
-            app:layout_constraintTop_toBottomOf="@id/step4Circle"
-            app:layout_constraintStart_toStartOf="@id/step4Circle"
-            app:layout_constraintEnd_toEndOf="@id/step4Circle" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
-    <!-- Fragment Container -->
-    <FrameLayout
-        android:id="@+id/fragmentContainer"
+    <!-- Card container with enhanced shadow and rounded corners -->
+    <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/headerBackground"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/stepIndicatorLayout" />
+        android:layout_marginTop="-34dp"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="16dp"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="8dp"
+        android:alpha="0.97">
 
-</androidx.constraintlayout.widget.ConstraintLayout> 
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="18dp">
+
+            <!-- Registration Title with improved typography -->
+            <TextView
+                android:id="@+id/tvTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:letterSpacing="0.01"
+                android:text="Get Started"
+                android:textColor="@color/primary_green"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <!-- Subtitle text - NEW ELEMENT -->
+            <TextView
+                android:id="@+id/tvSubtitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="24dp"
+                android:layout_marginTop="4dp"
+                android:text="Choose how you want to register"
+                android:textAlignment="center"
+                android:textColor="#2C2C2C"
+                android:textSize="14sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tvTitle" />
+
+            <!-- Progress Indicator - Reimagined with smoother visuals -->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/stepIndicatorLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:paddingVertical="8dp"
+                app:layout_constraintTop_toBottomOf="@id/tvSubtitle">
+
+                <!-- Step 1 Circle - Changed to yellow theme -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/step1Circle"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:elevation="2dp"
+                    app:cardCornerRadius="21dp"
+                    app:cardBackgroundColor="@color/primary_yellow"
+                    app:cardElevation="3dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <ImageView
+                        android:id="@+id/step1Icon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_work"
+                        app:tint="@color/white" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Line between Step 1 and 2 - Gradient line for better visual flow -->
+                <View
+                    android:id="@+id/line1to2"
+                    android:layout_width="0dp"
+                    android:layout_height="3dp"
+                    android:background="@color/light_gray"
+                    app:layout_constraintBottom_toBottomOf="@id/step1Circle"
+                    app:layout_constraintEnd_toStartOf="@id/step2Circle"
+                    app:layout_constraintStart_toEndOf="@id/step1Circle"
+                    app:layout_constraintTop_toTopOf="@id/step1Circle" />
+
+                <!-- Step 2 Circle - Updated stroke color -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/step2Circle"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    app:cardCornerRadius="21dp"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardElevation="1dp"
+                    app:strokeWidth="2dp"
+                    app:strokeColor="@color/primary_yellow"
+                    app:layout_constraintEnd_toStartOf="@id/step3Circle"
+                    app:layout_constraintStart_toEndOf="@id/step1Circle"
+                    app:layout_constraintTop_toTopOf="parent">
+                    
+                    <ImageView
+                        android:id="@+id/step2Icon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_person"
+                        app:tint="@color/primary_yellow"
+                        android:layout_gravity="center" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Line between Step 2 and 3 -->
+                <View
+                    android:id="@+id/line2to3"
+                    android:layout_width="0dp"
+                    android:layout_height="3dp"
+                    android:background="@color/light_gray"
+                    app:layout_constraintBottom_toBottomOf="@id/step2Circle"
+                    app:layout_constraintEnd_toStartOf="@id/step3Circle"
+                    app:layout_constraintStart_toEndOf="@id/step2Circle"
+                    app:layout_constraintTop_toTopOf="@id/step2Circle" />
+
+                <!-- Step 3 Circle - Updated stroke color -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/step3Circle"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    app:cardCornerRadius="21dp"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardElevation="1dp"
+                    app:strokeWidth="2dp"
+                    app:strokeColor="@color/primary_yellow"
+                    app:layout_constraintEnd_toStartOf="@id/step4Circle"
+                    app:layout_constraintStart_toEndOf="@id/step2Circle"
+                    app:layout_constraintTop_toTopOf="parent">
+                    
+                    <ImageView
+                        android:id="@+id/step3Icon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_lock"
+                        app:tint="@color/primary_yellow"
+                        android:layout_gravity="center" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Line between Step 3 and 4 -->
+                <View
+                    android:id="@+id/line3to4"
+                    android:layout_width="0dp"
+                    android:layout_height="3dp"
+                    android:background="@color/light_gray"
+                    app:layout_constraintBottom_toBottomOf="@id/step3Circle"
+                    app:layout_constraintEnd_toStartOf="@id/step4Circle"
+                    app:layout_constraintStart_toEndOf="@id/step3Circle"
+                    app:layout_constraintTop_toTopOf="@id/step3Circle" />
+
+                <!-- Step 4 Circle - Updated stroke color -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/step4Circle"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    app:cardCornerRadius="21dp"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardElevation="1dp"
+                    app:strokeWidth="2dp"
+                    app:strokeColor="@color/primary_yellow"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
+                    
+                    <ImageView
+                        android:id="@+id/step4Icon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_check_circle"
+                        app:tint="@color/primary_yellow"
+                        android:layout_gravity="center" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Step Labels with enhanced typography and spacing -->
+                <TextView
+                    android:id="@+id/step1Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Type"
+                    android:textColor="@color/colorPrimary"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    app:layout_constraintEnd_toEndOf="@id/step1Circle"
+                    app:layout_constraintStart_toStartOf="@id/step1Circle"
+                    app:layout_constraintTop_toBottomOf="@id/step1Circle" />
+
+                <TextView
+                    android:id="@+id/step2Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Details"
+                    android:textColor="@color/colorPrimary"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    app:layout_constraintEnd_toEndOf="@id/step2Circle"
+                    app:layout_constraintStart_toStartOf="@id/step2Circle"
+                    app:layout_constraintTop_toBottomOf="@id/step2Circle" />
+
+                <TextView
+                    android:id="@+id/step3Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Account"
+                    android:textColor="@color/colorPrimary"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    app:layout_constraintEnd_toEndOf="@id/step3Circle"
+                    app:layout_constraintStart_toStartOf="@id/step3Circle"
+                    app:layout_constraintTop_toBottomOf="@id/step3Circle" />
+
+                <!-- Hidden text views for step numbers (required by Kotlin code) -->
+                <TextView
+                    android:id="@+id/step4Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="Confirm"
+                    android:textColor="@color/colorPrimary"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    app:layout_constraintEnd_toEndOf="@id/step4Circle"
+                    app:layout_constraintHorizontal_bias="1.0"
+                    app:layout_constraintStart_toStartOf="@id/step4Circle"
+                    app:layout_constraintTop_toBottomOf="@id/step4Circle" />
+
+                <TextView
+                    android:id="@+id/step1Text"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:text="1"
+                    android:visibility="invisible"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toStartOf="parent" />
+                
+                <TextView
+                    android:id="@+id/step2Text"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:text="2"
+                    android:visibility="invisible"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toStartOf="parent" />
+                
+                <TextView
+                    android:id="@+id/step3Text"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:text="3"
+                    android:visibility="invisible"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toStartOf="parent" />
+                
+                <TextView
+                    android:id="@+id/step4Text"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:text="4"
+                    android:visibility="invisible"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toStartOf="parent" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <!-- Divider between progress indicator and content -->
+            <View
+                android:id="@+id/divider"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#E0E0E0"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="8dp"
+                app:layout_constraintTop_toBottomOf="@id/stepIndicatorLayout"/>
+
+            <!-- Fragment Container with improved elevation -->
+            <FrameLayout
+                android:id="@+id/fragmentContainer"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="8dp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/divider" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.cardview.widget.CardView>
+</androidx.constraintlayout.widget.ConstraintLayout>

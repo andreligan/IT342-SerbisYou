@@ -4,31 +4,121 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/white"
     tools:context=".fragments.ChatsFragment">
 
-    <TextView
-        android:id="@+id/tvNoChats"
-        android:layout_width="wrap_content"
+    <!-- Search Layout - Enhanced -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/searchLayout"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="No conversations yet"
-        android:textSize="18sp"
-        android:textColor="@color/primary_green"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="16dp"
+        android:visibility="gone"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="2dp"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp">
+
+                <ImageView
+                    android:id="@+id/ivSearchIcon"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginStart="16dp"
+                    android:src="@android:drawable/ic_menu_search"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:tint="@color/primary_green" />
+
+                <EditText
+                    android:id="@+id/etSearch"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="@null"
+                    android:hint="Search users..."
+                    android:inputType="text"
+                    android:textColorHint="@color/light_gray"
+                    android:textSize="16sp"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@+id/ivSearchIcon"
+                    app:layout_constraintTop_toTopOf="parent" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvSearchResults"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/white"
+                android:visibility="gone" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Empty state with illustration -->
+    <LinearLayout
+        android:id="@+id/emptyStateLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent">
 
+        <ImageView
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:alpha="0.6"
+            android:src="@android:drawable/ic_dialog_email"
+            app:tint="@color/primary_green" />
+
+        <TextView
+            android:id="@+id/tvNoChats"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="No conversations yet"
+            android:textColor="@color/primary_green"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:paddingHorizontal="32dp"
+            android:text="Start a new conversation by tapping the message button below"
+            android:textColor="@color/light_gray"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <!-- Loading indicator -->
     <ProgressBar
         android:id="@+id/progressBar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:indeterminateTint="@color/primary_green"
         android:visibility="visible"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
-        
+
+    <!-- Chat list with enhanced UI -->
     <com.example.serbisyo_it342_g3.utils.CustomSwipeRefreshLayout
         android:id="@+id/swipeRefreshLayout"
         android:layout_width="0dp"
@@ -37,57 +127,36 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
-        
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvConversations"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
+            android:paddingHorizontal="12dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="80dp"
             android:visibility="gone"
             tools:listitem="@layout/item_conversation" />
-            
+
     </com.example.serbisyo_it342_g3.utils.CustomSwipeRefreshLayout>
 
+    <!-- Modern FAB with improved design -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabNewMessage"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
+        android:backgroundTint="@color/primary_yellow"
         android:contentDescription="New message"
+        android:elevation="8dp"
         android:src="@android:drawable/ic_dialog_email"
+        app:borderWidth="0dp"
+        app:fabSize="normal"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:tint="@color/white" />
-
-    <!-- Search Layout -->
-    <LinearLayout
-        android:id="@+id/searchLayout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:visibility="gone"
-        app:layout_constraintTop_toTopOf="parent">
-        
-        <EditText
-            android:id="@+id/etSearch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="8dp"
-            android:background="@color/light_gray"
-            android:drawableStart="@android:drawable/ic_menu_search"
-            android:drawablePadding="8dp"
-            android:hint="Search users..."
-            android:inputType="text"
-            android:padding="12dp" />
-            
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvSearchResults"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@color/white"
-            android:visibility="gone" />
-    </LinearLayout>
+        app:maxImageSize="24dp"
+        app:tint="@color/primary_green"
+        app:rippleColor="@color/white" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

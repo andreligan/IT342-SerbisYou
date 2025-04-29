@@ -5,9 +5,9 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingStart="8dp"
-    android:paddingTop="4dp"
-    android:paddingEnd="60dp"
-    android:paddingBottom="4dp">
+    android:paddingTop="2dp"
+    android:paddingEnd="80dp"
+    android:paddingBottom="2dp">
 
     <TextView
         android:id="@+id/tvSenderName"
@@ -16,34 +16,46 @@
         android:paddingStart="12dp"
         android:paddingEnd="0dp"
         android:text="Sender Name"
-        android:textColor="@android:color/darker_gray"
+        android:textColor="@color/primary_green"
         android:textSize="12sp"
+        android:textStyle="bold"
         android:visibility="gone"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
-        android:id="@+id/tvMessageContent"
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardMessage"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/received_message_background"
-        android:maxWidth="260dp"
-        android:padding="12dp"
-        android:textColor="@android:color/black"
-        android:textSize="16sp"
+        app:cardBackgroundColor="#E8E8E8"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="0dp"
+        app:contentPadding="0dp"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tvSenderName"
-        tools:text="Hi there! Thanks for your message. I'll get back to you as soon as possible." />
+        app:layout_constraintTop_toBottomOf="@+id/tvSenderName">
+
+        <TextView
+            android:id="@+id/tvMessageContent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxWidth="260dp"
+            android:padding="12dp"
+            android:textColor="@android:color/black"
+            android:textSize="16sp"
+            tools:text="Hi there! Thanks for your message. I'll get back to you as soon as possible." />
+
+    </androidx.cardview.widget.CardView>
 
     <TextView
         android:id="@+id/tvTimestamp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
         android:layout_marginTop="2dp"
         android:textColor="@android:color/darker_gray"
-        android:textSize="12sp"
-        app:layout_constraintStart_toStartOf="@+id/tvMessageContent"
-        app:layout_constraintTop_toBottomOf="@+id/tvMessageContent"
+        android:textSize="11sp"
+        app:layout_constraintStart_toStartOf="@+id/cardMessage"
+        app:layout_constraintTop_toBottomOf="@+id/cardMessage"
         tools:text="10:30 AM" />
 
-</androidx.constraintlayout.widget.ConstraintLayout> 
+</androidx.constraintlayout.widget.ConstraintLayout>

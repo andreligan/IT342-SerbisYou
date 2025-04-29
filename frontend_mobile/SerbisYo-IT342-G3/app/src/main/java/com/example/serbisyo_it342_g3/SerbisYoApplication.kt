@@ -22,6 +22,9 @@ class SerbisYoApplication : Application() {
     companion object {
         private const val TAG = "SerbisYoApplication"
         private const val DEFAULT_BASE_URL = "https://serbisyo-api.example.com"
+
+        //Replace Lng sa Actual Deployed URL
+        //private const val DEFAULT_BASE_URL = "https://your-deployed-backend.com"
         private const val PREFS_NAME = "SerbisYoPrefs"
         private const val KEY_BASE_URL = "base_url"
         
@@ -48,7 +51,12 @@ class SerbisYoApplication : Application() {
         // Initialize BaseApiClient with proper URL based on device type and network
         BaseApiClient.initializeUrl(connectivityManager)
         
+        // For release version, we don't want to override with local IP
+        // Commenting out this code for the release APK
+
+        //==================================================================================================
         // If the device is on a WiFi network, override with the current network's info
+        //i COMMENT LNG NI SHA IF REALEASED NA
         val network = connectivityManager.activeNetwork
         val capabilities = connectivityManager.getNetworkCapabilities(network)
         
@@ -61,7 +69,8 @@ class SerbisYoApplication : Application() {
             } catch (e: Exception) {
                 Log.e(TAG, "Error setting server IP address", e)
             }
-        }
+        } //i COMMENT LNG NI SHA IF REALEASED NA UNTIL DIRI
+        //===================================================================================================
         
         // Set up network monitoring
         setupNetworkMonitoring()

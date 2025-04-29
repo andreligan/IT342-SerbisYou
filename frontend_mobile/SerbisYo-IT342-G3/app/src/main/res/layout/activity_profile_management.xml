@@ -25,11 +25,11 @@
             android:id="@+id/tabLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:tabTextColor="@color/white"
-            app:tabSelectedTextColor="@color/primary_yellow"
+            app:tabGravity="fill"
             app:tabIndicatorColor="@color/primary_yellow"
             app:tabMode="fixed"
-            app:tabGravity="fill" />
+            app:tabSelectedTextColor="@color/primary_yellow"
+            app:tabTextColor="@color/colorPrimary" />
 
     </com.google.android.material.appbar.AppBarLayout>
 

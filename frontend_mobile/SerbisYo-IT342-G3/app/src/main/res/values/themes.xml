@@ -1,6 +1,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Theme.SerbisyoIT342G3" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="Theme.Serbisyo" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/primary_green</item>
         <item name="colorPrimaryVariant">@color/primary_green</item>
@@ -22,7 +22,7 @@
         <item name="android:hardwareAccelerated">true</item>
     </style>
 
-    <style name="Theme.SerbisYoIT342G3" parent="Theme.SerbisyoIT342G3" />
+    <style name="Theme.SerbisYoIT342G3" parent="Theme.Serbisyo" />
     
     <!-- Theme used by PaymentWebViewActivity -->
     <style name="Theme.SerbisYo" parent="Theme.MaterialComponents.DayNight.NoActionBar">

@@ -117,6 +117,10 @@ class PaymentApiClient(private val context: Context) {
                     put("redirect", JSONObject().apply {
                         put("success", "http://localhost:5173/payment-success")
                         put("failed", "http://localhost:5173/payment-cancel")
+
+                        //Replace Lng sa Actual URL sa deplyoed frontend
+                        //put("success", "https://your-deployed-frontend.com/payment-success")
+                        //put("failed", "https://your-deployed-frontend.com/payment-cancel")
                     })
                     put("type", "gcash")
                     put("currency", "PHP")
@@ -173,10 +177,18 @@ class PaymentApiClient(private val context: Context) {
             // Use the URLs that are configured in the backend
             put("successUrl", "http://localhost:5173/payment-success")
             put("cancelUrl", "http://localhost:5173/payment-cancel")
+
+            //Replace Lng sa Actual URL sa deplyoed frontend
+            //put("successUrl", "https://your-deployed-frontend.com/payment-success")
+            //put("cancelUrl", "https://your-deployed-frontend.com/payment-cancel")
             
             // Log the URLs being used
             Log.d(TAG, "Success URL: http://localhost:5173/payment-success")
             Log.d(TAG, "Cancel URL: http://localhost:5173/payment-cancel")
+
+            //Replace Lng sa Actual URL sa deplyoed frontend
+            //Log.d(TAG, "Success URL: https://your-deployed-frontend.com/payment-success")
+            //Log.d(TAG, "Cancel URL: https://your-deployed-frontend.com/payment-cancel")
         }
 
         val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())

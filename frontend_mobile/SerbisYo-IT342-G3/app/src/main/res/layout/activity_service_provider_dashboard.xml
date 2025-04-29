@@ -302,38 +302,27 @@
                     android:weightSum="2">
 
                     <Button
-                        android:id="@+id/btnAddService"
+                        android:id="@+id/btnManageBookings"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        android:layout_height="48dp"
                         android:layout_marginEnd="8dp"
                         android:layout_weight="1"
                         android:backgroundTint="@color/primary_yellow"
-                        android:text="Add New Service"
+                        android:text="Manage Bookings"
                         android:textAllCaps="false"
                         android:textColor="@color/white" />
 
                     <Button
                         android:id="@+id/btnManageServices"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        android:layout_height="48dp"
                         android:layout_marginStart="8dp"
                         android:layout_weight="1"
-                        android:background="@drawable/secondary_button_background"
-                        android:text="Manage Services"
+                        android:backgroundTint="@color/primary_green"
+                        android:text="View Services"
                         android:textAllCaps="false"
                         android:textColor="@android:color/white" />
                 </LinearLayout>
-
-                <!-- New Customer Bookings Button -->
-                <Button
-                    android:id="@+id/btnManageBookings"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:backgroundTint="@color/primary_green"
-                    android:text="Customer Bookings"
-                    android:textAllCaps="false"
-                    android:textColor="@color/white" />
 
             </LinearLayout>
 
@@ -397,6 +386,18 @@
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabAddService"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:contentDescription="Add New Service"
+        android:src="@android:drawable/ic_input_add"
+        app:backgroundTint="@color/primary_yellow"
+        app:layout_constraintBottom_toTopOf="@+id/bottomNavigation"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:tint="@color/white" />
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNavigation"

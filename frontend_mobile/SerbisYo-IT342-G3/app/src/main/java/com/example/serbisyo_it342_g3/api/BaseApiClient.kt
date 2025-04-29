@@ -26,9 +26,16 @@ open class BaseApiClient(private val context: Context) {
         private const val ALTERNATE_SERVER_IP_1 = "http://192.168.1.100:8080"
         private const val ALTERNATE_SERVER_IP_2 = "http://192.168.1.101:8080"
         private const val ALTERNATE_SERVER_IP_3 = "http://192.168.100.10:8080"
-        
+
         // STATIC PROPERTY TO CONFIGURE API URL - Start with default
         var BASE_URL = PHYSICAL_DEVICE_URL
+        
+        // Production URL for released APK
+        private const val PRODUCTION_URL = "https://your-deployed-backend.com"
+        
+        // STATIC PROPERTY TO CONFIGURE API URL - Set to production for release
+        //REPLACE LNG IF DEPLOYED NA
+        //var BASE_URL = PRODUCTION_URL
 
         // Method to set base URL from anywhere in the app
         fun setBaseUrl(url: String) {
@@ -38,6 +45,13 @@ open class BaseApiClient(private val context: Context) {
         
         // Initialize the URL on app start
         fun initializeUrl(connectivityManager: ConnectivityManager) {
+            // For release version, we'll always use the production URL
+            BASE_URL = PRODUCTION_URL
+            Log.d(TAG, "Using production URL: $BASE_URL")
+
+            //============================================================================
+            // Commented out for release version
+            //i COMMENT SUGOD ARI
             val isEmulator = android.os.Build.FINGERPRINT.contains("generic") || 
                              android.os.Build.MODEL.contains("google_sdk")
             
@@ -54,6 +68,8 @@ open class BaseApiClient(private val context: Context) {
             
             Log.d(TAG, "Network active: ${network != null}")
             Log.d(TAG, "Network capabilities: ${capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)}")
+            //Until diri
+            //============================================================================
         }
     }
     
@@ -91,9 +107,13 @@ open class BaseApiClient(private val context: Context) {
     // Helper methods that match the backend's expected URLs
     fun getSuccessUrl(): String {
         return "http://localhost:5173/payment-success"
+        //Replace ni sa actual deployed frontend-URL
+        //return "https://your-deployed-frontend.com/payment-success"
     }
     
     fun getCancelUrl(): String {
         return "http://localhost:5173/payment-cancel"
+        //Replace ni sa actual deployed frontend-URL
+        //return "https://your-deployed-frontend.com/payment-cancel"
     }
 } 

@@ -4,25 +4,32 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingStart="60dp"
-    android:paddingTop="4dp"
+    android:paddingStart="80dp"
+    android:paddingTop="2dp"
     android:paddingEnd="8dp"
-    android:paddingBottom="4dp">
+    android:paddingBottom="2dp">
 
-    <TextView
-        android:id="@+id/tvMessageContent"
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardMessage"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/sent_message_background"
-        android:maxWidth="260dp"
-        android:padding="12dp"
-        android:textColor="@android:color/white"
-        android:textSize="16sp"
+        app:cardBackgroundColor="@color/primary_green"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="0dp"
+        app:contentPadding="0dp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:text="Hey there! How are you doing today? I wanted to check in about the service." />
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:id="@+id/tvMessageContent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxWidth="260dp"
+            android:padding="12dp"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            tools:text="Hey there! How are you doing today? I wanted to check in about the service." />
+    </androidx.cardview.widget.CardView>
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -30,38 +37,39 @@
         android:layout_marginTop="2dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        app:layout_constraintEnd_toEndOf="@+id/tvMessageContent"
-        app:layout_constraintTop_toBottomOf="@+id/tvMessageContent">
+        app:layout_constraintEnd_toEndOf="@+id/cardMessage"
+        app:layout_constraintTop_toBottomOf="@+id/cardMessage">
 
         <TextView
             android:id="@+id/tvTimestamp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="@android:color/darker_gray"
-            android:textSize="12sp"
+            android:textSize="11sp"
             tools:text="10:30 AM" />
 
         <ImageView
             android:id="@+id/ivMessageStatus"
-            android:layout_width="16dp"
-            android:layout_height="16dp"
+            android:layout_width="14dp"
+            android:layout_height="14dp"
             android:layout_marginStart="4dp"
             android:visibility="visible"
+            app:tint="@color/primary_green"
             tools:src="@android:drawable/ic_popup_sync" />
 
     </LinearLayout>
 
     <ImageButton
         android:id="@+id/btnRetry"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
         android:layout_marginStart="8dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:src="@android:drawable/ic_menu_rotate"
         android:tint="#FF5252"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@+id/tvMessageContent"
-        app:layout_constraintStart_toEndOf="@+id/tvMessageContent"
-        app:layout_constraintTop_toTopOf="@+id/tvMessageContent" />
+        app:layout_constraintBottom_toBottomOf="@+id/cardMessage"
+        app:layout_constraintStart_toEndOf="@+id/cardMessage"
+        app:layout_constraintTop_toTopOf="@+id/cardMessage" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
