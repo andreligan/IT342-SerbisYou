@@ -10,9 +10,11 @@
 body {
     font-family: 'Roboto', sans-serif;
     background-color: #f9fafb;
+    margin: 0;
+    padding: 0;
 }
 
-/* Replace missing Kinetika fonts with Roboto */
+/* Font variables */
 :root {
     --font-heading: 'Roboto', sans-serif;
     --font-body: 'Roboto', sans-serif;
@@ -36,30 +38,7 @@ body {
     transform: translate(-50%, -50%);
 }
 
-/* 
-* {
-  box-sizing: border-box;
-} */
-
-body {
-  margin: 0;
-  padding: 0;
-}
-
-@font-face {
-  font-family: 'Kinetika Bold';
-  src: url('./fonts/Kinetika-Bold.ttf') format('truetype');
-  font-weight: bold;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Kinetika Book';
-  src: url('./fonts/Kinetika-Book.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-}
-
+/* Custom scrollbar */
 .filter-scrollbar::-webkit-scrollbar-thumb {
   background-color: rgba(156, 163, 175, 0.5);
   border-radius: 20px;
