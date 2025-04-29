@@ -7,6 +7,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
   
   return {
+    base: './',
     plugins: [
       tailwindcss(),
       react()
@@ -26,6 +27,14 @@ export default defineConfig(({ mode }) => {
       sourcemap: false,
       minify: 'terser',
       target: 'es2015',
+      assetsInlineLimit: 4096,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom', 'react-router-dom'],
+          },
+        },
+      },
     }
   };
 });
