@@ -1,5 +1,7 @@
-@import '@fortawesome/fontawesome-free/css/all.min.css';
+/* All imports must come first */
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+@import "tailwindcss";
+@import '@fortawesome/fontawesome-free/css/all.min.css';
 
 /* Tailwind directives */
 @tailwind base;
@@ -10,8 +12,7 @@
 body {
     font-family: 'Roboto', sans-serif;
     background-color: #f9fafb;
-    margin: 0;
-    padding: 0;
+   
 }
 
 /* Font variables */
@@ -37,6 +38,33 @@ body {
     left: 50%;
     transform: translate(-50%, -50%);
 }
+
+/* 
+* {
+  box-sizing: border-box;
+} */
+
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+@font-face {
+  font-family: 'Kinetika Bold';
+  src: url('./fonts/Kinetika-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Kinetika Book';
+  src: url('./fonts/Kinetika-Book.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+
 
 /* Custom scrollbar */
 .filter-scrollbar::-webkit-scrollbar-thumb {
