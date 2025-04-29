@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import BaseModal from './shared/BaseModal';
 import { motion } from 'framer-motion';
+import BaseModal from './BaseModal';
+import API from '../utils/API';  // Import the API utility
 
 const LoginPopup = ({ open, onClose }) => {
   const [userName, setUserName] = useState('');
@@ -16,8 +16,8 @@ const LoginPopup = ({ open, onClose }) => {
     setErrorMessage("");
     
     try {
-      // Send login request to the backend
-      const response = await axios.post('/api/user-auth/login', {
+      // Send login request to the backend using API utility
+      const response = await API.post('user-auth/login', {
         userName,
         password,
       });
@@ -61,7 +61,9 @@ const LoginPopup = ({ open, onClose }) => {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+    // Use API baseURL instead of hardcoded localhost
+    const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+    window.location.href = `${baseURL}/oauth2/authorization/google`;
   };
 
   return (

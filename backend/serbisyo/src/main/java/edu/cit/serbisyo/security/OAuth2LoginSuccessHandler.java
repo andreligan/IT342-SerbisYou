@@ -48,12 +48,18 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         // Check if user exists
         UserAuthEntity existingUser = userAuthRepository.findByEmail(email);
         
+        // Determine the correct frontend URL based on the origin
+        String origin = request.getHeader("Origin");
+        String redirectBaseUrl = (origin != null && origin.contains("vercel.app")) 
+            ? "https://serbisyo.vercel.app" 
+            : frontendUrl;
+            
         String redirectUrl;
         
         if (existingUser == null) {
             // For new users, redirect to role selection
             redirectUrl = UriComponentsBuilder
-                .fromUriString(frontendUrl + "/oauth-role-selection")
+                .fromUriString(redirectBaseUrl + "/oauth-role-selection")
                 .queryParam("email", email)
                 .queryParam("name", name)
                 .queryParam("picture", picture)
@@ -63,7 +69,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             String token = jwtUtil.generateToken(existingUser.getUserName(), existingUser.getEmail(), existingUser.getRole());
             
             redirectUrl = UriComponentsBuilder
-                .fromUriString(frontendUrl + "/oauth2/redirect")
+                .fromUriString(redirectBaseUrl + "/oauth2/redirect")
                 .queryParam("token", token)
                 .queryParam("userId", existingUser.getUserId())
                 .queryParam("role", existingUser.getRole())
