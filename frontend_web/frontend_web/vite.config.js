@@ -6,6 +6,9 @@ export default defineConfig(({ mode }) => {
   // Load environment variables
   const env = loadEnv(mode, process.cwd());
   
+  // Get API URL from environment
+  const apiUrl = env.VITE_API_URL || 'http://localhost:8080';
+  
   return {
     base: './',
     plugins: [
@@ -14,10 +17,12 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       proxy: {
+        // Only proxy /api prefix when in development
         '/api': {
-          target: env.VITE_API_URL || 'http://localhost:8080',
+          target: apiUrl,
           changeOrigin: true,
           secure: false,
+          rewrite: (path) => path.replace(/^\/api/, '')
         },
       },
     },

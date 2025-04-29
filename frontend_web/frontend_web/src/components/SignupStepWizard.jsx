@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import API from '../utils/API';
 
 const SignupStepWizard = () => {
   const navigate = useNavigate();
@@ -169,7 +170,7 @@ const SignupStepWizard = () => {
   
       // Send both UserAuthEntity and either CustomerEntity or ServiceProviderEntity in a single request
       const requestBody = { userAuth, customer, serviceProvider };
-      const response = await axios.post('/api/user-auth/register', requestBody);
+      const response = await API.post('user-auth/register', requestBody);
   
       alert(response.data); // Show success message
       navigate('/signup/complete');
