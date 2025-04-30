@@ -10,6 +10,7 @@ import edu.cit.serbisyo.entity.ServiceProviderEntity;
 import edu.cit.serbisyo.service.ServiceProviderService;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping(method = RequestMethod.GET, path = "/api/service-providers")
@@ -38,14 +39,15 @@ public class ServiceProviderController {
         try {
             ServiceProviderEntity provider = serviceProviderService.getServiceProviderByAuthId(authId);
             if (provider != null) {
-                return ResponseEntity.ok(provider);
+                // Wrap provider in a data object to match what frontend expects
+                return ResponseEntity.ok(Map.of("data", provider));
             } else {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("No service provider found with authId: " + authId);
+                    .body(Map.of("message", "No service provider found with authId: " + authId));
             }
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Error fetching service provider: " + e.getMessage());
+                .body(Map.of("message", "Error fetching service provider: " + e.getMessage()));
         }
     }
 

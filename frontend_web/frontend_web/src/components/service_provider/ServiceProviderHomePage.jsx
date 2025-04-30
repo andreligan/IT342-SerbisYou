@@ -152,6 +152,7 @@ function ServiceProviderHomePage() {
           setProviderName(`${provider.firstName || ''} ${provider.lastName || ''}`.trim() || "Service Provider");
           
           // Step 2: Get all services
+
           const servicesResponse = await axios.get("api/services/getAll", {
             headers: { 'Authorization': `Bearer ${token}` }
           });
