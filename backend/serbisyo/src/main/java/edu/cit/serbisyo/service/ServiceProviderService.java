@@ -31,6 +31,18 @@ public class ServiceProviderService {
         return provider;
     }
 
+    public ServiceProviderEntity getServiceProviderByAuthId(Long authId) {
+        // This would ideally use a repository method like findByAuthId
+        // For now, we'll search through all providers
+        List<ServiceProviderEntity> allProviders = serviceProviderRepository.findAll();
+        for (ServiceProviderEntity provider : allProviders) {
+            if (provider.getAuthId() != null && provider.getAuthId().equals(authId)) {
+                return provider;
+            }
+        }
+        return null; // Return null if not found
+    }
+
     public ServiceProviderEntity updateServiceProvider(Long providerId, ServiceProviderEntity updatedProvider) {
         ServiceProviderEntity existingProvider = serviceProviderRepository.findById(providerId)
                 .orElseThrow(() -> new RuntimeException("Service provider not found"));

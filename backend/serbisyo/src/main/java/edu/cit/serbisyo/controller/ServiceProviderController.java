@@ -33,6 +33,22 @@ public class ServiceProviderController {
         return serviceProviderService.getServiceProvider(providerId);
     }
 
+    @GetMapping("/getByAuthId")
+    public ResponseEntity<?> getServiceProviderByAuthId(@RequestParam("authId") Long authId) {
+        try {
+            ServiceProviderEntity provider = serviceProviderService.getServiceProviderByAuthId(authId);
+            if (provider != null) {
+                return ResponseEntity.ok(provider);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("No service provider found with authId: " + authId);
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error fetching service provider: " + e.getMessage());
+        }
+    }
+
     @PutMapping("/update/{providerId}")
     public ServiceProviderEntity updateServiceProvider(@PathVariable Long providerId, @RequestBody ServiceProviderEntity updatedProvider) {
         return serviceProviderService.updateServiceProvider(providerId, updatedProvider);

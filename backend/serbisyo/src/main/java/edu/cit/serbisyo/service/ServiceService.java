@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -51,6 +52,28 @@ public class ServiceService {
     // READ all services
     public List<ServiceEntity> getAllServices() {
         return serviceRepository.findAll();
+    }
+
+    // READ all services by provider ID
+    public List<ServiceEntity> getServicesByProviderId(Long providerId) {
+        // First check if the provider exists
+        ServiceProviderEntity provider = serviceProviderRepository.findById(providerId)
+                .orElseThrow(() -> new NoSuchElementException("Service Provider with ID " + providerId + " not found"));
+                
+        // Get all services
+        List<ServiceEntity> allServices = serviceRepository.findAll();
+        List<ServiceEntity> providerServices = new ArrayList<>();
+        
+        // Filter services by provider ID
+        for (ServiceEntity service : allServices) {
+            if (service.getProvider() != null && 
+                service.getProvider().getProviderId() != null && 
+                service.getProvider().getProviderId().equals(providerId)) {
+                providerServices.add(service);
+            }
+        }
+        
+        return providerServices;
     }
 
     // READ a service by ID
