@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import BaseModal from '../shared/BaseModal';
+import apiClient, { getApiUrl } from '../../utils/apiConfig';
 
 const CategoryManagement = () => {
   const [newCategory, setNewCategory] = useState({ categoryName: '', description: '' });
@@ -28,7 +28,8 @@ const CategoryManagement = () => {
       
       const headers = { 'Authorization': `Bearer ${token}` };
       
-      const response = await axios.get('api/service-categories/getAll', { headers });
+      console.log('Fetching categories from:', getApiUrl('/service-categories/getAll'));
+      const response = await apiClient.get(getApiUrl('/service-categories/getAll'), { headers });
       console.log('Categories API response:', response.data);
       
       // Verify that the response contains an array
@@ -65,7 +66,7 @@ const CategoryManagement = () => {
       
       console.log("Creating category with data:", newCategory);
       
-      await axios.post('api/service-categories/create', newCategory, { headers });
+      await apiClient.post(getApiUrl('/service-categories/create'), newCategory, { headers });
       setNewCategory({ categoryName: '', description: '' });
       fetchCategories();
       
@@ -97,7 +98,7 @@ const CategoryManagement = () => {
       const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
       const headers = { 'Authorization': `Bearer ${token}` };
       
-      await axios.put(`api/service-categories/update/${editingCategory.categoryId}`, editingCategory, { headers });
+      await apiClient.put(getApiUrl(`/service-categories/update/${editingCategory.categoryId}`), editingCategory, { headers });
       setEditingCategory(null);
       fetchCategories();
       
@@ -126,7 +127,7 @@ const CategoryManagement = () => {
         const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
         const headers = { 'Authorization': `Bearer ${token}` };
         
-        await axios.delete(`api/service-categories/delete/${categoryId}`, { headers });
+        await apiClient.delete(getApiUrl(`/service-categories/delete/${categoryId}`), { headers });
         fetchCategories();
         
         setToast({
