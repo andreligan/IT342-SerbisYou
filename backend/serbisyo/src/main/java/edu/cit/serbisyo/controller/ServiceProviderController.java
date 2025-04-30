@@ -36,19 +36,14 @@ public class ServiceProviderController {
     @GetMapping("/getByAuthId")
     public ResponseEntity<?> getServiceProviderByAuthId(@RequestParam("authId") Long authId) {
         try {
-            System.out.println("Received request for ServiceProvider with authId: " + authId);
             ServiceProviderEntity provider = serviceProviderService.getServiceProviderByAuthId(authId);
             if (provider != null) {
-                System.out.println("Found provider with ID: " + provider.getProviderId());
                 return ResponseEntity.ok(provider);
             } else {
-                System.out.println("No provider found for authId: " + authId);
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("No service provider found with authId: " + authId);
             }
         } catch (Exception e) {
-            System.err.println("Error in getServiceProviderByAuthId: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("Error fetching service provider: " + e.getMessage());
         }
