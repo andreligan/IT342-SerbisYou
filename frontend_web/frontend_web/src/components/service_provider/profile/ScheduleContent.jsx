@@ -119,11 +119,21 @@ function ScheduleContent() {
     try {
       const response = await apiClient.get(getApiUrl(`/schedules/provider/${providerIdToUse}`));
       
-      setSchedules(response.data || []);
+      console.log("Schedule data received:", response.data);
+      
+      // Ensure we handle empty or null response gracefully
+      if (response.data && Array.isArray(response.data)) {
+        setSchedules(response.data);
+      } else {
+        console.warn("Empty or invalid schedule data received:", response.data);
+        setSchedules([]);
+      }
+      
       setError(null);
     } catch (err) {
       console.error('Error fetching schedules:', err);
       setError('Failed to load schedules. Please try again later.');
+      setSchedules([]);
     } finally {
       setLoading(false);
     }
@@ -175,11 +185,23 @@ function ScheduleContent() {
 
   const formatTime = (time) => {
     if (!time) return '';
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const formattedHour = hour % 12 || 12;
-    return `${formattedHour}:${minutes} ${ampm}`;
+    
+    // Ensure that time is a string before trying to split it
+    if (typeof time !== 'string') {
+      console.warn("Time value is not a string:", time);
+      return '';
+    }
+    
+    try {
+      const [hours, minutes] = time.split(':');
+      const hour = parseInt(hours);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const formattedHour = hour % 12 || 12;
+      return `${formattedHour}:${minutes} ${ampm}`;
+    } catch (error) {
+      console.error("Error formatting time:", error, "Value:", time);
+      return '';
+    }
   };
 
   const isScheduleAvailable = (schedule) => {
@@ -190,46 +212,68 @@ function ScheduleContent() {
 
   const groupedSchedules = daysOfWeek.map(day => ({
     day,
-    slots: schedules.filter(schedule => schedule.dayOfWeek === day)
+    slots: schedules.filter(schedule => schedule && schedule.dayOfWeek === day)
   }));
 
   useEffect(() => {
     if (schedules.length > 0) {
-      const events = [];
-      const today = moment().startOf('week');
-      
-      schedules.forEach(schedule => {
-        const dayMapping = {
-          'MONDAY': 1, 'TUESDAY': 2, 'WEDNESDAY': 3, 'THURSDAY': 4,
-          'FRIDAY': 5, 'SATURDAY': 6, 'SUNDAY': 0
-        };
+      try {
+        const events = [];
+        const today = moment().startOf('week');
         
-        const dayNumber = dayMapping[schedule.dayOfWeek];
-        const scheduleDate = moment(today).add(dayNumber, 'days');
-        
-        const startTimeParts = schedule.startTime.split(':');
-        const endTimeParts = schedule.endTime.split(':');
-        
-        const start = moment(scheduleDate)
-          .hours(parseInt(startTimeParts[0]))
-          .minutes(parseInt(startTimeParts[1]))
-          .toDate();
+        schedules.forEach(schedule => {
+          if (!schedule) return;
           
-        const end = moment(scheduleDate)
-          .hours(parseInt(endTimeParts[0]))
-          .minutes(parseInt(endTimeParts[1]))
-          .toDate();
-        
-        events.push({
-          title: isScheduleAvailable(schedule) ? 'Available' : 'Booked',
-          start,
-          end,
-          allDay: false,
-          resource: schedule,
+          const dayMapping = {
+            'MONDAY': 1, 'TUESDAY': 2, 'WEDNESDAY': 3, 'THURSDAY': 4,
+            'FRIDAY': 5, 'SATURDAY': 6, 'SUNDAY': 0
+          };
+          
+          const dayNumber = dayMapping[schedule.dayOfWeek];
+          if (dayNumber === undefined) {
+            console.warn("Invalid day of week:", schedule.dayOfWeek);
+            return;
+          }
+          
+          const scheduleDate = moment(today).add(dayNumber, 'days');
+          
+          // Check if startTime and endTime are strings
+          if (typeof schedule.startTime !== 'string' || typeof schedule.endTime !== 'string') {
+            console.warn("Invalid time format:", schedule.startTime, schedule.endTime);
+            return;
+          }
+          
+          const startTimeParts = schedule.startTime.split(':');
+          const endTimeParts = schedule.endTime.split(':');
+          
+          if (startTimeParts.length !== 2 || endTimeParts.length !== 2) {
+            console.warn("Invalid time format parts:", startTimeParts, endTimeParts);
+            return;
+          }
+          
+          const start = moment(scheduleDate)
+            .hours(parseInt(startTimeParts[0]))
+            .minutes(parseInt(startTimeParts[1]))
+            .toDate();
+            
+          const end = moment(scheduleDate)
+            .hours(parseInt(endTimeParts[0]))
+            .minutes(parseInt(endTimeParts[1]))
+            .toDate();
+          
+          events.push({
+            title: isScheduleAvailable(schedule) ? 'Available' : 'Booked',
+            start,
+            end,
+            allDay: false,
+            resource: schedule,
+          });
         });
-      });
-      
-      setCalendarEvents(events);
+        
+        setCalendarEvents(events);
+      } catch (error) {
+        console.error("Error setting calendar events:", error);
+      }
     }
   }, [schedules]);
 
@@ -483,6 +527,7 @@ function ScheduleContent() {
         </motion.div>
       )}
 
+      {/* Calendar visualization */}
       <AnimatePresence>
         <motion.div 
           key={isFullScreen ? 'fullscreen' : 'normal'}
@@ -543,7 +588,7 @@ function ScheduleContent() {
             className={`px-6 pb-6 ${isFullScreen ? 'h-[calc(100vh-120px)]' : 'h-[500px]'}`}
             layout
           >
-            {!loading && schedules.length > 0 ? (
+            {!loading && calendarEvents.length > 0 ? (
               <motion.div 
                 className="h-full"
                 initial={{ opacity: 0 }}
@@ -590,7 +635,8 @@ function ScheduleContent() {
                     <svg className="w-16 h-16 text-gray-300 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                     </svg>
-                    <p className="text-gray-500 mt-4">Add schedules to see your calendar visualization</p>
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No schedules found</h3>
+                    <p className="mt-1 text-sm text-gray-500">Add schedules to see your calendar visualization</p>
                     <motion.button
                       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                       className="mt-4 px-4 py-2 bg-[#495E57] text-white rounded-md text-sm"
