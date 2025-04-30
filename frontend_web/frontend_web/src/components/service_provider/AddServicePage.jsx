@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import BaseModal from "../shared/BaseModal";
+import apiClient, { getApiUrl } from '../../utils/apiConfig';
 
 const AddServicePage = () => {
   const navigate = useNavigate();
@@ -31,13 +31,17 @@ const AddServicePage = () => {
           return;
         }
         
-        const response = await axios.get("/api/service-categories/getAll", {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        const response = await apiClient.get(getApiUrl('/service-categories/getAll'));
+        console.log("Service categories response:", response);
         
-        setServiceCategories(response.data);
+        // Ensure we have an array before setting state
+        if (Array.isArray(response.data)) {
+          setServiceCategories(response.data);
+        } else {
+          console.error("Expected array but got:", response.data);
+          setServiceCategories([]);
+        }
+        
         setIsLoading(false);
       } catch (error) {
         console.error("Error fetching service categories:", error);
@@ -64,71 +68,96 @@ const AddServicePage = () => {
     
     try {
       const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-      
-      if (!token) {
-        console.error("No authentication token found");
-        setIsSubmitting(false);
-        return;
-      }
-      
       const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
 
-      if (!userId) {
-        console.error("User ID not found");
+      if (!token || !userId) {
+        console.error("Authentication information not found");
         setIsSubmitting(false);
         return;
       }
       
-      const providerResponse = await axios.get("/api/service-providers/getAll", {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      // Try to get provider directly first using getByAuthId
+      try {
+        console.log("Fetching provider with authId:", userId);
+        const providerResponse = await apiClient.get(getApiUrl(`/service-providers/getByAuthId?authId=${userId}`));
+        
+        console.log("Provider response:", providerResponse);
+        
+        // Handle the response based on whether it has a data property
+        const provider = providerResponse.data.data || providerResponse.data;
+        
+        if (!provider || !provider.providerId) {
+          throw new Error("Invalid provider data returned");
         }
-      });
+        
+        console.log("Found provider:", provider);
+        
+        const serviceDetails = {
+          serviceName: formData.name,
+          serviceDescription: formData.serviceDescription, 
+          price: formData.price,
+          durationEstimate: formData.durationEstimate
+        };
+        
+        const response = await apiClient.post(
+          getApiUrl(`/services/postService/${provider.providerId}/${formData.category}`),
+          serviceDetails
+        );
+        
+        console.log("Service added successfully:", response.data);
+        setSubmitSuccess(true);
+        
+        // Show success message briefly before navigating back
+        setTimeout(() => {
+          navigate(-1);
+        }, 1500);
+        
+      } catch (directError) {
+        console.error("Direct API call failed, falling back to alternative method:", directError);
+        
+        // Fallback method - get all providers and find the one matching userId
+        const providersResponse = await apiClient.get(getApiUrl('/service-providers/getAll'));
+        console.log("All providers response:", providersResponse);
+        
+        if (!Array.isArray(providersResponse.data)) {
+          console.error("Expected array but got:", providersResponse.data);
+          throw new Error("Invalid providers data format");
+        }
+        
+        const providerData = providersResponse.data.find(provider => {
+          return provider.userAuth && provider.userAuth.userId == userId;
+        });
 
-      console.log("Current user ID:", userId);
-      console.log("Sample provider object structure:", 
-        providerResponse.data.length > 0 ? JSON.stringify(providerResponse.data[0], null, 2) : "No providers found");
+        if (!providerData) {
+          console.error("No service provider found for user ID:", userId);
+          setIsSubmitting(false);
+          return;
+        }
 
-      const providerData = providerResponse.data.find(provider => {
-        console.log("Provider object:", provider);
-        return provider.userAuth?.userId == userId;
-      });
-
-      if (!providerData) {
-        console.error("No service provider found for this user");
-        setIsSubmitting(false);
-        return;
+        console.log("Found provider:", providerData);
+        const providerId = providerData.providerId;
+        
+        const serviceDetails = {
+          serviceName: formData.name,
+          serviceDescription: formData.serviceDescription, 
+          price: formData.price,
+          durationEstimate: formData.durationEstimate
+        };
+        
+        const response = await apiClient.post(
+          getApiUrl(`/services/postService/${providerId}/${formData.category}`),
+          serviceDetails
+        );
+        
+        console.log("Service added successfully:", response.data);
+        
+        setSubmitSuccess(true);
+        
+        // Show success message briefly before navigating back
+        setTimeout(() => {
+          navigate(-1);
+        }, 1500);
       }
-
-      console.log("Found provider:", providerData);
-      const providerId = providerData.providerId;
-      
-      const serviceDetails = {
-        serviceName: formData.name,
-        serviceDescription: formData.serviceDescription, 
-        price: formData.price,
-        durationEstimate: formData.durationEstimate
-      };
-      
-      const response = await axios.post(
-        `/api/services/postService/${providerId}/${formData.category}`, 
-        serviceDetails,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-      
-      console.log("Service added successfully:", response.data);
-      
-      setSubmitSuccess(true);
-      
-      // Show success message briefly before navigating back
-      setTimeout(() => {
-        // Navigate back to the previous page
-        navigate(-1);
-      }, 1500);
       
     } catch (error) {
       console.error("Error adding service:", error);
@@ -313,7 +342,7 @@ const AddServicePage = () => {
                 <motion.div 
                   className="lg:w-2/3"
                   initial={{ opacity: 0, x: 40 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ duration: 0.5, delay: 0.1 }}
                 >
                   <motion.div 
