@@ -40,8 +40,14 @@ const UserManagement = () => {
 
         const headers = { Authorization: `Bearer ${token}` };
 
-        const response = await axios.get('/api/user-auth/getAll', { headers });
+        const response = await axios.get('api/user-auth/getAll', { headers });
         console.log('User data from API:', response.data);
+
+        // Verify that the response contains an array
+        if (!Array.isArray(response.data)) {
+          console.error('Expected an array of users but received:', response.data);
+          throw new Error('Invalid data format received from server');
+        }
 
         const rolesSet = new Set(['all']);
         response.data.forEach((user) => {
@@ -57,6 +63,7 @@ const UserManagement = () => {
         setError('Failed to load users');
         setLoading(false);
         console.error('Error fetching users:', err);
+        console.error('Error details:', err.response?.data || err.message);
       }
     };
 
@@ -153,7 +160,7 @@ const UserManagement = () => {
         const headers = { Authorization: `Bearer ${token}` };
 
         const deletePromises = selectedUsers.map((userId) =>
-          axios.delete(`/api/user-auth/${userId}`, { headers })
+          axios.delete(`api/user-auth/${userId}`, { headers })
         );
 
         await Promise.all(deletePromises);
@@ -182,7 +189,7 @@ const UserManagement = () => {
       const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
       const headers = { Authorization: `Bearer ${token}` };
 
-      await axios.delete(`/api/user-auth/${userToDelete}`, { headers });
+      await axios.delete(`api/user-auth/${userToDelete}`, { headers });
       setUsers(users.filter((user) => user.userId !== userToDelete));
       setIsDeleteModalOpen(false);
       setUserToDelete(null);

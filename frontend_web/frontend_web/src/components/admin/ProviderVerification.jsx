@@ -30,17 +30,28 @@ const ProviderVerification = () => {
       
       const headers = { 'Authorization': `Bearer ${token}` };
       
-      const response = await axios.get('/api/service-providers/getAll', { headers });
+      const response = await axios.get('api/service-providers/getAll', { headers });
+      console.log('Providers API response:', response.data);
+      
+      // Verify that the response contains an array
+      if (!Array.isArray(response.data)) {
+        console.error('Expected an array of providers but received:', response.data);
+        throw new Error('Invalid data format received from server');
+      }
+      
       const providersData = response.data || [];
       setProviders(providersData);
       
       const imagePromises = providersData.map(provider => 
-        axios.get(`/api/service-providers/getServiceProviderImage/${provider.providerId}`, { headers })
+        axios.get(`api/service-providers/getServiceProviderImage/${provider.providerId}`, { headers })
           .then(res => ({
             providerId: provider.providerId,
-            imageUrl: res.data ? `http://localhost:8080${res.data}` : null
+            imageUrl: res.data ? `https://serbisyo-backend.onrender.com${res.data}` : null
           }))
-          .catch(() => ({ providerId: provider.providerId, imageUrl: null }))
+          .catch((err) => {
+            console.error(`Error fetching image for provider ${provider.providerId}:`, err);
+            return { providerId: provider.providerId, imageUrl: null };
+          })
       );
       
       const images = await Promise.all(imagePromises);
@@ -55,6 +66,7 @@ const ProviderVerification = () => {
       setError('Failed to load service providers');
       setLoading(false);
       console.error('Error fetching service providers:', err);
+      console.error('Error details:', err.response?.data || err.message);
     }
   };
 
@@ -65,7 +77,7 @@ const ProviderVerification = () => {
       const headers = { 'Authorization': `Bearer ${token}` };
       
       const updateData = { verified: true };
-      await axios.put(`/api/service-providers/update/${providerId}`, updateData, { headers });
+      await axios.put(`api/service-providers/update/${providerId}`, updateData, { headers });
       
       setProviders(providers.map(provider => 
         provider.providerId === providerId 
@@ -87,6 +99,7 @@ const ProviderVerification = () => {
       setIsLoading(false);
     } catch (err) {
       console.error('Error approving provider:', err);
+      console.error('Error details:', err.response?.data || err.message);
       setToast({
         show: true,
         message: 'Failed to verify provider',
@@ -104,7 +117,7 @@ const ProviderVerification = () => {
       const headers = { 'Authorization': `Bearer ${token}` };
       
       const updateData = { verified: false };
-      await axios.put(`/api/service-providers/update/${providerId}`, updateData, { headers });
+      await axios.put(`api/service-providers/update/${providerId}`, updateData, { headers });
       
       setConfirmAction(null);
       fetchProviders();
@@ -119,6 +132,7 @@ const ProviderVerification = () => {
       setIsLoading(false);
     } catch (err) {
       console.error('Error rejecting provider:', err);
+      console.error('Error details:', err.response?.data || err.message);
       setToast({
         show: true,
         message: 'Failed to reject provider',

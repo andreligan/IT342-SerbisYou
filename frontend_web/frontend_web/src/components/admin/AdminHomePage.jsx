@@ -34,7 +34,9 @@ const AdminHomePage = () => {
           'Authorization': `Bearer ${token}`
         };
         
-        const response = await axios.get(`/api/admins/getByUserId/${userId}`, { headers });
+        const response = await axios.get(`api/admins/getByUserId/${userId}`, { headers });
+        console.log('Admin data response:', response.data);
+        
         if (response.data) {
           setAdminData({
             firstName: response.data.firstName || '',
@@ -42,6 +44,8 @@ const AdminHomePage = () => {
           });
         }
       } catch (err) {
+        console.error('Error fetching admin data:', err);
+        console.error('Error details:', err.response?.data || err.message);
         setAdminData({
           firstName: 'Admin',
           lastName: 'User'
@@ -67,15 +71,60 @@ const AdminHomePage = () => {
           'Authorization': `Bearer ${token}`
         };
         
-        const serviceProvidersResponse = await axios.get('/api/service-providers/getAll', { headers });
-        const customersResponse = await axios.get('/api/customers/getAll', { headers });
-        const servicesResponse = await axios.get('/api/services/getAll', { headers });
-        const bookingsResponse = await axios.get('/api/bookings/getAll', { headers });
+        // Set default values in case any of the requests fail
+        let serviceProviderCount = 0;
+        let customerCount = 0;
+        let serviceCount = 0;
+        let bookingCount = 0;
         
-        const serviceProviderCount = serviceProvidersResponse.data ? serviceProvidersResponse.data.length : 0;
-        const customerCount = customersResponse.data ? customersResponse.data.length : 0;
-        const serviceCount = servicesResponse.data ? servicesResponse.data.length : 0;
-        const bookingCount = bookingsResponse.data ? bookingsResponse.data.length : 0;
+        try {
+          const serviceProvidersResponse = await axios.get('api/service-providers/getAll', { headers });
+          console.log('Service providers response:', serviceProvidersResponse.data);
+          if (Array.isArray(serviceProvidersResponse.data)) {
+            serviceProviderCount = serviceProvidersResponse.data.length;
+          } else {
+            console.error('Expected array but got:', serviceProvidersResponse.data);
+          }
+        } catch (err) {
+          console.error('Error fetching service providers:', err);
+        }
+        
+        try {
+          const customersResponse = await axios.get('api/customers/getAll', { headers });
+          console.log('Customers response:', customersResponse.data);
+          if (Array.isArray(customersResponse.data)) {
+            customerCount = customersResponse.data.length;
+          } else {
+            console.error('Expected array but got:', customersResponse.data);
+          }
+        } catch (err) {
+          console.error('Error fetching customers:', err);
+        }
+        
+        try {
+          const servicesResponse = await axios.get('api/services/getAll', { headers });
+          console.log('Services response:', servicesResponse.data);
+          if (Array.isArray(servicesResponse.data)) {
+            serviceCount = servicesResponse.data.length;
+          } else {
+            console.error('Expected array but got:', servicesResponse.data);
+          }
+        } catch (err) {
+          console.error('Error fetching services:', err);
+        }
+        
+        try {
+          const bookingsResponse = await axios.get('api/bookings/getAll', { headers });
+          console.log('Bookings response:', bookingsResponse.data);
+          if (Array.isArray(bookingsResponse.data)) {
+            bookingCount = bookingsResponse.data.length;
+          } else {
+            console.error('Expected array but got:', bookingsResponse.data);
+          }
+        } catch (err) {
+          console.error('Error fetching bookings:', err);
+        }
+        
         const userCount = serviceProviderCount + customerCount;
         
         setStats({
@@ -90,6 +139,8 @@ const AdminHomePage = () => {
       } catch (err) {
         setError('Failed to load statistics');
         setLoading(false);
+        console.error('Error fetching stats:', err);
+        console.error('Error details:', err.response?.data || err.message);
       }
     };
 
