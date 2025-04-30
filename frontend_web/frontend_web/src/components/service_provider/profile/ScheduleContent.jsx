@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import moment from 'moment';
 import { motion, AnimatePresence } from 'framer-motion';
+import apiClient, { getApiUrl } from '../../../utils/apiConfig';
 
 // Initialize the localizer for react-big-calendar
 const localizer = momentLocalizer(moment);
@@ -89,9 +89,7 @@ function ScheduleContent() {
   useEffect(() => {
     const getProviderId = async () => {
       try {
-        const providersResponse = await axios.get("/api/service-providers/getAll", {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const providersResponse = await apiClient.get(getApiUrl("/service-providers/getAll"));
         
         const provider = providersResponse.data.find(
           p => p.userAuth && p.userAuth.userId == userId
@@ -119,11 +117,7 @@ function ScheduleContent() {
   const fetchSchedules = async (providerIdToUse) => {
     setLoading(true);
     try {
-      const response = await axios.get(`/api/schedules/provider/${providerIdToUse}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = await apiClient.get(getApiUrl(`/schedules/provider/${providerIdToUse}`));
       
       setSchedules(response.data || []);
       setError(null);
@@ -151,12 +145,7 @@ function ScheduleContent() {
         available: isAvailable
       };
       
-      await axios.post(`/api/schedules/provider/${providerId}`, scheduleData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      await apiClient.post(getApiUrl(`/schedules/provider/${providerId}`), scheduleData);
       
       setSuccessMessage('Schedule added successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
@@ -173,11 +162,7 @@ function ScheduleContent() {
     }
     
     try {
-      await axios.delete(`/api/schedules/${scheduleId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      await apiClient.delete(getApiUrl(`/schedules/${scheduleId}`));
       
       setSuccessMessage('Schedule deleted successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);

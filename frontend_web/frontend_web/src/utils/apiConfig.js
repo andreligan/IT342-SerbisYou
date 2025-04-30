@@ -10,7 +10,7 @@ export const API_BASE_URL = isDevelopment
 
 // Helper function to build API URLs
 export const getApiUrl = (endpoint) => {
-  // Make sure endpoint has a leading slash
+  // Make sure endpoint has a leading slash if needed
   const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   return `${API_BASE_URL}/api${formattedEndpoint}`;
 };

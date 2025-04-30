@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient, { getApiUrl, API_BASE_URL } from '../../../utils/apiConfig';
 
 function ProfileContent({ selectedImage, setSelectedImage }) {
   // Form state - separate for userAuth and provider entities
@@ -37,9 +37,7 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
         setLoading(true);
         
         // Step 1: Get service provider ID by matching userId
-        const providersResponse = await axios.get("api/service-providers/getAll", {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const providersResponse = await apiClient.get(getApiUrl("service-providers/getAll"));
         
         // Check if we're getting an array before trying to use find()
         if (!Array.isArray(providersResponse.data)) {
@@ -69,18 +67,10 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
         setUserAuthId(provider.userAuth.userId);
         
         // Now fetch detailed information using the providerId
-        const detailsResponse = await axios.get(`api/service-providers/getById/${provider.providerId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        const detailsResponse = await apiClient.get(getApiUrl(`service-providers/getById/${provider.providerId}`));
         
         // Get userAuth details directly using the userAuthId instead of searching through all users
-        const userAuthResponse = await axios.get(`api/user-auth/getById/${provider.userAuth.userId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        const userAuthResponse = await apiClient.get(getApiUrl(`user-auth/getById/${provider.userAuth.userId}`));
         
         console.log('UserAuth API response:', userAuthResponse);
         
@@ -136,26 +126,18 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
       if (!providerId) return;
   
       try {
-        const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-  
         console.log("Fetching profile image for providerId:", providerId);
   
-        const profileImageResponse = await axios.get(
-          `api/service-providers/getServiceProviderImage/${providerId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+        const profileImageResponse = await apiClient.get(
+          getApiUrl(`service-providers/getServiceProviderImage/${providerId}`)
         );
   
         console.log("Fetched Profile Image URL:", profileImageResponse.data);
   
         if (profileImageResponse.data) {
-          // Use the full backend base URL for images
-          const baseURL = "https://serbisyo-backend.onrender.com"; 
-          const fullImageURL = `${baseURL}${profileImageResponse.data}`;
-          setSelectedImage(fullImageURL); // Set the full image URL
+          // Use the API_BASE_URL for images
+          const fullImageURL = `${API_BASE_URL}${profileImageResponse.data}`;
+          setSelectedImage(fullImageURL);
         }
       } catch (err) {
         console.error("Error fetching profile image:", err);
@@ -210,11 +192,10 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
       };
       
       // Update service provider data
-      const providerResponse = await axios.put(`api/service-providers/update/${providerId}`, serviceProviderData, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const providerResponse = await apiClient.put(
+        getApiUrl(`service-providers/update/${providerId}`), 
+        serviceProviderData
+      );
       console.log('Provider update response:', providerResponse.data);
       
       // Try to update userAuth data but handle potential permission error
@@ -224,11 +205,10 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
           email: formData.email
         };
         
-        const userAuthResponse = await axios.put(`api/user-auth/update/${userAuthId}`, userAuthData, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        const userAuthResponse = await apiClient.put(
+          getApiUrl(`user-auth/update/${userAuthId}`), 
+          userAuthData
+        );
         console.log('UserAuth update response:', userAuthResponse.data);
       } catch (authErr) {
         console.warn('Unable to update authentication data:', authErr.message);
@@ -267,12 +247,11 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
       formData.append('image', file);
 
       // Upload the image to the server
-      const response = await axios.post(
-        `api/service-providers/uploadServiceProviderImage/${providerId}`,
+      const response = await apiClient.post(
+        getApiUrl(`service-providers/uploadServiceProviderImage/${providerId}`),
         formData,
         {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'multipart/form-data',
           },
         }
