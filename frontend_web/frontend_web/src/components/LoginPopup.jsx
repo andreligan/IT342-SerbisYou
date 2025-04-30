@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import BaseModal from './shared/BaseModal';
+import BaseModal from './BaseModal';
+
+//import BaseModal from './shared/BaseModal';
 import API from '../utils/API';  // Import the API utility
 
 const LoginPopup = ({ open, onClose }) => {
@@ -61,9 +63,8 @@ const LoginPopup = ({ open, onClose }) => {
   };
 
   const handleGoogleLogin = () => {
-    // Use API baseURL instead of hardcoded localhost
-    const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-    window.location.href = `${baseURL}/oauth2/authorization/google`;
+    // Use hardcoded production URL to avoid CORS issues
+    window.location.href = "https://serbisyo-backend.onrender.com/oauth2/authorization/google";
   };
 
   return (

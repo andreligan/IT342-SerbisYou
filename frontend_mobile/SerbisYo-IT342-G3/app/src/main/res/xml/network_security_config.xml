@@ -13,9 +13,8 @@
     </domain-config>
     
     <!-- Production domains -->
-    <!--Ari LNg nya ibutang-->
     <domain-config>
-        <domain includeSubdomains="true">your-deployed-backend.com</domain>
-        <domain includeSubdomains="true">your-deployed-frontend.com</domain>
+        <domain includeSubdomains="true">serbisyo-backend.onrender.com</domain>
+        <domain includeSubdomains="true">serbisyo.vercel.app</domain>
     </domain-config>
 </network-security-config> 

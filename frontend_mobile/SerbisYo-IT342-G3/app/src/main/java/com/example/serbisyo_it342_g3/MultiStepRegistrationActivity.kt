@@ -263,8 +263,12 @@ class MultiStepRegistrationActivity : AppCompatActivity() {
     fun getPassword(): String = password
 
     fun completeRegistration() {
-        // Show processing message
-        Toast.makeText(this, "Processing registration...", Toast.LENGTH_SHORT).show()
+        // Show processing dialog instead of a toast
+        val progressDialog = android.app.ProgressDialog(this).apply {
+            setMessage("Registering... Please wait. This may take up to 2 minutes as the backend server starts up.")
+            setCancelable(false)
+            show()
+        }
         
         thread {
             try {
@@ -344,55 +348,80 @@ class MultiStepRegistrationActivity : AppCompatActivity() {
 
                 // Log the request for debugging
                 Log.d(TAG, "Registration request: $requestBodyJson")
+                
+                // Update the progress dialog
+                runOnUiThread {
+                    progressDialog.setMessage("Connecting to server... This may take a moment if the server is starting up.")
+                }
 
                 val request = Request.Builder()
                     .url("${baseApiClient.getBaseUrl()}/api/user-auth/register")
                     .post(requestBody)
                     .build()
 
-                client.newCall(request).execute().use { response ->
-                    val responseBody = response.body?.string()
-                    Log.d(TAG, "Registration response: $responseBody")
-                    
-                    if (response.isSuccessful) {
+                try {
+                    client.newCall(request).execute().use { response ->
+                        val responseBody = response.body?.string()
+                        Log.d(TAG, "Registration response: $responseBody")
+                        
+                        // Dismiss the progress dialog
                         runOnUiThread {
-                            Toast.makeText(this, "Registration successful!", Toast.LENGTH_SHORT).show()
-                            // Navigate to login screen
-                            startActivity(Intent(this, LoginActivity::class.java))
-                            finish()
-                        }
-                    } else {
-                        // Try to parse error message - show the specific error from backend
-                        val errorMessage = try {
-                            responseBody?.let {
-                                if (it.isNotEmpty()) {
-                                    try {
-                                        val jsonObject = JSONObject(it)
-                                        jsonObject.optString("message", it)
-                                    } catch (e: Exception) {
-                                        it
-                                    }
-                                } else {
-                                    "Registration failed: ${response.code}"
-                                }
-                            } ?: "Registration failed: ${response.code}"
-                        } catch (e: Exception) {
-                            "Registration failed: ${e.message ?: "Unknown error"}"
+                            progressDialog.dismiss()
                         }
                         
-                        runOnUiThread {
-                            Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
+                        if (response.isSuccessful) {
+                            runOnUiThread {
+                                Toast.makeText(this, "Registration successful!", Toast.LENGTH_SHORT).show()
+                                // Navigate to login screen
+                                startActivity(Intent(this, LoginActivity::class.java))
+                                finish()
+                            }
+                        } else {
+                            // Try to parse error message - show the specific error from backend
+                            val errorMessage = try {
+                                responseBody?.let {
+                                    if (it.isNotEmpty()) {
+                                        try {
+                                            val jsonObject = JSONObject(it)
+                                            jsonObject.optString("message", it)
+                                        } catch (e: Exception) {
+                                            it
+                                        }
+                                    } else {
+                                        "Registration failed: ${response.code}"
+                                    }
+                                } ?: "Registration failed: ${response.code}"
+                            } catch (e: Exception) {
+                                "Registration failed: ${e.message ?: "Unknown error"}"
+                            }
+                            
+                            runOnUiThread {
+                                Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
+                            }
                         }
+                    }
+                } catch (e: java.net.SocketTimeoutException) {
+                    // Specifically handle timeout exceptions
+                    runOnUiThread {
+                        progressDialog.dismiss()
+                        android.app.AlertDialog.Builder(this)
+                            .setTitle("Connection Timeout")
+                            .setMessage("The server is taking too long to respond. This may be because the backend server is starting up after being idle. Would you like to try again?")
+                            .setPositiveButton("Try Again") { _, _ -> completeRegistration() }
+                            .setNegativeButton("Cancel") { _, _ -> }
+                            .show()
                     }
                 }
             } catch (e: IOException) {
                 e.printStackTrace()
                 runOnUiThread {
-                    Toast.makeText(this, "Network error: ${e.message}\nMake sure the backend server is running.", Toast.LENGTH_LONG).show()
+                    progressDialog.dismiss()
+                    Toast.makeText(this, "Network error: ${e.message}\nThe backend server may be starting up. Please try again in a moment.", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 runOnUiThread {
+                    progressDialog.dismiss()
                     Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }

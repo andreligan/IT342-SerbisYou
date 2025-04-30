@@ -17,6 +17,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import edu.cit.serbisyo.service.CustomUserDetailsService;
 import edu.cit.serbisyo.security.OAuth2LoginSuccessHandler;
@@ -45,8 +46,11 @@ public class SecurityConfig {
         return http
                 // Enable CORS
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                // Disable CSRF
-                .csrf(customizer -> customizer.disable())
+                // CSRF configuration - disable for API but enable for OAuth endpoints
+                .csrf(csrf -> csrf
+                    .ignoringRequestMatchers("/api/**") // Disable for API endpoints
+                    .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()) // Use cookies for CSRF tokens
+                )
                 // Configure authorization rules
                 .authorizeHttpRequests(request -> request
                         // Public endpoints
@@ -90,7 +94,8 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList(
             frontendUrl,
             "https://serbisyo.vercel.app",
-            "http://localhost:5173"
+            "http://localhost:5173",
+            "https://accounts.google.com"
         ));
         // Allow all common HTTP methods
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
