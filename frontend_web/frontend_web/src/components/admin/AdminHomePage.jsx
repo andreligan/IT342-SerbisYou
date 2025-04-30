@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Link } from 'react-router-dom';
 import CountUp from 'react-countup';
 import { motion } from 'framer-motion';
+import apiClient, { getApiUrl } from '../../utils/apiConfig';
 
 const AdminHomePage = () => {
   const [stats, setStats] = useState({
@@ -34,7 +34,7 @@ const AdminHomePage = () => {
           'Authorization': `Bearer ${token}`
         };
         
-        const response = await axios.get(`api/admins/getByUserId/${userId}`, { headers });
+        const response = await apiClient.get(getApiUrl(`/admins/getByUserId/${userId}`), { headers });
         console.log('Admin data response:', response.data);
         
         if (response.data) {
@@ -71,14 +71,13 @@ const AdminHomePage = () => {
           'Authorization': `Bearer ${token}`
         };
         
-        // Set default values in case any of the requests fail
         let serviceProviderCount = 0;
         let customerCount = 0;
         let serviceCount = 0;
         let bookingCount = 0;
         
         try {
-          const serviceProvidersResponse = await axios.get('api/service-providers/getAll', { headers });
+          const serviceProvidersResponse = await apiClient.get(getApiUrl('/service-providers/getAll'), { headers });
           console.log('Service providers response:', serviceProvidersResponse.data);
           if (Array.isArray(serviceProvidersResponse.data)) {
             serviceProviderCount = serviceProvidersResponse.data.length;
@@ -90,7 +89,7 @@ const AdminHomePage = () => {
         }
         
         try {
-          const customersResponse = await axios.get('api/customers/getAll', { headers });
+          const customersResponse = await apiClient.get(getApiUrl('/customers/getAll'), { headers });
           console.log('Customers response:', customersResponse.data);
           if (Array.isArray(customersResponse.data)) {
             customerCount = customersResponse.data.length;
@@ -102,7 +101,7 @@ const AdminHomePage = () => {
         }
         
         try {
-          const servicesResponse = await axios.get('api/services/getAll', { headers });
+          const servicesResponse = await apiClient.get(getApiUrl('/services/getAll'), { headers });
           console.log('Services response:', servicesResponse.data);
           if (Array.isArray(servicesResponse.data)) {
             serviceCount = servicesResponse.data.length;
@@ -114,7 +113,7 @@ const AdminHomePage = () => {
         }
         
         try {
-          const bookingsResponse = await axios.get('api/bookings/getAll', { headers });
+          const bookingsResponse = await apiClient.get(getApiUrl('/bookings/getAll'), { headers });
           console.log('Bookings response:', bookingsResponse.data);
           if (Array.isArray(bookingsResponse.data)) {
             bookingCount = bookingsResponse.data.length;

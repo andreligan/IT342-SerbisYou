@@ -6,8 +6,8 @@ export default defineConfig(({ mode }) => {
   // Load environment variables
   const env = loadEnv(mode, process.cwd());
   
-  // Get API URL from environment
-  const apiUrl = env.VITE_API_URL || 'http://localhost:8080';
+  // Get API URL from environment or use the Render URL
+  const apiUrl = env.VITE_API_URL || 'https://serbisyo-backend.onrender.com';
   
   return {
     base: './',
@@ -17,12 +17,12 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       proxy: {
-        // Only proxy /api prefix when in development
+        // Keep the /api prefix when forwarding to the backend
         '/api': {
           target: apiUrl,
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => path.replace(/^\/api/, '')
+          // Don't rewrite the path - send it as-is
         },
       },
     },

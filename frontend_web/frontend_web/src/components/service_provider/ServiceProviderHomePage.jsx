@@ -11,6 +11,7 @@ import pestControl from "../../assets/pest control.jpg";
 import homePainting from "../../assets/home painting.jpg";
 import lawnCare from "../../assets/lawn care.jpg";
 import { motion } from "framer-motion";
+import apiClient, { getApiUrl } from '../../utils/apiConfig';
 
 function ServiceProviderHomePage() {
   const navigate = useNavigate();
@@ -59,9 +60,7 @@ function ServiceProviderHomePage() {
 
         // Try to get provider directly using getByAuthId endpoint with correct parameter name
         try {
-          const providerResponse = await axios.get(`api/service-providers/getByAuthId?authId=${userId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          const providerResponse = await apiClient.get(getApiUrl(`/service-providers/getByAuthId?authId=${userId}`));
           
           console.log("Provider response: ", providerResponse);
           const provider = providerResponse.data;
@@ -75,9 +74,7 @@ function ServiceProviderHomePage() {
           setProviderName(`${provider.firstName || ''} ${provider.lastName || ''}`.trim() || "Service Provider");
           
           // Step 2: Get all services
-          const servicesResponse = await axios.get("api/services/getAll", {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          const servicesResponse = await apiClient.get(getApiUrl('/services/getAll'));
           
           // Step 3: Filter to get only this provider's services
           const providerServices = servicesResponse.data.filter(
@@ -85,9 +82,7 @@ function ServiceProviderHomePage() {
           );
           
           // Step 4: Get all categories for display
-          const categoriesResponse = await axios.get("api/service-categories/getAll", {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          const categoriesResponse = await apiClient.get(getApiUrl('/service-categories/getAll'));
           
           // Create a map of category IDs to names
           const categoryMap = categoriesResponse.data.reduce((map, category) => {
@@ -126,9 +121,7 @@ function ServiceProviderHomePage() {
           console.error("Direct API call failed, falling back to alternative method:", directError);
           
           // Fallback: Get service provider ID by matching userId from all providers
-          const providersResponse = await axios.get("api/service-providers/getAll", {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          const providersResponse = await apiClient.get(getApiUrl('/service-providers/getAll'));
           
           console.log("All providers response: ", providersResponse);
           
@@ -153,9 +146,7 @@ function ServiceProviderHomePage() {
           
           // Step 2: Get all services
 
-          const servicesResponse = await axios.get("api/services/getAll", {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          const servicesResponse = await apiClient.get(getApiUrl('/services/getAll'));
           
           // Step 3: Filter to get only this provider's services
           const providerServices = servicesResponse.data.filter(
@@ -163,9 +154,7 @@ function ServiceProviderHomePage() {
           );
           
           // Step 4: Get all categories for display
-          const categoriesResponse = await axios.get("api/service-categories/getAll", {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          const categoriesResponse = await apiClient.get(getApiUrl('/service-categories/getAll'));
           
           // Create a map of category IDs to names
           const categoryMap = categoriesResponse.data.reduce((map, category) => {
