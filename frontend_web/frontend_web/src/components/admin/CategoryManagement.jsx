@@ -28,13 +28,22 @@ const CategoryManagement = () => {
       
       const headers = { 'Authorization': `Bearer ${token}` };
       
-      const response = await axios.get('/api/service-categories/getAll', { headers });
+      const response = await axios.get('api/service-categories/getAll', { headers });
+      console.log('Categories API response:', response.data);
+      
+      // Verify that the response contains an array
+      if (!Array.isArray(response.data)) {
+        console.error('Expected an array of categories but received:', response.data);
+        throw new Error('Invalid data format received from server');
+      }
+      
       setCategories(response.data || []);
       setLoading(false);
     } catch (err) {
       setError('Failed to load categories');
       setLoading(false);
       console.error('Error fetching categories:', err);
+      console.error('Error details:', err.response?.data || err.message);
     }
   };
 
@@ -56,7 +65,7 @@ const CategoryManagement = () => {
       
       console.log("Creating category with data:", newCategory);
       
-      await axios.post('/api/service-categories/create', newCategory, { headers });
+      await axios.post('api/service-categories/create', newCategory, { headers });
       setNewCategory({ categoryName: '', description: '' });
       fetchCategories();
       
@@ -69,6 +78,7 @@ const CategoryManagement = () => {
       setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
     } catch (err) {
       console.error('Error creating category:', err);
+      console.error('Error details:', err.response?.data || err.message);
       setToast({
         show: true,
         message: 'Failed to create category.',
@@ -87,7 +97,7 @@ const CategoryManagement = () => {
       const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
       const headers = { 'Authorization': `Bearer ${token}` };
       
-      await axios.put(`/api/service-categories/update/${editingCategory.categoryId}`, editingCategory, { headers });
+      await axios.put(`api/service-categories/update/${editingCategory.categoryId}`, editingCategory, { headers });
       setEditingCategory(null);
       fetchCategories();
       
@@ -100,6 +110,7 @@ const CategoryManagement = () => {
       setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
     } catch (err) {
       console.error('Error updating category:', err);
+      console.error('Error details:', err.response?.data || err.message);
       setToast({
         show: true,
         message: 'Failed to update category.',
@@ -115,7 +126,7 @@ const CategoryManagement = () => {
         const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
         const headers = { 'Authorization': `Bearer ${token}` };
         
-        await axios.delete(`/api/service-categories/delete/${categoryId}`, { headers });
+        await axios.delete(`api/service-categories/delete/${categoryId}`, { headers });
         fetchCategories();
         
         setToast({
@@ -127,6 +138,7 @@ const CategoryManagement = () => {
         setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
       } catch (err) {
         console.error('Error deleting category:', err);
+        console.error('Error details:', err.response?.data || err.message);
         setToast({
           show: true,
           message: 'Failed to delete category.',
