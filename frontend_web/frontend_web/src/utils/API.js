@@ -1,9 +1,26 @@
 import axios from 'axios';
 
 // Hard-code the production API URL to ensure consistency
-const baseURL = 'https://serbisyo-backend.onrender.com/api/';
+// Removed trailing /api/ since it's already added in the endpoints
+const baseURL = 'https://serbisyo-backend.onrender.com/';
 
 console.log('API baseURL:', baseURL); // Debugging line
+
+// Helper function to format API paths correctly
+const formatPath = (path) => {
+  // If path starts with 'api/', remove it to avoid duplicates
+  if (path.startsWith('api/')) {
+    path = path.substring(4);
+  }
+  
+  // If path doesn't start with 'api/', add it
+  if (!path.startsWith('api/')) {
+    path = 'api/' + path;
+  }
+  
+  console.log(`Formatted API path: ${path}`);
+  return path;
+};
 
 const API = axios.create({
   baseURL,
@@ -24,6 +41,10 @@ API.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
+    // Format the URL to ensure proper API path
+    config.url = formatPath(config.url);
+    
+    console.log(`Making request to: ${config.baseURL}${config.url}`);  // Log full URL for debugging
     return config;
   },
   error => Promise.reject(error)

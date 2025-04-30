@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import edu.cit.serbisyo.entity.MessageEntity;
@@ -47,6 +49,28 @@ public class MessageController {
     @DeleteMapping("/delete/{messageId}")
     public String deleteMessage(@PathVariable Long messageId) {
         return messageService.deleteMessage(messageId);
+    }
+    
+    @GetMapping("/{messageId}/status")
+    public ResponseEntity<?> getMessageStatus(@PathVariable Long messageId) {
+        try {
+            MessageEntity message = messageService.getMessage(messageId);
+            return ResponseEntity.ok(Map.of("status", message.getStatus()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error retrieving message status: " + e.getMessage());
+        }
+    }
+    
+    @PutMapping("/{messageId}/status")
+    public ResponseEntity<?> updateMessageStatus(
+            @PathVariable Long messageId,
+            @RequestParam String status) {
+        try {
+            MessageEntity message = messageService.updateMessageStatus(messageId, status);
+            return ResponseEntity.ok(message);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error updating message status: " + e.getMessage());
+        }
     }
     
     @GetMapping("/conversation/{userId1}/{userId2}")

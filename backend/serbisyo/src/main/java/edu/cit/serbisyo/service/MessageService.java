@@ -24,6 +24,11 @@ public class MessageService {
         return messageRepository.findAll();
     }
 
+    public MessageEntity getMessage(Long messageId) {
+        return messageRepository.findById(messageId)
+                .orElseThrow(() -> new RuntimeException("Message not found with ID: " + messageId));
+    }
+
     public MessageEntity updateMessage(Long messageId, MessageEntity updatedMessage) {
         MessageEntity existingMessage = messageRepository.findById(messageId)
                 .orElseThrow(() -> new RuntimeException("Message not found"));
@@ -32,6 +37,30 @@ public class MessageService {
         existingMessage.setStatus(updatedMessage.getStatus());
 
         return messageRepository.save(existingMessage);
+    }
+
+    public MessageEntity updateMessageStatus(Long messageId, String status) {
+        MessageEntity existingMessage = messageRepository.findById(messageId)
+                .orElseThrow(() -> new RuntimeException("Message not found with ID: " + messageId));
+        
+        // Validate status
+        if (!isValidStatus(status)) {
+            throw new IllegalArgumentException("Invalid message status: " + status);
+        }
+        
+        existingMessage.setStatus(status.toUpperCase());
+        return messageRepository.save(existingMessage);
+    }
+    
+    private boolean isValidStatus(String status) {
+        if (status == null) {
+            return false;
+        }
+        
+        String upperStatus = status.toUpperCase();
+        return "SENT".equals(upperStatus) || 
+               "DELIVERED".equals(upperStatus) || 
+               "READ".equals(upperStatus);
     }
 
     public String deleteMessage(Long messageId) {

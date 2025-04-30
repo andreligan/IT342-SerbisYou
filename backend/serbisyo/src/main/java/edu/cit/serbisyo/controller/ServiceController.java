@@ -29,6 +29,42 @@ public class ServiceController {
         return "Service Controller is working!";
     }
 
+    // GET SERVICES BY PROVIDER ID
+    @GetMapping("/provider/{providerId}")
+    public ResponseEntity<?> getServicesByProviderId(@PathVariable Long providerId) {
+        try {
+            List<ServiceEntity> services = serviceService.getServicesByProviderId(providerId);
+            if (services.isEmpty()) {
+                return ResponseEntity.ok(new ArrayList<>()); // Return empty list instead of 404
+            }
+            return ResponseEntity.ok(services);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error fetching services for provider: " + e.getMessage());
+        }
+    }
+    
+    // GET SERVICES BY PROVIDER ID WITH RATINGS
+    @GetMapping("/provider/{providerId}/withRatings")
+    public ResponseEntity<?> getServicesByProviderIdWithRatings(@PathVariable Long providerId) {
+        try {
+            List<ServiceEntity> services = serviceService.getServicesByProviderId(providerId);
+            List<Map<String, Object>> servicesWithRatings = new ArrayList<>();
+            
+            for (ServiceEntity service : services) {
+                Map<String, Object> serviceMap = new HashMap<>();
+                serviceMap.put("service", service);
+                serviceMap.put("rating", reviewService.getServiceRating(service.getServiceId()));
+                servicesWithRatings.add(serviceMap);
+            }
+            
+            return ResponseEntity.ok(servicesWithRatings);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error fetching services with ratings for provider: " + e.getMessage());
+        }
+    }
+
     // CREATE
     @PostMapping("/postService/{providerId}/{categoryId}")
     public ServiceEntity createService(
