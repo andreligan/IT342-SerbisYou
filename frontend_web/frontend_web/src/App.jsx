@@ -94,17 +94,20 @@ function App() {
   useEffect(() => {
     const fetchProfileImage = async () => {
       try {
-        const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-        const userId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
-        const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
+        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        const role = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
         
-        if (!token || !userId || !role) return;
+        if (!userId || !token || !role) {
+          console.log("Missing auth info for profile image fetch");
+          return;
+        }
         
         let entityId;
         
         if (role.toLowerCase() === "customer") {
           // Get all customers to find the one matching this user
-          const customersResponse = await axios.get("/api/customers/getAll", {
+          const customersResponse = await axios.get("api/customers/getAll", {
             headers: { Authorization: `Bearer ${token}` }
           });
           
@@ -120,20 +123,20 @@ function App() {
           setUserFirstName(customer.firstName || "");
           
           // Now fetch image with the correct customer ID
-          const imageResponse = await axios.get(`/api/customers/getProfileImage/${entityId}`, {
+          const imageResponse = await axios.get(`api/customers/getProfileImage/${entityId}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           
           if (imageResponse.data) {
-            // Prepend base URL to make a complete image path
-            const baseURL = "http://localhost:8080"; // Backend base URL
+            // Prepend the base URL to make a complete image path
+            const baseURL = "https://serbisyo-backend.onrender.com"; // Backend base URL
             const fullImageURL = `${baseURL}${imageResponse.data}`;
             setProfileImage(fullImageURL);
           }
         } 
         else if (role.toLowerCase() === "service provider") {
           // Get all providers to find the one matching this user
-          const providersResponse = await axios.get("/api/service-providers/getAll", {
+          const providersResponse = await axios.get("api/service-providers/getAll", {
             headers: { Authorization: `Bearer ${token}` }
           });
           
@@ -149,13 +152,13 @@ function App() {
           setUserFirstName(provider.firstName || "");
           
           // Now fetch image with the correct provider ID
-          const imageResponse = await axios.get(`/api/service-providers/getServiceProviderImage/${entityId}`, {
+          const imageResponse = await axios.get(`api/service-providers/getServiceProviderImage/${entityId}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           
           if (imageResponse.data) {
-            // Prepend base URL to make a complete image path
-            const baseURL = "http://localhost:8080"; // Backend base URL
+            // Prepend the base URL to make a complete image path
+            const baseURL = "https://serbisyo-backend.onrender.com"; // Backend base URL
             const fullImageURL = `${baseURL}${imageResponse.data}`;
             setProfileImage(fullImageURL);
           }

@@ -37,9 +37,17 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
         setLoading(true);
         
         // Step 1: Get service provider ID by matching userId
-        const providersResponse = await axios.get("/api/service-providers/getAll", {
+        const providersResponse = await axios.get("api/service-providers/getAll", {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+        
+        // Check if we're getting an array before trying to use find()
+        if (!Array.isArray(providersResponse.data)) {
+          console.error("Expected array but got:", providersResponse.data);
+          setError("Invalid data format received from server. Please try again later.");
+          setLoading(false);
+          return;
+        }
         
         const provider = providersResponse.data.find(
           p => p.userAuth && p.userAuth.userId == userId
@@ -61,14 +69,14 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
         setUserAuthId(provider.userAuth.userId);
         
         // Now fetch detailed information using the providerId
-        const detailsResponse = await axios.get(`/api/service-providers/getById/${provider.providerId}`, {
+        const detailsResponse = await axios.get(`api/service-providers/getById/${provider.providerId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
         
         // Get userAuth details directly using the userAuthId instead of searching through all users
-        const userAuthResponse = await axios.get(`/api/user-auth/getById/${provider.userAuth.userId}`, {
+        const userAuthResponse = await axios.get(`api/user-auth/getById/${provider.userAuth.userId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -133,7 +141,7 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
         console.log("Fetching profile image for providerId:", providerId);
   
         const profileImageResponse = await axios.get(
-          `/api/service-providers/getServiceProviderImage/${providerId}`,
+          `api/service-providers/getServiceProviderImage/${providerId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -144,8 +152,8 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
         console.log("Fetched Profile Image URL:", profileImageResponse.data);
   
         if (profileImageResponse.data) {
-          // Prepend the base URL to the image path
-          const baseURL = "http://localhost:8080"; // Backend base URL
+          // Use the full backend base URL for images
+          const baseURL = "https://serbisyo-backend.onrender.com"; 
           const fullImageURL = `${baseURL}${profileImageResponse.data}`;
           setSelectedImage(fullImageURL); // Set the full image URL
         }
@@ -202,7 +210,7 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
       };
       
       // Update service provider data
-      const providerResponse = await axios.put(`/api/service-providers/update/${providerId}`, serviceProviderData, {
+      const providerResponse = await axios.put(`api/service-providers/update/${providerId}`, serviceProviderData, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -216,7 +224,7 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
           email: formData.email
         };
         
-        const userAuthResponse = await axios.put(`/api/user-auth/update/${userAuthId}`, userAuthData, {
+        const userAuthResponse = await axios.put(`api/user-auth/update/${userAuthId}`, userAuthData, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -260,7 +268,7 @@ function ProfileContent({ selectedImage, setSelectedImage }) {
 
       // Upload the image to the server
       const response = await axios.post(
-        `/api/service-providers/uploadServiceProviderImage/${providerId}`,
+        `api/service-providers/uploadServiceProviderImage/${providerId}`,
         formData,
         {
           headers: {
