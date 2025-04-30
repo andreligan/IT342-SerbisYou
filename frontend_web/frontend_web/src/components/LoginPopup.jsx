@@ -16,12 +16,16 @@ const LoginPopup = ({ open, onClose }) => {
     setErrorMessage("");
     
     try {
+      console.log("Attempting login for user:", userName);
+      
       // Send login request to the backend using API utility
       const response = await API.post('user-auth/login', {
         userName,
         password,
       });
     
+      console.log("Login successful, received response:", response.status);
+      
       // Extract the data
       const { token, role, userId } = response.data;
       
@@ -31,11 +35,13 @@ const LoginPopup = ({ open, onClose }) => {
         localStorage.setItem('userRole', role);
         localStorage.setItem('userId', userId);
         localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('username', userName);
       } else {
         sessionStorage.setItem('authToken', token);
         sessionStorage.setItem('userRole', role);
         sessionStorage.setItem('userId', userId);
         sessionStorage.setItem('isAuthenticated', 'true');
+        sessionStorage.setItem('username', userName);
       }
   
       // Close the login popup
@@ -56,13 +62,41 @@ const LoginPopup = ({ open, onClose }) => {
     } catch (error) {
       // Handle login error
       console.error("Login failed:", error);
-      setErrorMessage(error.response?.data?.message || "Login failed. Please check your credentials.");
+      
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        if (error.response.status === 403) {
+          setErrorMessage("Access forbidden. Your account may be inactive or you have entered incorrect credentials.");
+        } else if (error.response.status === 401) {
+          setErrorMessage("Invalid username or password. Please try again.");
+        } else if (error.response.data && error.response.data.message) {
+          setErrorMessage(error.response.data.message);
+        } else {
+          setErrorMessage(`Server error (${error.response.status}). Please try again later.`);
+        }
+      } else if (error.request) {
+        // The request was made but no response was received
+        setErrorMessage("No response from server. Please check your internet connection and try again.");
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        setErrorMessage("An error occurred while trying to log in. Please try again.");
+      }
     }
   };
 
   const handleGoogleLogin = () => {
-    // Use hardcoded production URL to avoid CORS issues
-    window.location.href = "https://serbisyo-backend.onrender.com/oauth2/authorization/google";
+    try {
+      console.log("Redirecting to Google OAuth2...");
+      // The OAuth redirect URI must match what's configured in the backend and Google Cloud Console
+      const googleAuthUrl = "https://serbisyo-backend.onrender.com/oauth2/authorization/google";
+      
+      // Open in the same window, not a popup, to avoid popup blockers
+      window.location.href = googleAuthUrl;
+    } catch (error) {
+      console.error("Error redirecting to Google login:", error);
+      setErrorMessage("Failed to initialize Google login. Please try again.");
+    }
   };
 
   return (
