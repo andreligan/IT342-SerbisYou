@@ -1,4 +1,4 @@
-import axios from 'axios';
+import apiClient, { getApiUrl } from './apiConfig';
 
 /**
  * Fetch user addresses based on user type
@@ -14,13 +14,11 @@ export const fetchUserAddresses = async (userId, token, userType) => {
     throw new Error(`Only ${userType}s can access this feature`);
   }
   
-  let endpoint, userIdField, entityId, mainAddressId;
+  let entityId, mainAddressId;
   
   if (userType === 'Service Provider') {
     // Logic for service providers
-    const providersResponse = await axios.get("/api/service-providers/getAll", {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const providersResponse = await apiClient.get(getApiUrl("/service-providers/getAll"));
     
     const provider = providersResponse.data.find(
       p => p.userAuth && p.userAuth.userId == userId
@@ -38,9 +36,7 @@ export const fetchUserAddresses = async (userId, token, userType) => {
     }
     
     // Get all addresses
-    const addressesResponse = await axios.get('/api/addresses/getAll', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const addressesResponse = await apiClient.get(getApiUrl('/addresses/getAll'));
     
     // Filter addresses by providerId
     const userAddresses = addressesResponse.data.filter(
@@ -55,9 +51,7 @@ export const fetchUserAddresses = async (userId, token, userType) => {
     
   } else {
     // Logic for customers
-    const customersResponse = await axios.get("/api/customers/getAll", {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const customersResponse = await apiClient.get(getApiUrl("/customers/getAll"));
     
     const customer = customersResponse.data.find(
       c => c.userAuth && c.userAuth.userId == userId
@@ -75,9 +69,7 @@ export const fetchUserAddresses = async (userId, token, userType) => {
     }
     
     // Get all addresses
-    const addressesResponse = await axios.get('/api/addresses/getAll', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const addressesResponse = await apiClient.get(getApiUrl('/addresses/getAll'));
     
     // Filter addresses by customerId
     const userAddresses = addressesResponse.data.filter(
@@ -128,12 +120,9 @@ export const createAddress = async (token, addressData, entityId, isFirstAddress
   
   console.log("Creating address with payload:", payload);
   
-  const response = await axios.post(
-    '/api/addresses/postAddress',
-    payload,
-    {
-      headers: { 'Authorization': `Bearer ${token}` }
-    }
+  const response = await apiClient.post(
+    getApiUrl('/addresses/postAddress'),
+    payload
   );
   
   console.log("Address created successfully:", response.data);
@@ -144,10 +133,7 @@ export const createAddress = async (token, addressData, entityId, isFirstAddress
   if (isFirstAddress) {
     if (userType === 'Service Provider') {
       // Get full provider data
-      const providersResponse = await axios.get(
-        "/api/service-providers/getAll", 
-        { headers: { 'Authorization': `Bearer ${token}` }}
-      );
+      const providersResponse = await apiClient.get(getApiUrl("/service-providers/getAll"));
       
       const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
       const provider = providersResponse.data.find(
@@ -155,8 +141,8 @@ export const createAddress = async (token, addressData, entityId, isFirstAddress
       );
       
       // Update provider with new address
-      await axios.put(
-        `/api/service-providers/update/${entityId}`, 
+      await apiClient.put(
+        getApiUrl(`/service-providers/update/${entityId}`),
         {
           addressId: newAddressId,
           firstName: provider.firstName,
@@ -167,23 +153,18 @@ export const createAddress = async (token, addressData, entityId, isFirstAddress
           availabilitySchedule: provider.availabilitySchedule,
           paymentMethod: provider.paymentMethod,
           status: provider.status
-        },
-        { headers: { 'Authorization': `Bearer ${token}` }}
+        }
       );
     } else { // Customer
       // Get full customer data
-      const customersResponse = await axios.get(
-        "/api/customers/getAll", 
-        { headers: { 'Authorization': `Bearer ${token}` }}
-      );
+      const customersResponse = await apiClient.get(getApiUrl("/customers/getAll"));
       
       const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
       const customer = customersResponse.data.find(
         c => c.userAuth && c.userAuth.userId == userId
       );
       
-      // Update customer with new address
-// Removed commented-out axios.put call for clarity.
+      // Update customer with new address if needed
     }
     
     // Set main flag in the response for UI consistency
@@ -229,12 +210,11 @@ export const updateAddress = async (token, addressId, addressData, entityId, isM
   
   console.log("Updating address with payload:", payload);
   
-  const response = await axios.put(
-    `/api/addresses/updateAddress/${addressId}`,
+  const response = await apiClient.put(
+    getApiUrl(`/addresses/updateAddress/${addressId}`),
     payload,
     {
       headers: { 
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     }
@@ -247,9 +227,7 @@ export const updateAddress = async (token, addressId, addressData, entityId, isM
  * Delete an address
  */
 export const deleteAddress = async (token, addressId) => {
-  return await axios.delete(`/api/addresses/delete/${addressId}`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
+  return await apiClient.delete(getApiUrl(`/addresses/delete/${addressId}`));
 };
 
 /**
@@ -260,10 +238,7 @@ export const updateAddressMain = async (token, addressId, addresses, userInfo, u
   
   if (userType === 'Service Provider') {
     // Get all service providers
-    const providersResponse = await axios.get(
-      "/api/service-providers/getAll", 
-      { headers: { 'Authorization': `Bearer ${token}` }}
-    );
+    const providersResponse = await apiClient.get(getApiUrl("/service-providers/getAll"));
     
     // Find the one that matches our userId
     const completeProvider = providersResponse.data.find(
@@ -301,10 +276,9 @@ export const updateAddressMain = async (token, addressId, addresses, userInfo, u
     
     console.log("Updating address as main with payload:", updatedMainAddress);
     
-    await axios.put(
-      `/api/addresses/updateAddress/${addressId}`, 
-      updatedMainAddress,
-      { headers: { 'Authorization': `Bearer ${token}` }}
+    await apiClient.put(
+      getApiUrl(`/addresses/updateAddress/${addressId}`), 
+      updatedMainAddress
     );
     
     // Set all other addresses to main: false
@@ -319,10 +293,9 @@ export const updateAddressMain = async (token, addressId, addresses, userInfo, u
           customer: null
         };
         
-        await axios.put(
-          `/api/addresses/updateAddress/${addr.addressId}`, 
-          otherAddress,
-          { headers: { 'Authorization': `Bearer ${token}` }}
+        await apiClient.put(
+          getApiUrl(`/addresses/updateAddress/${addr.addressId}`), 
+          otherAddress
         );
       }
     }
@@ -330,10 +303,7 @@ export const updateAddressMain = async (token, addressId, addresses, userInfo, u
   } else {
     // Logic for customers
     try {
-      const customersResponse = await axios.get(
-        "/api/customers/getAll", 
-        { headers: { 'Authorization': `Bearer ${token}` }}
-      );
+      const customersResponse = await apiClient.get(getApiUrl("/customers/getAll"));
       
       const completeCustomer = customersResponse.data.find(
         c => c.userAuth && c.userAuth.userId == userId
@@ -370,10 +340,9 @@ export const updateAddressMain = async (token, addressId, addresses, userInfo, u
       
       console.log("Updating address as main with payload:", updatedMainAddress);
       
-      await axios.put(
-        `/api/addresses/updateAddress/${addressId}`, 
-        updatedMainAddress,
-        { headers: { 'Authorization': `Bearer ${token}` }}
+      await apiClient.put(
+        getApiUrl(`/addresses/updateAddress/${addressId}`), 
+        updatedMainAddress
       );
       
       // Set all other addresses to main: false
@@ -388,10 +357,9 @@ export const updateAddressMain = async (token, addressId, addresses, userInfo, u
             serviceProvider: null
           };
           
-          await axios.put(
-            `/api/addresses/updateAddress/${addr.addressId}`, 
-            otherAddress,
-            { headers: { 'Authorization': `Bearer ${token}` }}
+          await apiClient.put(
+            getApiUrl(`/addresses/updateAddress/${addr.addressId}`), 
+            otherAddress
           );
         }
       }
@@ -406,22 +374,22 @@ export const updateAddressMain = async (token, addressId, addresses, userInfo, u
  * Fetch PSGC provinces
  */
 export const fetchProvinces = async () => {
-  const response = await axios.get('https://psgc.gitlab.io/api/provinces');
-  return response.data;
+  const response = await fetch('https://psgc.gitlab.io/api/provinces');
+  return await response.json();
 };
 
 /**
  * Fetch PSGC cities for a province
  */
 export const fetchCities = async (provinceCode) => {
-  const response = await axios.get(`https://psgc.gitlab.io/api/provinces/${provinceCode}/cities-municipalities`);
-  return response.data;
+  const response = await fetch(`https://psgc.gitlab.io/api/provinces/${provinceCode}/cities-municipalities`);
+  return await response.json();
 };
 
 /**
  * Fetch PSGC barangays for a city
  */
 export const fetchBarangays = async (cityCode) => {
-  const response = await axios.get(`https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays`);
-  return response.data;
+  const response = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays`);
+  return await response.json();
 };

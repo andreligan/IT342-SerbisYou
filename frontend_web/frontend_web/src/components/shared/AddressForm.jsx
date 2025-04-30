@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import axios from 'axios';
+import { fetchProvinces, fetchCities, fetchBarangays } from '../../utils/addressApi';
 
 function AddressForm({
   addressForm, setAddressForm,
@@ -14,11 +14,11 @@ function AddressForm({
 }) {
   // Fetch provinces on component mount
   useEffect(() => {
-    const fetchProvinces = async () => {
+    const loadProvinces = async () => {
       setIsLoading(prev => ({ ...prev, provinces: true }));
       try {
-        const response = await axios.get('https://psgc.gitlab.io/api/provinces');
-        setProvinces(response.data);
+        const data = await fetchProvinces();
+        setProvinces(data);
       } catch (error) {
         console.error("Failed to fetch provinces:", error);
       } finally {
@@ -27,7 +27,7 @@ function AddressForm({
     };
     
     if (provinces.length === 0) {
-      fetchProvinces();
+      loadProvinces();
     }
   }, []);
 
@@ -51,8 +51,8 @@ function AddressForm({
     
     setIsLoading(prev => ({ ...prev, cities: true }));
     try {
-      const response = await axios.get(`https://psgc.gitlab.io/api/provinces/${provinceCode}/cities-municipalities`);
-      setCities(response.data);
+      const data = await fetchCities(provinceCode);
+      setCities(data);
     } catch (error) {
       console.error("Failed to fetch cities:", error);
     } finally {
@@ -78,8 +78,8 @@ function AddressForm({
     
     setIsLoading(prev => ({ ...prev, barangays: true }));
     try {
-      const response = await axios.get(`https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays`);
-      setBarangays(response.data);
+      const data = await fetchBarangays(cityCode);
+      setBarangays(data);
     } catch (error) {
       console.error("Failed to fetch barangays:", error);
     } finally {
