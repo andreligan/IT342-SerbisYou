@@ -18,10 +18,6 @@ const API = axios.create({
 // Add request interceptor to add auth token
 API.interceptors.request.use(
   config => {
-    // Add CORS headers
-    config.headers['Access-Control-Allow-Origin'] = 'https://serbisyo.vercel.app';
-    config.headers['Access-Control-Allow-Credentials'] = 'true';
-    
     // Get token from storage
     const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     if (token) {

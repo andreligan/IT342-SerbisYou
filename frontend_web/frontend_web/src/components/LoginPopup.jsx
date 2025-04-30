@@ -18,46 +18,45 @@ const LoginPopup = ({ open, onClose }) => {
     try {
       console.log("Attempting login for user:", userName);
       
-      // Send login request to the backend using API utility
-      const response = await API.post('user-auth/login', {
-        userName,
-        password,
-      });
-    
-      console.log("Login successful, received response:", response.status);
+      // Format the login data in the exact format expected by the backend
+      const loginData = {
+        userName: userName,
+        password: password
+      };
       
-      // Extract the data
-      const { token, role, userId } = response.data;
+      console.log("Sending login request to:", `${API.defaults.baseURL}user-auth/login`);
       
-      // Store in localStorage/sessionStorage
-      if (rememberMe) {
-        localStorage.setItem('authToken', token);
-        localStorage.setItem('userRole', role);
-        localStorage.setItem('userId', userId);
-        localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('username', userName);
-      } else {
-        sessionStorage.setItem('authToken', token);
-        sessionStorage.setItem('userRole', role);
-        sessionStorage.setItem('userId', userId);
-        sessionStorage.setItem('isAuthenticated', 'true');
-        sessionStorage.setItem('username', userName);
-      }
-  
-      // Close the login popup
-      onClose();
-  
-      // Redirect based on role WITH HISTORY REPLACEMENT
-      if (role.toLowerCase() === "customer") {
-        navigate('/customerHomePage', { replace: true });
-      } else if (role.toLowerCase() === "service provider") {
-        navigate('/serviceProviderHomePage', { replace: true });
-      } else if (role.toLowerCase() === "admin") {
-        navigate('/adminHomePage', { replace: true });
-      } else {
-        // Handle other roles or unexpected cases
-        console.error("Unknown user role:", role);
-        navigate('/');
+      try {
+        // First try with Axios
+        const response = await API.post('user-auth/login', loginData);
+        console.log("Login successful with Axios, received response:", response.status);
+        
+        // Extract the data
+        const { token, role, userId } = response.data;
+        handleSuccessfulLogin(token, role, userId);
+      } catch (axiosError) {
+        console.error("Axios login failed, trying direct fetch:", axiosError);
+        
+        // If Axios fails, try with direct fetch as a fallback
+        const fetchResponse = await fetch('https://serbisyo-backend.onrender.com/api/user-auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(loginData),
+          credentials: 'include'
+        });
+        
+        if (!fetchResponse.ok) {
+          throw new Error(`Fetch login failed with status: ${fetchResponse.status} ${fetchResponse.statusText}`);
+        }
+        
+        const data = await fetchResponse.json();
+        console.log("Login successful with fetch, received data:", data);
+        
+        const { token, role, userId } = data;
+        handleSuccessfulLogin(token, role, userId);
       }
     } catch (error) {
       // Handle login error
@@ -82,6 +81,39 @@ const LoginPopup = ({ open, onClose }) => {
         // Something happened in setting up the request that triggered an Error
         setErrorMessage("An error occurred while trying to log in. Please try again.");
       }
+    }
+  };
+  
+  const handleSuccessfulLogin = (token, role, userId) => {
+    // Store in localStorage/sessionStorage
+    if (rememberMe) {
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('userRole', role);
+      localStorage.setItem('userId', userId);
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('username', userName);
+    } else {
+      sessionStorage.setItem('authToken', token);
+      sessionStorage.setItem('userRole', role);
+      sessionStorage.setItem('userId', userId);
+      sessionStorage.setItem('isAuthenticated', 'true');
+      sessionStorage.setItem('username', userName);
+    }
+
+    // Close the login popup
+    onClose();
+
+    // Redirect based on role WITH HISTORY REPLACEMENT
+    if (role.toLowerCase() === "customer") {
+      navigate('/customerHomePage', { replace: true });
+    } else if (role.toLowerCase() === "service provider") {
+      navigate('/serviceProviderHomePage', { replace: true });
+    } else if (role.toLowerCase() === "admin") {
+      navigate('/adminHomePage', { replace: true });
+    } else {
+      // Handle other roles or unexpected cases
+      console.error("Unknown user role:", role);
+      navigate('/');
     }
   };
 
