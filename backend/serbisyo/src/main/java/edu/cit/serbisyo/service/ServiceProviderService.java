@@ -32,17 +32,8 @@ public class ServiceProviderService {
     }
 
     public ServiceProviderEntity getServiceProviderByAuthId(Long authId) {
-        // This would ideally use a repository method like findByUserAuthUserId
-        // For now, we'll search through all providers
-        List<ServiceProviderEntity> allProviders = serviceProviderRepository.findAll();
-        for (ServiceProviderEntity provider : allProviders) {
-            if (provider.getUserAuth() != null && 
-                provider.getUserAuth().getUserId() != null && 
-                provider.getUserAuth().getUserId().equals(authId)) {
-                return provider;
-            }
-        }
-        return null; // Return null if not found
+        // Use the repository method to find by userAuth.userId
+        return serviceProviderRepository.findByUserAuthUserId(authId).orElse(null);
     }
 
     public ServiceProviderEntity updateServiceProvider(Long providerId, ServiceProviderEntity updatedProvider) {
