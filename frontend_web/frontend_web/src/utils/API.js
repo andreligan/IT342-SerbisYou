@@ -1,23 +1,15 @@
 import axios from 'axios';
 
 // Hard-code the production API URL to ensure consistency
-// Removed trailing /api/ since it's already added in the endpoints
+// Make sure this points directly to the backend API
 const baseURL = 'https://serbisyo-backend.onrender.com/';
 
 console.log('API baseURL:', baseURL); // Debugging line
 
 // Helper function to format API paths correctly
 const formatPath = (path) => {
-  // If path starts with 'api/', remove it to avoid duplicates
-  if (path.startsWith('api/')) {
-    path = path.substring(4);
-  }
-  
-  // If path doesn't start with 'api/', add it
-  if (!path.startsWith('api/')) {
-    path = 'api/' + path;
-  }
-  
+  // Don't add 'api/' prefix in production since the backend may be configured differently
+  // Just return the path as is to avoid routing issues
   console.log(`Formatted API path: ${path}`);
   return path;
 };

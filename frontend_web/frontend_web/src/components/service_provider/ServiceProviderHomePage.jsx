@@ -59,24 +59,15 @@ function ServiceProviderHomePage() {
 
         // Try to get provider directly using getByAuthId endpoint with correct parameter name
         try {
-          console.log("Fetching provider with authId:", userId);
-          const providerResponse = await axios.get(`/api/service-providers/getByAuthId?authId=${userId}`, {
+          const providerResponse = await axios.get(`api/service-providers/getByAuthId?authId=${userId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           
-          console.log("Provider response:", providerResponse);
-          
-          // Check if response has the expected structure
-          if (!providerResponse.data || (typeof providerResponse.data === 'string')) {
-            console.error("Unexpected response format:", providerResponse);
-            throw new Error("Invalid provider data returned");
-          }
-          
-          // Handle the response based on whether it has a data property or is the provider directly
-          const provider = providerResponse.data.data || providerResponse.data;
+          console.log("Provider response: ", providerResponse);
+          const provider = providerResponse.data;
           
           if (!provider || !provider.providerId) {
-            console.error("Invalid provider data:", provider);
+            console.log("Unexpected response format: ", provider);
             throw new Error("Invalid provider data returned");
           }
           
@@ -84,7 +75,7 @@ function ServiceProviderHomePage() {
           setProviderName(`${provider.firstName || ''} ${provider.lastName || ''}`.trim() || "Service Provider");
           
           // Step 2: Get all services
-          const servicesResponse = await axios.get("/api/services/getAll", {
+          const servicesResponse = await axios.get("api/services/getAll", {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           
@@ -94,7 +85,7 @@ function ServiceProviderHomePage() {
           );
           
           // Step 4: Get all categories for display
-          const categoriesResponse = await axios.get("/api/service-categories/getAll", {
+          const categoriesResponse = await axios.get("api/service-categories/getAll", {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           
@@ -135,14 +126,15 @@ function ServiceProviderHomePage() {
           console.error("Direct API call failed, falling back to alternative method:", directError);
           
           // Fallback: Get service provider ID by matching userId from all providers
-          const providersResponse = await axios.get("/api/service-providers/getAll", {
+          const providersResponse = await axios.get("api/service-providers/getAll", {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           
-          console.log("All providers response:", providersResponse);
+          console.log("All providers response: ", providersResponse);
           
+          // Check if we're getting an array before trying to use find()
           if (!Array.isArray(providersResponse.data)) {
-            console.error("Expected array but got:", providersResponse.data);
+            console.log("Expected array but got: " + providersResponse.data.substring(0, 500));
             throw new Error("Invalid providers data format");
           }
           
@@ -160,7 +152,8 @@ function ServiceProviderHomePage() {
           setProviderName(`${provider.firstName || ''} ${provider.lastName || ''}`.trim() || "Service Provider");
           
           // Step 2: Get all services
-          const servicesResponse = await axios.get("/api/services/getAll", {
+
+          const servicesResponse = await axios.get("api/services/getAll", {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           
@@ -170,7 +163,7 @@ function ServiceProviderHomePage() {
           );
           
           // Step 4: Get all categories for display
-          const categoriesResponse = await axios.get("/api/service-categories/getAll", {
+          const categoriesResponse = await axios.get("api/service-categories/getAll", {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           
