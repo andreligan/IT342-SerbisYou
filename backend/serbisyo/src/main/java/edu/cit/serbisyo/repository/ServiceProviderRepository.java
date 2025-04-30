@@ -13,6 +13,6 @@ public interface ServiceProviderRepository extends JpaRepository<ServiceProvider
     List<ServiceProviderEntity> findByVerifiedTrue();
     Optional<ServiceProviderEntity> findByUserAuthUserName(String username);
     
-    // Add method to find by userAuth.userId
+    // Make sure the method is defined correctly
     Optional<ServiceProviderEntity> findByUserAuthUserId(Long userId);
 }
