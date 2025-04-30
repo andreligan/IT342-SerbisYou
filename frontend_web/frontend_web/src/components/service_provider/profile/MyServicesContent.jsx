@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { motion } from 'framer-motion';
 import BaseModal from '../../shared/BaseModal';
-
-// Base URL for the backend server
-const BASE_URL = "http://localhost:8080";
+import apiClient, { getApiUrl, API_BASE_URL } from '../../../utils/apiConfig';
 
 function MyServicesContent() {
   // Add navigate for routing
@@ -86,6 +83,9 @@ function MyServicesContent() {
   const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
   const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
   
+  // Update BASE_URL to use API_BASE_URL from apiConfig
+  const BASE_URL = API_BASE_URL;
+  
   // Step 1: Fetch the service provider first to get their providerId
   useEffect(() => {
     const getProviderId = async () => {
@@ -93,9 +93,7 @@ function MyServicesContent() {
         setLoading(true);
         
         // Get all service providers
-        const providersResponse = await axios.get("/api/service-providers/getAll", {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const providersResponse = await apiClient.get(getApiUrl("/service-providers/getAll"));
         
         // Find the provider that matches the current user
         const provider = providersResponse.data.find(
@@ -126,9 +124,7 @@ function MyServicesContent() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await axios.get('/api/service-categories/getAll', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await apiClient.get(getApiUrl('/service-categories/getAll'));
         setCategories(response.data);
       } catch (err) {
         console.error('Error fetching categories:', err);
@@ -148,9 +144,7 @@ function MyServicesContent() {
         setLoading(true);
         setError(null);
         
-        const response = await axios.get('/api/services/getAll', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await apiClient.get(getApiUrl('/services/getAll'));
         
         // Filter services by providerId
         const providerServices = response.data.filter(
@@ -201,9 +195,7 @@ function MyServicesContent() {
         const images = {};
         for (const service of services) {
           try {
-            const response = await axios.get(`/api/services/getServiceImage/${service.serviceId}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
+            const response = await apiClient.get(getApiUrl(`/services/getServiceImage/${service.serviceId}`));
             // Prepend the base URL to the relative path
             images[service.serviceId] = `${BASE_URL}${response.data}`;
           } catch (err) {
@@ -220,7 +212,7 @@ function MyServicesContent() {
     if (services.length > 0) {
       fetchServiceImages();
     }
-  }, [services, token]);
+  }, [services, BASE_URL]);
   
   // Navigate to add service page instead of opening dialog
   const handleAddClick = () => {
@@ -270,12 +262,9 @@ function MyServicesContent() {
       };
       
       // Use the correct URL format with path variables
-      const response = await axios.put(
-        `/api/services/updateService/${currentService.serviceId}/${providerId}/${currentService.categoryId}`, 
-        servicePayload,
-        {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }
+      const response = await apiClient.put(
+        getApiUrl(`/services/updateService/${currentService.serviceId}/${providerId}/${currentService.categoryId}`), 
+        servicePayload
       );
       
       // Update the service in our list
@@ -338,9 +327,7 @@ function MyServicesContent() {
       setLoading(true);
       setError(null);
       
-      await axios.delete(`/api/services/delete/${currentService.serviceId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await apiClient.delete(getApiUrl(`/services/delete/${currentService.serviceId}`));
       
       // Remove the service from our list
       setServices(prev => 
@@ -391,12 +378,15 @@ function MyServicesContent() {
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await axios.post(`/api/services/uploadServiceImage/${serviceId}`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await apiClient.post(
+        getApiUrl(`/services/uploadServiceImage/${serviceId}`), 
+        formData, 
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
 
       console.log(response.data);
 

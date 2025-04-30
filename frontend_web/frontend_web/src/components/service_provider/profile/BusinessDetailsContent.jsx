@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { motion } from 'framer-motion';
+import apiClient, { getApiUrl } from '../../../utils/apiConfig';
 
 function BusinessDetailsContent() {
   const [formData, setFormData] = useState({
@@ -32,9 +32,7 @@ function BusinessDetailsContent() {
       
       try {
         // Get all service providers
-        const providersResponse = await axios.get('/api/service-providers/getAll', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const providersResponse = await apiClient.get(getApiUrl('/service-providers/getAll'));
         
         // Find the provider that matches the logged-in user's ID
         const matchingProvider = providersResponse.data.find(provider => 
@@ -53,9 +51,7 @@ function BusinessDetailsContent() {
           });
 
           // Fetch all services to find this provider's services
-          const servicesResponse = await axios.get('/api/services/getAll', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const servicesResponse = await apiClient.get(getApiUrl('/services/getAll'));
           
           // Filter services for this provider
           const services = servicesResponse.data.filter(
@@ -70,9 +66,7 @@ function BusinessDetailsContent() {
           ))].filter(id => id != null);
           
           // Fetch all service categories
-          const categoriesResponse = await axios.get('/api/service-categories/getAll', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const categoriesResponse = await apiClient.get(getApiUrl('/service-categories/getAll'));
           
           // Filter categories to only include those that the provider has services in
           const relevantCategories = categoriesResponse.data.filter(
@@ -125,9 +119,7 @@ function BusinessDetailsContent() {
       };
       
       // Send update request
-      await axios.put(`/api/service-providers/update/${provider.providerId}`, updatedProvider, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await apiClient.put(getApiUrl(`/service-providers/update/${provider.providerId}`), updatedProvider);
       
       setSuccessMessage('Business details updated successfully!');
       
