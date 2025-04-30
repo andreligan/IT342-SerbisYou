@@ -59,13 +59,24 @@ function ServiceProviderHomePage() {
 
         // Try to get provider directly using getByAuthId endpoint with correct parameter name
         try {
+          console.log("Fetching provider with authId:", userId);
           const providerResponse = await axios.get(`/api/service-providers/getByAuthId?authId=${userId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           
-          const provider = providerResponse.data;
+          console.log("Provider response:", providerResponse);
+          
+          // Check if response has the expected structure
+          if (!providerResponse.data || (typeof providerResponse.data === 'string')) {
+            console.error("Unexpected response format:", providerResponse);
+            throw new Error("Invalid provider data returned");
+          }
+          
+          // Handle the response based on whether it has a data property or is the provider directly
+          const provider = providerResponse.data.data || providerResponse.data;
           
           if (!provider || !provider.providerId) {
+            console.error("Invalid provider data:", provider);
             throw new Error("Invalid provider data returned");
           }
           
@@ -124,70 +135,77 @@ function ServiceProviderHomePage() {
           console.error("Direct API call failed, falling back to alternative method:", directError);
           
           // Fallback: Get service provider ID by matching userId from all providers
-        const providersResponse = await axios.get("/api/service-providers/getAll", {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        const provider = providersResponse.data.find(
-          p => p.userAuth && p.userAuth.userId == userId
-        );
-        
-        if (!provider) {
-          setError("No service provider profile found for this account.");
-          setLoading(false);
-          return;
-        }
-        
-        // Set provider name from fetched data
-        setProviderName(`${provider.firstName || ''} ${provider.lastName || ''}`.trim() || "Service Provider");
-        
-        // Step 2: Get all services
-        const servicesResponse = await axios.get("/api/services/getAll", {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        // Step 3: Filter to get only this provider's services
-        const providerServices = servicesResponse.data.filter(
-          service => service.provider && service.provider.providerId === provider.providerId
-        );
-        
-        // Step 4: Get all categories for display
-        const categoriesResponse = await axios.get("/api/service-categories/getAll", {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        // Create a map of category IDs to names
-        const categoryMap = categoriesResponse.data.reduce((map, category) => {
-          map[category.categoryId] = category.categoryName;
-          return map;
-        }, {});
-        
-        // Enrich services with category names and images
-        const enhancedServices = providerServices.map((service, index) => ({
-          id: service.serviceId,
-          title: service.serviceName,
-          subtitle: service.serviceDescription,
-          priceRange: service.priceRange,
-          durationEstimate: service.durationEstimate,
-          categoryId: service.category?.categoryId,
-          categoryName: categoryMap[service.category?.categoryId] || "Uncategorized",
-          image: getServiceImage(categoryMap[service.category?.categoryId], index)
-        }));
-        
-        setServices(enhancedServices);
-        
-        // Group services by category
-        const groupedServices = enhancedServices.reduce((groups, service) => {
-          const categoryName = service.categoryName;
-          if (!groups[categoryName]) {
-            groups[categoryName] = [];
+          const providersResponse = await axios.get("/api/service-providers/getAll", {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          console.log("All providers response:", providersResponse);
+          
+          if (!Array.isArray(providersResponse.data)) {
+            console.error("Expected array but got:", providersResponse.data);
+            throw new Error("Invalid providers data format");
           }
-          groups[categoryName].push(service);
-          return groups;
-        }, {});
-        
-        setCategoryGroups(groupedServices);
-        setLoading(false);
+          
+          const provider = providersResponse.data.find(
+            p => p.userAuth && p.userAuth.userId == userId
+          );
+          
+          if (!provider) {
+            setError("No service provider profile found for this account.");
+            setLoading(false);
+            return;
+          }
+          
+          // Set provider name from fetched data
+          setProviderName(`${provider.firstName || ''} ${provider.lastName || ''}`.trim() || "Service Provider");
+          
+          // Step 2: Get all services
+          const servicesResponse = await axios.get("/api/services/getAll", {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          // Step 3: Filter to get only this provider's services
+          const providerServices = servicesResponse.data.filter(
+            service => service.provider && service.provider.providerId === provider.providerId
+          );
+          
+          // Step 4: Get all categories for display
+          const categoriesResponse = await axios.get("/api/service-categories/getAll", {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          // Create a map of category IDs to names
+          const categoryMap = categoriesResponse.data.reduce((map, category) => {
+            map[category.categoryId] = category.categoryName;
+            return map;
+          }, {});
+          
+          // Enrich services with category names and images
+          const enhancedServices = providerServices.map((service, index) => ({
+            id: service.serviceId,
+            title: service.serviceName,
+            subtitle: service.serviceDescription,
+            priceRange: service.priceRange,
+            durationEstimate: service.durationEstimate,
+            categoryId: service.category?.categoryId,
+            categoryName: categoryMap[service.category?.categoryId] || "Uncategorized",
+            image: getServiceImage(categoryMap[service.category?.categoryId], index)
+          }));
+          
+          setServices(enhancedServices);
+          
+          // Group services by category
+          const groupedServices = enhancedServices.reduce((groups, service) => {
+            const categoryName = service.categoryName;
+            if (!groups[categoryName]) {
+              groups[categoryName] = [];
+            }
+            groups[categoryName].push(service);
+            return groups;
+          }, {});
+          
+          setCategoryGroups(groupedServices);
+          setLoading(false);
         }
       } catch (error) {
         console.error("Error fetching service provider data:", error);
