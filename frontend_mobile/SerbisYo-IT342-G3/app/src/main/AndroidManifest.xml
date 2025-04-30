@@ -134,8 +134,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="http" android:host="localhost" android:path="/payment-success" />
 
-                <!-- Uncomment the following line if you want to handle the success URL in production -->
-               <!-- <data android:scheme="https" android:host="your-deployed-frontend.com" android:path="/payment-success" />-->
+                <!-- Production URL for payment success -->
+                <data android:scheme="https" android:host="serbisyo.vercel.app" android:path="/payment-success" />
             </intent-filter>
             <!-- Handle cancel URL -->
             <intent-filter>
@@ -144,8 +144,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="http" android:host="localhost" android:path="/payment-cancel" />
                 
-                <!-- Uncomment the following line if you want to handle the cancel URL in production -->
-                <!--<data android:scheme="https" android:host="your-deployed-frontend.com" android:path="/payment-cancel" />-->
+                <!-- Production URL for payment cancel -->
+                <data android:scheme="https" android:host="serbisyo.vercel.app" android:path="/payment-cancel" />
             </intent-filter>
         </activity>
     </application>

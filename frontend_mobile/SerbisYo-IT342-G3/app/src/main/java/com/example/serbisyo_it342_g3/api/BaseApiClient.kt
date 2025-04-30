@@ -27,15 +27,11 @@ open class BaseApiClient(private val context: Context) {
         private const val ALTERNATE_SERVER_IP_2 = "http://192.168.1.101:8080"
         private const val ALTERNATE_SERVER_IP_3 = "http://192.168.100.10:8080"
 
-        // STATIC PROPERTY TO CONFIGURE API URL - Start with default
-        var BASE_URL = PHYSICAL_DEVICE_URL
-        
         // Production URL for released APK
-        private const val PRODUCTION_URL = "https://your-deployed-backend.com"
+        private const val PRODUCTION_URL = "https://serbisyo-backend.onrender.com"
         
         // STATIC PROPERTY TO CONFIGURE API URL - Set to production for release
-        //REPLACE LNG IF DEPLOYED NA
-        //var BASE_URL = PRODUCTION_URL
+        var BASE_URL = PRODUCTION_URL
 
         // Method to set base URL from anywhere in the app
         fun setBaseUrl(url: String) {
@@ -49,9 +45,8 @@ open class BaseApiClient(private val context: Context) {
             BASE_URL = PRODUCTION_URL
             Log.d(TAG, "Using production URL: $BASE_URL")
 
-            //============================================================================
+            /*
             // Commented out for release version
-            //i COMMENT SUGOD ARI
             val isEmulator = android.os.Build.FINGERPRINT.contains("generic") || 
                              android.os.Build.MODEL.contains("google_sdk")
             
@@ -68,16 +63,15 @@ open class BaseApiClient(private val context: Context) {
             
             Log.d(TAG, "Network active: ${network != null}")
             Log.d(TAG, "Network capabilities: ${capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)}")
-            //Until diri
-            //============================================================================
+            */
         }
     }
     
     // Common HTTP client configured with appropriate timeouts
     val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)  // Keep increased timeout
-        .readTimeout(30, TimeUnit.SECONDS)     // Keep increased timeout
-        .writeTimeout(30, TimeUnit.SECONDS)    // Keep increased timeout
+        .connectTimeout(120, TimeUnit.SECONDS)  // Increased timeout for Render.com free tier
+        .readTimeout(120, TimeUnit.SECONDS)     // Increased timeout for Render.com free tier
+        .writeTimeout(120, TimeUnit.SECONDS)    // Increased timeout for Render.com free tier
         .build()
         
     // Common Gson instance for JSON parsing
@@ -106,14 +100,12 @@ open class BaseApiClient(private val context: Context) {
     
     // Helper methods that match the backend's expected URLs
     fun getSuccessUrl(): String {
-        return "http://localhost:5173/payment-success"
-        //Replace ni sa actual deployed frontend-URL
-        //return "https://your-deployed-frontend.com/payment-success"
+        // Return the deployed frontend URL for payment success
+        return "https://serbisyo.vercel.app/payment-success"
     }
     
     fun getCancelUrl(): String {
-        return "http://localhost:5173/payment-cancel"
-        //Replace ni sa actual deployed frontend-URL
-        //return "https://your-deployed-frontend.com/payment-cancel"
+        // Return the deployed frontend URL for payment cancel
+        return "https://serbisyo.vercel.app/payment-cancel"
     }
 } 

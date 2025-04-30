@@ -22,7 +22,7 @@ import jakarta.servlet.http.HttpServletResponse;
 @Component
 public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
     
-    @Value("${app.frontend.url:http://localhost:5173}")
+    @Value("${app.frontend.url:https://serbisyo.vercel.app}")
     private String frontendUrl;
     
     @Autowired
@@ -34,6 +34,12 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
             throws IOException, ServletException {
+        
+        // Set CORS headers to allow redirect to frontend
+        response.setHeader("Access-Control-Allow-Origin", frontendUrl);
+        response.setHeader("Access-Control-Allow-Credentials", "true");
+        response.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+        response.setHeader("Access-Control-Allow-Headers", "Authorization,Content-Type,Accept,Origin");
         
         // Get OAuth2 user information
         OAuth2AuthenticationToken oAuth2AuthenticationToken = (OAuth2AuthenticationToken) authentication;

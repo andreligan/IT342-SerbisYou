@@ -9,6 +9,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import okhttp3.*
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 /**
  * PSGCApiClient uses the Philippine Standard Geographic Code (PSGC) API
@@ -16,7 +17,11 @@ import java.io.IOException
  */
 class PSGCApiClient(private val context: Context) {
     private val TAG = "PSGCApiClient"
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
+        .build()
     private val gson = Gson()
     
     // PSGC API base URL

@@ -17,22 +17,11 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class MessageApiClient(private val context: Context) {
-    private val client = OkHttpClient()
+    private val baseApiClient = BaseApiClient(context)
+    private val client = baseApiClient.client
     private val gson = GsonBuilder()
         .setDateFormat("yyyy-MM-dd'T'HH:mm:ss")
         .create()
-
-    // CONFIGURATION FOR BACKEND CONNECTION
-    // For Android Emulator - Virtual Device (default)
-    private val EMULATOR_URL = "http://10.0.2.2:8080"
-
-    // For Physical Device - Use your computer's actual IP address from ipconfig
-    private val PHYSICAL_DEVICE_URL = "http://192.168.200.136:8080"
-
-    // SWITCH BETWEEN CONNECTION TYPES:
-    // Uncomment the one you need and comment out the other
-    // private val BASE_URL = EMULATOR_URL     // For Android Emulator
-    private val BASE_URL = PHYSICAL_DEVICE_URL // For Physical Device
 
     private val TAG = "MessageApiClient"
 
@@ -47,7 +36,7 @@ class MessageApiClient(private val context: Context) {
         Log.d(TAG, "Getting conversation partners for user: $userId")
 
         val request = Request.Builder()
-            .url("$BASE_URL/api/messages/conversation-partners/$userId")
+            .url("${baseApiClient.getBaseUrl()}/api/messages/conversation-partners/$userId")
             .get()
             .header("Authorization", "Bearer $token")
             .build()
@@ -137,7 +126,7 @@ class MessageApiClient(private val context: Context) {
         Log.d(TAG, "Getting messages between users: $userId and $otherUserId")
 
         val request = Request.Builder()
-            .url("$BASE_URL/api/messages/conversation/$userId/$otherUserId")
+            .url("${baseApiClient.getBaseUrl()}/api/messages/conversation/$userId/$otherUserId")
             .get()
             .header("Authorization", "Bearer $token")
             .build()
@@ -256,7 +245,7 @@ class MessageApiClient(private val context: Context) {
         val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
 
         val request = Request.Builder()
-            .url("$BASE_URL/api/messages/postMessage")
+            .url("${baseApiClient.getBaseUrl()}/api/messages/postMessage")
             .post(requestBody)
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
@@ -368,7 +357,7 @@ class MessageApiClient(private val context: Context) {
         val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
 
         val request = Request.Builder()
-            .url("$BASE_URL/api/notifications/create")
+            .url("${baseApiClient.getBaseUrl()}/api/notifications/create")
             .post(requestBody)
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
@@ -433,7 +422,7 @@ class MessageApiClient(private val context: Context) {
 
         // Update message with ID to mark all messages in a conversation as read
         val request = Request.Builder()
-            .url("$BASE_URL/api/messages/updateMessage/status")
+            .url("${baseApiClient.getBaseUrl()}/api/messages/updateMessage/status")
             .put(requestBody)
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
@@ -519,13 +508,13 @@ class MessageApiClient(private val context: Context) {
     private fun fetchAllUsers(token: String, callback: (List<UserSearchModel>?, Exception?) -> Unit) {
         // Create requests for both customers and service providers
         val customersRequest = Request.Builder()
-            .url("$BASE_URL/api/customers/getAll")
+            .url("${baseApiClient.getBaseUrl()}/api/customers/getAll")
             .get()
             .header("Authorization", "Bearer $token")
             .build()
 
         val providersRequest = Request.Builder()
-            .url("$BASE_URL/api/service-providers/getAll")
+            .url("${baseApiClient.getBaseUrl()}/api/service-providers/getAll")
             .get()
             .header("Authorization", "Bearer $token")
             .build()
@@ -718,7 +707,7 @@ class MessageApiClient(private val context: Context) {
         // Since we don't have a direct endpoint for getting a message by ID,
         // we'll fetch all messages and find the one we're looking for
         val request = Request.Builder()
-            .url("$BASE_URL/api/messages/getAll")
+            .url("${baseApiClient.getBaseUrl()}/api/messages/getAll")
             .get()
             .header("Authorization", "Bearer $token")
             .build()

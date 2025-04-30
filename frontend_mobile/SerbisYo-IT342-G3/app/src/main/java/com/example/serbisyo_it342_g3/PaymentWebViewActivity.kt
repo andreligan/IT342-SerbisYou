@@ -82,6 +82,14 @@ class PaymentWebViewActivity : AppCompatActivity() {
                             Log.d(tag, "Payment cancellation detected via localhost URL: $currentUrl")
                             handlePaymentCancelled()
                         }
+                        currentUrl.contains("serbisyo.vercel.app") && currentUrl.contains("payment-success") -> {
+                            Log.d(tag, "Payment success detected via production URL: $currentUrl")
+                            handlePaymentSuccess()
+                        }
+                        currentUrl.contains("serbisyo.vercel.app") && currentUrl.contains("payment-cancel") -> {
+                            Log.d(tag, "Payment cancellation detected via production URL: $currentUrl")
+                            handlePaymentCancelled()
+                        }
                         currentUrl.contains("payment-success") -> {
                             Log.d(tag, "Payment success detected: $currentUrl")
                             handlePaymentSuccess()
@@ -113,6 +121,16 @@ class PaymentWebViewActivity : AppCompatActivity() {
                     }
                     url.contains("localhost") && url.contains("payment-cancel") -> {
                         Log.d(tag, "Payment cancellation detected during override: $url")
+                        handlePaymentCancelled()
+                        return true // Don't load this URL in WebView
+                    }
+                    url.contains("serbisyo.vercel.app") && url.contains("payment-success") -> {
+                        Log.d(tag, "Payment success detected during override via production URL: $url")
+                        handlePaymentSuccess()
+                        return true // Don't load this URL in WebView
+                    }
+                    url.contains("serbisyo.vercel.app") && url.contains("payment-cancel") -> {
+                        Log.d(tag, "Payment cancellation detected during override via production URL: $url")
                         handlePaymentCancelled()
                         return true // Don't load this URL in WebView
                     }
