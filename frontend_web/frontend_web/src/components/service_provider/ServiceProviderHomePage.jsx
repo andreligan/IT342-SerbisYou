@@ -59,13 +59,22 @@ function ServiceProviderHomePage() {
 
         // Try to get provider directly using getByAuthId endpoint with correct parameter name
         try {
+          console.log("Attempting to fetch provider with authId:", userId);
           const providerResponse = await axios.get(`/api/service-providers/getByAuthId?authId=${userId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           
+          console.log("Provider response data:", providerResponse.data);
           const provider = providerResponse.data;
           
-          if (!provider || !provider.providerId) {
+          // Handle the case where the response is a string error message
+          if (typeof provider === 'string') {
+            console.error("Received string response instead of provider object:", provider);
+            throw new Error(provider || "Invalid provider data returned");
+          }
+          
+          if (!provider || provider.providerId === undefined) {
+            console.error("Invalid provider data returned:", provider);
             throw new Error("Invalid provider data returned");
           }
           

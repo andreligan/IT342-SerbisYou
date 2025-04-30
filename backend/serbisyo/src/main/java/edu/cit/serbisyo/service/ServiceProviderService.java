@@ -12,6 +12,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Optional;
+
 @Service
 public class ServiceProviderService {
     @Autowired
@@ -33,7 +35,33 @@ public class ServiceProviderService {
 
     public ServiceProviderEntity getServiceProviderByAuthId(Long authId) {
         // Use the repository method to find by userAuth.userId
-        return serviceProviderRepository.findByUserAuthUserId(authId).orElse(null);
+        System.out.println("ServiceProviderService: looking for provider with authId: " + authId);
+        try {
+            Optional<ServiceProviderEntity> provider = serviceProviderRepository.findByUserAuthUserId(authId);
+            if (provider.isPresent()) {
+                System.out.println("ServiceProviderService: Found provider with ID: " + provider.get().getProviderId());
+                return provider.get();
+            } else {
+                System.out.println("ServiceProviderService: No provider found with authId: " + authId);
+                // Try fallback to manual search
+                List<ServiceProviderEntity> allProviders = serviceProviderRepository.findAll();
+                System.out.println("ServiceProviderService: Searching through " + allProviders.size() + " providers manually");
+                for (ServiceProviderEntity p : allProviders) {
+                    if (p.getUserAuth() != null && 
+                        p.getUserAuth().getUserId() != null && 
+                        p.getUserAuth().getUserId().equals(authId)) {
+                        System.out.println("ServiceProviderService: Found provider manually with ID: " + p.getProviderId());
+                        return p;
+                    }
+                }
+                System.out.println("ServiceProviderService: Provider not found even with manual search");
+                return null;
+            }
+        } catch (Exception e) {
+            System.err.println("ServiceProviderService: Error finding provider: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
     }
 
     public ServiceProviderEntity updateServiceProvider(Long providerId, ServiceProviderEntity updatedProvider) {
