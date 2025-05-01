@@ -185,12 +185,22 @@ const BookServicePage = () => {
           console.log("Schedule availability:", schedule.isAvailable);
           return schedule.isAvailable !== false;
         })
-        .map(schedule => ({
-          value: `${schedule.startTime}-${schedule.endTime}`,
-          label: `${formatTimeWithAMPM(schedule.startTime)} - ${formatTimeWithAMPM(schedule.endTime)}`,
-          startTime: schedule.startTime,
-          endTime: schedule.endTime
-        }))
+        .map(schedule => {
+          const startTimeString = Array.isArray(schedule.startTime) 
+            ? `${schedule.startTime[0]}:${schedule.startTime[1]}`
+            : schedule.startTime;
+          
+          const endTimeString = Array.isArray(schedule.endTime) 
+            ? `${schedule.endTime[0]}:${schedule.endTime[1]}`
+            : schedule.endTime;
+          
+          return {
+            value: `${startTimeString}-${endTimeString}`,
+            label: `${formatTimeWithAMPM(schedule.startTime)} - ${formatTimeWithAMPM(schedule.endTime)}`,
+            startTime: startTimeString,
+            endTime: endTimeString
+          };
+        })
         .sort((a, b) => a.startTime.localeCompare(b.startTime));
       
       console.log("Formatted time slots:", slots);
@@ -205,7 +215,18 @@ const BookServicePage = () => {
 
   const formatTimeWithAMPM = (time) => {
     if (!time) return "";
-    const [hours, minutes] = time.split(":");
+    
+    let hours, minutes;
+    
+    if (Array.isArray(time)) {
+      [hours, minutes] = time;
+    } else if (typeof time === 'string') {
+      [hours, minutes] = time.split(":");
+    } else {
+      console.error("Unexpected time format:", time);
+      return "Invalid time";
+    }
+    
     const hour = parseInt(hours, 10);
     const period = hour >= 12 ? "PM" : "AM";
     const formattedHours = hour % 12 || 12;
