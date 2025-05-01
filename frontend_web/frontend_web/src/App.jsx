@@ -131,8 +131,17 @@ function App() {
             const imageResponse = await apiClient.get(getApiUrl(`customers/getProfileImage/${entityId}`));
             
             if (imageResponse.data) {
-              // Use API_BASE_URL from apiConfig
-              const fullImageURL = `${API_BASE_URL}${imageResponse.data}`;
+              console.log("Image path received:", imageResponse.data);
+              
+              // Fix URL construction - prevent path duplication
+              let imagePath = imageResponse.data;
+              
+              // Ensure we don't duplicate path segments by checking if the path needs a leading slash
+              const fullImageURL = imagePath.startsWith('/') 
+                ? `${API_BASE_URL}${imagePath}` 
+                : `${API_BASE_URL}/${imagePath}`;
+                
+              console.log("Full image URL constructed:", fullImageURL);
               setProfileImage(fullImageURL);
             }
           } catch (error) {
@@ -166,8 +175,17 @@ function App() {
             const imageResponse = await apiClient.get(getApiUrl(`service-providers/getServiceProviderImage/${entityId}`));
             
             if (imageResponse.data) {
-              // Use API_BASE_URL from apiConfig
-              const fullImageURL = `${API_BASE_URL}${imageResponse.data}`;
+              console.log("Image path received:", imageResponse.data);
+              
+              // Fix URL construction - prevent path duplication
+              let imagePath = imageResponse.data;
+              
+              // Ensure we don't duplicate path segments by checking if the path needs a leading slash
+              const fullImageURL = imagePath.startsWith('/') 
+                ? `${API_BASE_URL}${imagePath}` 
+                : `${API_BASE_URL}/${imagePath}`;
+                
+              console.log("Full image URL constructed:", fullImageURL);
               setProfileImage(fullImageURL);
             }
           } catch (error) {
