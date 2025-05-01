@@ -1,250 +1,312 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import DateTimeSelection from './DateTimeSelection';
-import ReviewBookingDetails from './ReviewBookingDetails';
-import PaymentConfirmation from './PaymentConfirmation';
-import apiClient, { getApiUrl } from '../utils/apiConfig';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { format, addDays } from 'date-fns';
+import DateTimeSelection from "./DateTimeSelection";
+import ReviewBookingDetails from "./ReviewBookingDetails";
+import PaymentConfirmation from "./PaymentConfirmation";
+import NotificationService from '../services/NotificationService';
+import { motion, AnimatePresence } from "framer-motion";
+import apiClient, { getApiUrl } from "../utils/apiConfig";
 
-function BookServicePage() {
-  const location = useLocation();
+const BookServicePage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   
-  // Get serviceId from URL query parameters
-  const queryParams = new URLSearchParams(location.search);
-  const serviceId = queryParams.get('serviceId');
-  
-  const [currentStep, setCurrentStep] = useState(1);
-  const [service, setService] = useState(null);
-  const [provider, setProvider] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [step, setStep] = useState(1);
+  const [bookingDate, setBookingDate] = useState(new Date());
+  const [bookingTime, setBookingTime] = useState("");
+  const [address, setAddress] = useState("");
+  const [note, setNote] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingTimeSlots, setIsLoadingTimeSlots] = useState(false);
   const [error, setError] = useState(null);
-  const [bookingData, setBookingData] = useState({
-    serviceId: serviceId,
-    selectedDate: '',
-    selectedTime: '',
-    serviceDetails: {},
-    customerDetails: {},
-    specialInstructions: '',
-    bookingStatus: 'PENDING',
-    payment: {
-      amount: 0,
-      paymentMethod: 'CASH',
-      paymentStatus: 'PENDING'
-    }
-  });
+  const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
+  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [serviceFee, setServiceFee] = useState(0);
+  const [totalPrice, setTotalPrice] = useState(0);
+  const [selectedTimeSlotIndex, setSelectedTimeSlotIndex] = useState(null);
+  const [payMongoFee, setPayMongoFee] = useState(0);
+  const [appFee, setAppFee] = useState(0);
+  const [customerId, setCustomerId] = useState(null);
+  const [debugInfo, setDebugInfo] = useState(null);
+  const [providerInfo, setProviderInfo] = useState(null);
+  const [isFullPayment, setIsFullPayment] = useState(true);
 
-  // Get user information from localStorage or sessionStorage
-  const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-  const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+  const serviceData = location.state?.service || {
+    serviceName: "Service",
+    price: 1000,
+    provider: { providerId: null },
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchAddress = async () => {
       try {
-        setLoading(true);
+        setIsLoading(true);
+        const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+        const userId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
         
-        if (!serviceId || !userId || !token) {
-          throw new Error('Required information missing');
+        if (!token || !userId) {
+          setError("Authentication information not found.");
+          setIsLoading(false);
+          return;
         }
 
-        // Fetch service details
-        const serviceResponse = await apiClient.get(getApiUrl(`/services/getById/${serviceId}`));
-        const serviceData = serviceResponse.data;
+        console.log("Current User ID:", userId);
         
-        if (!serviceData || !serviceData.serviceId) {
-          throw new Error('Service not found');
+        const customersResponse = await apiClient.get(getApiUrl("/customers/getAll"));
+        
+        console.log("Customers received:", customersResponse.data.length);
+        
+        const customer = customersResponse.data.find(cust => {
+          if (!cust.userAuth) return false;
+          const custUserId = cust.userAuth.userId;
+          return custUserId == userId;
+        });
+        
+        console.log("Matching customer found:", customer ? "Yes" : "No");
+        
+        if (!customer) {
+          setError("Customer profile not found. Please complete your profile setup.");
+          setIsLoading(false);
+          return;
+        }
+
+        setCustomerId(customer.customerId);
+        console.log("Customer ID stored:", customer.customerId);
+        
+        const addressesResponse = await apiClient.get(getApiUrl("/addresses/getAll"));
+        
+        console.log("Total addresses:", addressesResponse.data.length);
+        
+        const addresses = addressesResponse.data.filter(addr => {
+          if (!addr.customer) return false;
+          return addr.customer.customerId == customer.customerId;
+        });
+        
+        console.log("Found addresses for customer:", addresses.length);
+        
+        let selectedAddress = addresses.find(addr => addr.main === true);
+        if (!selectedAddress && addresses.length > 0) {
+          selectedAddress = addresses[0];
         }
         
-        setService(serviceData);
-        
-        // Update booking data with service price
-        const price = parseFloat(serviceData.price || 0);
-        setBookingData(prev => ({
-          ...prev,
-          serviceDetails: serviceData,
-          payment: {
-            ...prev.payment,
-            amount: price
-          }
-        }));
-        
-        // If service has provider info, use it to get provider details
-        if (serviceData.provider && serviceData.provider.providerId) {
-          const providerResponse = await apiClient.get(getApiUrl(`/service-providers/getById/${serviceData.provider.providerId}`));
-          setProvider(providerResponse.data);
-        }
-        
-        // Fetch customer details for the booking
-        const customerResponse = await apiClient.get(getApiUrl(`/customers/getByAuthId?authId=${userId}`));
-        
-        if (customerResponse.data && customerResponse.data.customerId) {
-          setBookingData(prev => ({
-            ...prev,
-            customerDetails: customerResponse.data,
-          }));
+        if (selectedAddress) {
+          const parts = [
+            selectedAddress.streetName, 
+            selectedAddress.barangay, 
+            selectedAddress.city, 
+            selectedAddress.province
+          ].filter(Boolean);
+          
+          setAddress(parts.join(', '));
+          setError(null);
         } else {
-          throw new Error('Customer profile not found. Please complete your profile before booking.');
+          setError("No address found. Please add your address in your profile.");
         }
-        
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError(err.message || 'Failed to load service information');
-        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching customer address:", error);
+        setError("Failed to load your address information.");
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    fetchData();
-  }, [serviceId, userId, token]);
+    fetchAddress();
+  }, []);
 
-  const handleStepChange = (direction) => {
-    if (direction === 'next') {
-      setCurrentStep(currentStep + 1);
-    } else {
-      setCurrentStep(currentStep - 1);
+  const fetchAvailableTimeSlots = async () => {
+    setIsLoadingTimeSlots(true);
+    setError(null);
+    
+    try {
+      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      if (!token) {
+        setError("Authentication token not found.");
+        setIsLoadingTimeSlots(false);
+        return;
+      }
+      
+      const dayOfWeek = format(bookingDate, 'EEEE').toUpperCase();
+      const providerId = serviceData.provider.providerId;
+      
+      console.log("Fetching schedules with:", {
+        providerId,
+        dayOfWeek,
+        date: format(bookingDate, 'yyyy-MM-dd')
+      });
+      
+      if (!providerId) {
+        console.error("Missing provider ID");
+        setError("Service provider information is missing.");
+        setIsLoadingTimeSlots(false);
+        return;
+      }
+      
+      const response = await apiClient.get(
+        getApiUrl(`/schedules/provider/${providerId}/day/${dayOfWeek}`)
+      );
+      
+      console.log("Schedule API response:", response.data);
+      
+      const slots = response.data
+        .filter(schedule => {
+          console.log("Schedule availability:", schedule.isAvailable);
+          return schedule.isAvailable !== false;
+        })
+        .map(schedule => ({
+          value: `${schedule.startTime}-${schedule.endTime}`,
+          label: `${formatTimeWithAMPM(schedule.startTime)} - ${formatTimeWithAMPM(schedule.endTime)}`,
+          startTime: schedule.startTime,
+          endTime: schedule.endTime
+        }))
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+      
+      console.log("Formatted time slots:", slots);
+      setAvailableTimeSlots(slots);
+    } catch (error) {
+      console.error("Error fetching available time slots:", error);
+      setError("Failed to load available time slots. Please try again.");
+    } finally {
+      setIsLoadingTimeSlots(false);
     }
   };
 
-  const handleBookingDataChange = (newData) => {
-    setBookingData(prev => ({ ...prev, ...newData }));
-  };
-
-  const handleCancel = () => {
-    const confirmCancel = window.confirm('Are you sure you want to cancel this booking?');
-    if (confirmCancel) {
-      navigate('/services');
+  const createGCashCheckout = async (checkoutPayload) => {
+    try {
+      console.log("Creating GCash checkout with payload:", checkoutPayload);
+      
+      const response = await apiClient.post(getApiUrl('/create-gcash-checkout'), checkoutPayload);
+      
+      console.log("Checkout session created:", response.data);
+      
+      return response.data.checkout_url;
+    } catch (error) {
+      console.error("Error creating GCash checkout:", error);
+      throw new Error("Failed to create GCash payment session.");
     }
   };
 
-  const renderStep = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <DateTimeSelection
-            service={service}
-            provider={provider}
-            bookingData={bookingData}
-            onBookingDataChange={handleBookingDataChange}
-            onNext={() => handleStepChange('next')}
-            onCancel={handleCancel}
-          />
-        );
-      case 2:
-        return (
-          <ReviewBookingDetails
-            service={service}
-            provider={provider}
-            bookingData={bookingData}
-            onBookingDataChange={handleBookingDataChange}
-            onNext={() => handleStepChange('next')}
-            onBack={() => handleStepChange('back')}
-            onCancel={handleCancel}
-          />
-        );
-      case 3:
-        return (
-          <PaymentConfirmation
-            service={service}
-            provider={provider}
-            bookingData={bookingData}
-            onBookingDataChange={handleBookingDataChange}
-            onBack={() => handleStepChange('back')}
-            onFinish={() => navigate('/customer-bookings')}
-          />
-        );
-      default:
-        return <div>Unknown step</div>;
+  const handleSubmit = async () => {
+    setIsProcessingPayment(true);
+    setError(null);
+    setDebugInfo(null);
+    
+    try {
+      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      
+      if (!customerId) {
+        setError("Customer ID not found. Please make sure you have a complete profile.");
+        setIsProcessingPayment(false);
+        return;
+      }
+      
+      let timeString = bookingTime.split('-')[0].trim();
+      timeString = formatTimeForBackend(timeString);
+      
+      if (!timeString) {
+        setError("Invalid time format. Please select a time slot again.");
+        setIsProcessingPayment(false);
+        return;
+      }
+      
+      const actualPaymentAmount = paymentMethod === 'gcash' && !isFullPayment 
+        ? totalPrice * 0.5
+        : totalPrice;
+      
+      const bookingRequest = {
+        customer: { customerId: customerId },
+        service: { 
+          serviceId: serviceData.serviceId,
+          serviceName: serviceData.serviceName,
+          provider: serviceData.provider ? { providerId: serviceData.provider.providerId } : null 
+        },
+        bookingDate: format(bookingDate, 'yyyy-MM-dd'),
+        bookingTime: timeString,
+        status: "Pending",
+        totalCost: totalPrice,
+        note: note || "",
+        paymentMethod: paymentMethod,
+        fullPayment: isFullPayment
+      };
+      
+      if (paymentMethod === 'gcash') {
+        try {
+          const checkoutPayload = {
+            amount: isFullPayment ? totalPrice : (totalPrice * 0.5),
+            description: `${isFullPayment ? 'Full Payment' : 'Downpayment (50%)'} for ${serviceData.serviceName}`,
+            successUrl: `${window.location.origin}/payment-success`,
+            cancelUrl: `${window.location.origin}/payment-cancel`
+          };
+          
+          const checkoutUrl = await createGCashCheckout(checkoutPayload);
+          
+          sessionStorage.setItem('pendingBooking', JSON.stringify(bookingRequest));
+          
+          console.log("Redirecting to GCash payment page:", checkoutUrl);
+          window.location.href = checkoutUrl;
+          return;
+        } catch (paymentError) {
+          console.error("Payment processing error:", paymentError);
+          setError("Failed to process GCash payment: " + paymentError.message);
+          setIsProcessingPayment(false);
+          return;
+        }
+      }
+      
+      try {
+        const response = await apiClient.post(getApiUrl('/bookings/postBooking'), bookingRequest);
+        
+        console.log('Booking successful:', response.data);
+
+        if (response.data && response.data.bookingId) {
+          try {
+            const notificationData = {
+              user: { userId: serviceData.provider.userAuth.userId },
+              type: "booking",
+              message: `New booking request: ${serviceData.serviceName} on ${formatDateForDisplay(bookingDate)} at ${formatTimeWithAMPM(timeString)}`,
+              isRead: false,
+              createdAt: new Date().toISOString(),
+              referenceId: response.data.bookingId,
+              referenceType: "Booking"
+            };
+            
+            await NotificationService.createNotification(notificationData);
+            console.log("Booking notification created successfully");
+          } catch (notifError) {
+            console.error("Error creating booking notification:", notifError);
+          }
+        }
+
+        navigate('/payment-success', { state: { bookingData: response.data } });
+      } catch (apiError) {
+        console.error("API Error:", apiError);
+        
+        let errorMessage = "Failed to create your booking. Please try again.";
+        if (apiError.response) {
+          console.log("API response status:", apiError.response.status);
+          console.log("API response data:", apiError.response.data);
+          
+          if (apiError.response.data && typeof apiError.response.data === 'string') {
+            errorMessage = apiError.response.data;
+          }
+        }
+        
+        setError(errorMessage);
+      }
+    } catch (error) {
+      console.error("Error in submission process:", error);
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#F4CE14] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading service details...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-50 px-4">
-        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
-          <svg className="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Error</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <button 
-            onClick={() => navigate('/services')}
-            className="bg-[#495E57] text-white px-6 py-2 rounded-lg hover:bg-[#3a4a45] transition-colors"
-          >
-            Back to Services
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Progress Indicator */}
-        <div className="mb-12">
-          <div className="flex justify-between items-center max-w-3xl mx-auto">
-            {['Select Date & Time', 'Review Details', 'Confirm & Pay'].map((step, index) => (
-              <motion.div 
-                key={index}
-                className="flex flex-col items-center"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * index }}
-              >
-                <div 
-                  className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium ${
-                    currentStep > index + 1 
-                      ? 'bg-green-500' 
-                      : currentStep === index + 1 
-                        ? 'bg-[#F4CE14]' 
-                        : 'bg-gray-300'
-                  }`}
-                >
-                  {currentStep > index + 1 ? (
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    index + 1
-                  )}
-                </div>
-                <span className={`mt-2 text-sm ${currentStep === index + 1 ? 'text-[#495E57] font-medium' : 'text-gray-500'}`}>
-                  {step}
-                </span>
-              </motion.div>
-            ))}
-          </div>
-          <div className="relative max-w-3xl mx-auto mt-4">
-            <div className="absolute top-0 left-[calc(16.67%+20px)] right-[calc(16.67%+20px)] h-1 bg-gray-200"></div>
-            <div 
-              className="absolute top-0 left-[calc(16.67%+20px)] h-1 bg-[#F4CE14] transition-all duration-300"
-              style={{
-                width: currentStep === 1 
-                  ? '0%' 
-                  : currentStep === 2 
-                    ? '50%' 
-                    : '100%'
-              }}
-            ></div>
-          </div>
-        </div>
-
-        {/* Step content */}
-        {renderStep()}
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 px-4">
+      {/* JSX content */}
     </div>
   );
-}
+};
 
 export default BookServicePage;
