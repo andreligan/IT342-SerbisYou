@@ -301,7 +301,7 @@ const ServiceDetailsModal = ({
   const handleBookNow = () => {
     // Navigate to booking page with the service ID
     if (currentService?.serviceId) {
-      navigate(`/book-service`);
+      navigate(`/bookService?serviceId=${currentService.serviceId}`);
     } else if (typeof onBookService === 'function') {
       onBookService();
     }
