@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { motion } from "framer-motion"; // Add framer motion import
 import ServiceFilters from "./filters/ServiceFilters";
 import ServiceDetailsModal from "./modals/ServiceDetailsModal";
 import Footer from "./Footer";
-
-const BASE_URL = "http://localhost:8080"; // Define the base URL for the backend
+import apiClient, { getApiUrl, API_BASE_URL } from '../utils/apiConfig';
 
 const BrowseServicesPage = () => {
   const [services, setServices] = useState([]);
@@ -80,12 +78,7 @@ const BrowseServicesPage = () => {
           return;
         }
 
-        const servicesResponse = await axios.get(`${BASE_URL}/api/services/getAll`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
+        const servicesResponse = await apiClient.get(getApiUrl('/services/getAll'));
         const services = servicesResponse.data;
 
         // Extract categories for popular tags
@@ -105,23 +98,16 @@ const BrowseServicesPage = () => {
           services.map(async (service) => {
             try {
               // Fetch the service image path
-              const imageResponse = await axios.get(`${BASE_URL}/api/services/getServiceImage/${service.serviceId}`, {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              });
+              const imageResponse = await apiClient.get(
+                getApiUrl(`/services/getServiceImage/${service.serviceId}`)
+              );
               service.serviceImage = imageResponse.data; // Add the image path to the service object
               
               // Fetch provider profile image if provider exists
               if (service.provider && service.provider.providerId) {
                 try {
-                  const providerImageResponse = await axios.get(
-                    `${BASE_URL}/api/service-providers/getServiceProviderImage/${service.provider.providerId}`,
-                    {
-                      headers: {
-                        Authorization: `Bearer ${token}`,
-                      },
-                    }
+                  const providerImageResponse = await apiClient.get(
+                    getApiUrl(`/service-providers/getServiceProviderImage/${service.provider.providerId}`)
                   );
                   service.provider.profileImage = providerImageResponse.data;
                   console.log(`Provider ${service.provider.providerId} image path: ${service.provider.profileImage}`);
@@ -137,11 +123,9 @@ const BrowseServicesPage = () => {
 
             try {
               // Fetch the service rating
-              const ratingResponse = await axios.get(`${BASE_URL}/api/reviews/getServiceRating/${service.serviceId}`, {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              });
+              const ratingResponse = await apiClient.get(
+                getApiUrl(`/reviews/getServiceRating/${service.serviceId}`)
+              );
               ratingsMap[service.serviceId] = ratingResponse.data;
             } catch (error) {
               console.error(`Error fetching rating for service ${service.serviceId}:`, error);
@@ -312,7 +296,7 @@ const BrowseServicesPage = () => {
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
           <img
-            src={service.serviceImage ? `${BASE_URL}${service.serviceImage}` : "/default-service.jpg"}
+            src={service.serviceImage ? `${API_BASE_URL}${service.serviceImage}` : "/default-service.jpg"}
             alt={service.serviceName}
             className="w-full h-56 object-cover"
             loading="lazy"
@@ -323,7 +307,7 @@ const BrowseServicesPage = () => {
           {service.provider?.verified && (
             <div className="absolute top-3 right-3 bg-[#F4CE14]/90 text-[#495E57] text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-sm z-20 shadow-sm">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                <path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
+                <path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.44 5.252a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
               </svg>
               Verified
             </div>
@@ -373,7 +357,7 @@ const BrowseServicesPage = () => {
             <div className="flex items-center border-t border-gray-100 pt-3">
               {service.provider?.profileImage ? (
                 <img 
-                  src={`${BASE_URL}${service.provider.profileImage}`} 
+                  src={`${API_BASE_URL}${service.provider.profileImage}`} 
                   alt="Provider"
                   className="w-10 h-10 rounded-full object-cover border border-gray-200"
                 />
@@ -461,16 +445,6 @@ const BrowseServicesPage = () => {
             initial="hidden"
             animate="visible"
           >
-            {/* <motion.div 
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full mb-4 text-[#F4CE14] shadow-inner"
-              variants={fadeInUp}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span className="text-sm font-medium tracking-wide">Verified Professional Services</span>
-            </motion.div> */}
-            
             <motion.h1 
               className="text-4xl md:text-5xl font-bold text-white mb-4 text-center leading-tight"
               variants={fadeInUp}
