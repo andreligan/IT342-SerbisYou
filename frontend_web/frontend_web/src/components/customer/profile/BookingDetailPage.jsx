@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient, { getApiUrl, API_BASE_URL } from "../../../utils/apiConfig";
 import ReviewModal from "./ReviewModal";
 import { Link } from "react-router-dom";
 
@@ -18,7 +18,7 @@ const BookingDetailPage = () => {
     platformFee: 0,
     totalPrice: 0
   });
-  const [providerImage, setProviderImage] = useState(null); // New state for provider's profile image
+  const [providerImage, setProviderImage] = useState(null);
 
   const handleOpenReviewModal = () => {
     setIsReviewModalOpen(true);
@@ -35,9 +35,7 @@ const BookingDetailPage = () => {
       
       console.log("User ID from storage:", userId);
 
-      const customersResponse = await axios.get("/api/customers/getAll", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const customersResponse = await apiClient.get(getApiUrl('customers/getAll'));
 
       console.log("All customers:", customersResponse.data);
       
@@ -65,9 +63,8 @@ const BookingDetailPage = () => {
       
       console.log("Sending params:", params.toString());
       
-      await axios.post("/api/reviews/createWithIDs", params, {
+      await apiClient.post(getApiUrl('reviews/createWithIDs'), params, {
         headers: { 
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/x-www-form-urlencoded'
         }
       });
@@ -92,17 +89,12 @@ const BookingDetailPage = () => {
           return;
         }
 
-        const response = await axios.get(`/api/bookings/getById/${bookingId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await apiClient.get(getApiUrl(`bookings/getById/${bookingId}`));
 
         setBooking(response.data);
         
-        // Fetch provider's profile image if provider exists
         if (response.data && response.data.service && response.data.service.provider) {
-          fetchProviderImage(response.data.service.provider.providerId, token);
+          fetchProviderImage(response.data.service.provider.providerId);
         }
         
         if (response.data && response.data.totalCost) {
@@ -120,7 +112,7 @@ const BookingDetailPage = () => {
         }
         
         if (response.data && response.data.customer && response.data.customer.customerId) {
-          await fetchCustomerAddress(response.data.customer.customerId, token);
+          await fetchCustomerAddress(response.data.customer.customerId);
         }
       } catch (err) {
         console.error("Error fetching booking details:", err);
@@ -135,11 +127,9 @@ const BookingDetailPage = () => {
     }
   }, [bookingId]);
   
-  const fetchCustomerAddress = async (customerId, token) => {
+  const fetchCustomerAddress = async (customerId) => {
     try {
-      const addressesResponse = await axios.get("/api/addresses/getAll", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const addressesResponse = await apiClient.get(getApiUrl('addresses/getAll'));
       
       const addresses = addressesResponse.data.filter(addr => 
         addr.customer && addr.customer.customerId == customerId
@@ -166,23 +156,17 @@ const BookingDetailPage = () => {
     }
   };
 
-  // New function to fetch provider's profile image
-  const fetchProviderImage = async (providerId, token) => {
+  const fetchProviderImage = async (providerId) => {
     try {
       if (!providerId) {
         console.log("No provider ID available to fetch image");
         return;
       }
       
-      // Fetch the provider's profile image
-      const imageResponse = await axios.get(`/api/service-providers/getServiceProviderImage/${providerId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const imageResponse = await apiClient.get(getApiUrl(`service-providers/getServiceProviderImage/${providerId}`));
       
       if (imageResponse.data) {
-        // Prepend base URL to make a complete image path
-        const baseURL = "http://localhost:8080"; // Backend base URL
-        const fullImageURL = `${baseURL}${imageResponse.data}`;
+        const fullImageURL = `${API_BASE_URL}${imageResponse.data}`;
         setProviderImage(fullImageURL);
       }
     } catch (error) {
@@ -409,7 +393,7 @@ const BookingDetailPage = () => {
                       />
                     ) : booking.service?.provider?.profileImage ? (
                       <img 
-                        src={`http://localhost:8080${booking.service.provider.profileImage}`} 
+                        src={`${API_BASE_URL}${booking.service.provider.profileImage}`} 
                         alt="Provider" 
                         className="h-14 w-14 rounded-full object-cover mr-4" 
                         onError={(e) => {
