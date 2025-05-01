@@ -23,7 +23,7 @@ import ServiceProviderDetails from "./components/customer/ServiceProviderDetails
 import BookingDetailPage from "./components/customer/profile/BookingDetailPage"; // Import BookingDetailPage
 import ServiceProviderBookings from "./components/service_provider/ServiceProviderBookings"; // Import ServiceProviderBookings
 import serbisyoLogo from "./assets/Serbisyo_Logo_New.png";
-import apiClient, { getApiUrl, API_BASE_URL } from "./utils/apiConfig";
+import apiClient, { getApiUrl, API_BASE_URL, getImageUrl } from "./utils/apiConfig";
 import ChatIcon from './components/chat/ChatIcon';
 import ChatWindow from './components/chat/ChatWindow';
 import OAuth2RedirectHandler from "./components/OAuth2RedirectHandler";
@@ -133,8 +133,8 @@ function App() {
             if (imageResponse.data) {
               console.log("Image path received:", imageResponse.data);
               
-              // Normalize image path - remove duplications and fix slashes
-              const normalizedPath = normalizeImagePath(imageResponse.data);
+              // Normalize image path using utility function
+              const normalizedPath = getImageUrl(imageResponse.data);
               console.log("Normalized image path:", normalizedPath);
               
               setProfileImage(normalizedPath);
@@ -172,8 +172,8 @@ function App() {
             if (imageResponse.data) {
               console.log("Image path received:", imageResponse.data);
               
-              // Normalize image path - remove duplications and fix slashes
-              const normalizedPath = normalizeImagePath(imageResponse.data);
+              // Normalize image path using utility function
+              const normalizedPath = getImageUrl(imageResponse.data);
               console.log("Normalized image path:", normalizedPath);
               
               setProfileImage(normalizedPath);
@@ -185,34 +185,6 @@ function App() {
       } catch (error) {
         console.error("Error fetching profile image:", error);
       }
-    };
-    
-    // Helper function to normalize image paths
-    const normalizeImagePath = (path) => {
-      if (!path) return null;
-      
-      console.log("Original path:", path);
-      
-      // Extract just the filename, ignoring full paths or relative paths
-      let filename;
-      if (path.includes('/')) {
-        // Get the last part after the last slash
-        filename = path.split('/').pop();
-      } else if (path.includes('\\')) {
-        // Handle Windows backslashes
-        filename = path.split('\\').pop();
-      } else {
-        // Just the filename
-        filename = path;
-      }
-      
-      console.log("Extracted filename:", filename);
-      
-      // Create a direct URL to the uploads folder with just the filename
-      const fullImageURL = `${API_BASE_URL}/uploads/${filename}`;
-      
-      console.log("Final image URL:", fullImageURL);
-      return fullImageURL;
     };
     
     if (isAuthenticated) {

@@ -15,6 +15,25 @@ export const getApiUrl = (endpoint) => {
   return `${API_BASE_URL}/api${formattedEndpoint}`;
 };
 
+// Helper function specifically for image URLs 
+export const getImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  
+  // Direct URL handling
+  if (imagePath.startsWith('http')) return imagePath;
+  
+  // Extract filename only, regardless of path format
+  let filename = imagePath;
+  if (imagePath.includes('/')) {
+    filename = imagePath.split('/').pop();
+  } else if (imagePath.includes('\\')) {
+    filename = imagePath.split('\\').pop();
+  }
+  
+  // Create proper URL to image resource
+  return `${API_BASE_URL}/uploads/${filename}`;
+};
+
 // Export axios with default headers and configuration
 import axios from 'axios';
 
