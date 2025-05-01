@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import apiClient, { getApiUrl, API_BASE_URL } from "../../../utils/apiConfig";
 
 const CustomerProfileContent = () => {
   const [profile, setProfile] = useState({
@@ -10,34 +10,29 @@ const CustomerProfileContent = () => {
     userName: "",
     role: "",
   });
-  const [customerId, setCustomerId] = useState(null); // Store customerId
-  const [selectedImage, setSelectedImage] = useState(null); // Profile picture state
+  const [customerId, setCustomerId] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
-  const [showPopup, setShowPopup] = useState(false); // State for popup visibility
-  const [uploadMessage, setUploadMessage] = useState(""); // Message for image upload success/failure
-  const [showUploadPopup, setShowUploadPopup] = useState(false); // State for image upload popup
+  const [showPopup, setShowPopup] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState("");
+  const [showUploadPopup, setShowUploadPopup] = useState(false);
 
   // Fetch customer profile data
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
         const userId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
   
-        if (!token || !userId) {
-          setError("Authentication token or user ID not found.");
+        if (!userId) {
+          setError("User ID not found.");
           setIsLoading(false);
           return;
         }
   
         // Step 1: Get all customers
-        const allCustomersResponse = await axios.get("/api/customers/getAll", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const allCustomersResponse = await apiClient.get(getApiUrl("/customers/getAll"));
 
         console.log("All customers:", allCustomersResponse.data);
         
@@ -55,12 +50,8 @@ const CustomerProfileContent = () => {
         
         console.log("Found matching customer:", matchingCustomer);
         
-        // Step 3: Get user auth details directly by ID instead of filtering through all records
-        const userAuthResponse = await axios.get(`/api/user-auth/getById/${userId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        // Step 3: Get user auth details
+        const userAuthResponse = await apiClient.get(getApiUrl(`/user-auth/getById/${userId}`));
   
         console.log("User auth response:", userAuthResponse);
         const userAuth = userAuthResponse.data;
@@ -72,7 +63,7 @@ const CustomerProfileContent = () => {
         }
   
         // Step 4: Set the profile data and customerId
-        setCustomerId(matchingCustomer.customerId); // Store customerId
+        setCustomerId(matchingCustomer.customerId);
         
         setProfile({
           firstName: matchingCustomer.firstName || "",
@@ -83,18 +74,9 @@ const CustomerProfileContent = () => {
           role: userAuth.role || "",
         });
         
-        console.log("Profile data set:", {
-          customerId: matchingCustomer.customerId,
-          firstName: matchingCustomer.firstName,
-          lastName: matchingCustomer.lastName,
-          phoneNumber: matchingCustomer.phoneNumber,
-        });
-  
         setIsLoading(false);
       } catch (err) {
         console.error("Error fetching profile:", err);
-        console.error("Error response data:", err.response?.data);
-        console.error("Error status code:", err.response?.status);
         setError("Failed to load profile.");
         setIsLoading(false);
       }
@@ -109,28 +91,19 @@ const CustomerProfileContent = () => {
       if (!customerId) return;
       
       try {
-        const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-        
         console.log("Fetching profile image for customerId:", customerId);
         
-        const profileImageResponse = await axios.get(`/api/customers/getProfileImage/${customerId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const profileImageResponse = await apiClient.get(getApiUrl(`/customers/getProfileImage/${customerId}`));
 
         console.log("Fetched Profile Image URL:", profileImageResponse.data);
   
         if (profileImageResponse.data) {
           // Prepend the base URL to the image path
-          const baseURL = "http://localhost:8080"; // Backend base URL
-          const fullImageURL = `${baseURL}${profileImageResponse.data}`;
-          setSelectedImage(fullImageURL); // Set the full image URL
+          const fullImageURL = `${API_BASE_URL}${profileImageResponse.data}`;
+          setSelectedImage(fullImageURL);
         }
       } catch (err) {
         console.error("Error fetching profile image:", err);
-        // Don't set an error state for image loading failure
-        // as it's not critical to the overall functionality
       }
     };
     
@@ -156,27 +129,29 @@ const CustomerProfileContent = () => {
       // Upload the image to the server
       const uploadImage = async () => {
         try {
-          const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
           const formData = new FormData();
           formData.append("image", file);
 
           console.log("Uploading image for customerId:", customerId);
 
-          const response = await axios.post(`/api/customers/upload-image/${customerId}`, formData, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "multipart/form-data",
-            },
-          });
+          const response = await apiClient.post(
+            getApiUrl(`/customers/upload-image/${customerId}`), 
+            formData,
+            {
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
+            }
+          );
 
           setUploadMessage(response.data || "Profile picture uploaded successfully.");
-          setShowUploadPopup(true); // Show success popup
-          setTimeout(() => setShowUploadPopup(false), 3000); // Auto-hide popup after 3 seconds
+          setShowUploadPopup(true);
+          setTimeout(() => setShowUploadPopup(false), 3000);
         } catch (err) {
           console.error("Error uploading image:", err);
           setUploadMessage("Failed to upload profile picture. Please try again.");
-          setShowUploadPopup(true); // Show error popup
-          setTimeout(() => setShowUploadPopup(false), 3000); // Auto-hide popup after 3 seconds
+          setShowUploadPopup(true);
+          setTimeout(() => setShowUploadPopup(false), 3000);
         }
       };
 
@@ -187,15 +162,6 @@ const CustomerProfileContent = () => {
 
   const handleUpdateProfile = async () => {
     try {
-      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-      if (!token) {
-        setError("Authentication token not found.");
-        setSuccessMessage("");
-        setShowPopup(true);
-        setTimeout(() => setShowPopup(false), 3000);
-        return;
-      }
-
       if (!customerId) {
         setError("Customer ID not found. Cannot update profile.");
         setSuccessMessage("");
@@ -207,17 +173,12 @@ const CustomerProfileContent = () => {
       console.log("Updating profile for customerId:", customerId);
       console.log("Profile data to update:", profile);
 
-      const response = await axios.put(
-        `/api/customers/updateCustomer/${customerId}`,
+      const response = await apiClient.put(
+        getApiUrl(`/customers/updateCustomer/${customerId}`),
         {
           firstName: profile.firstName,
           lastName: profile.lastName,
           phoneNumber: profile.phoneNumber
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         }
       );
 

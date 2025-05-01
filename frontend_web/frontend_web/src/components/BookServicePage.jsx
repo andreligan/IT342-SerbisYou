@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import DateTimeSelection from './DateTimeSelection';
 import ReviewBookingDetails from './ReviewBookingDetails';
@@ -7,8 +7,13 @@ import PaymentConfirmation from './PaymentConfirmation';
 import apiClient, { getApiUrl } from '../utils/apiConfig';
 
 function BookServicePage() {
-  const { serviceId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
+  
+  // Get serviceId from URL query parameters
+  const queryParams = new URLSearchParams(location.search);
+  const serviceId = queryParams.get('serviceId');
+  
   const [currentStep, setCurrentStep] = useState(1);
   const [service, setService] = useState(null);
   const [provider, setProvider] = useState(null);
