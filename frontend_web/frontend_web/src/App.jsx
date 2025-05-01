@@ -23,8 +23,7 @@ import ServiceProviderDetails from "./components/customer/ServiceProviderDetails
 import BookingDetailPage from "./components/customer/profile/BookingDetailPage"; // Import BookingDetailPage
 import ServiceProviderBookings from "./components/service_provider/ServiceProviderBookings"; // Import ServiceProviderBookings
 import serbisyoLogo from "./assets/Serbisyo_Logo_New.png";
-import API from "./utils/API";
-import axios from "axios";
+import apiClient, { getApiUrl, API_BASE_URL } from "./utils/apiConfig";
 import ChatIcon from './components/chat/ChatIcon';
 import ChatWindow from './components/chat/ChatWindow';
 import OAuth2RedirectHandler from "./components/OAuth2RedirectHandler";
@@ -106,61 +105,73 @@ function App() {
         let entityId;
         
         if (role.toLowerCase() === "customer") {
-          // Get all customers to find the one matching this user
-          const customersResponse = await axios.get("api/customers/getAll", {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          
-          // Find the customer that matches this user ID
-          const customer = customersResponse.data.find(c => 
-            c.userAuth && c.userAuth.userId == userId
-          );
-          
-          if (!customer) return;
-          entityId = customer.customerId;
-          
-          // Store the customer's first name
-          setUserFirstName(customer.firstName || "");
-          
-          // Now fetch image with the correct customer ID
-          const imageResponse = await axios.get(`api/customers/getProfileImage/${entityId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          
-          if (imageResponse.data) {
-            // Prepend the base URL to make a complete image path
-            const baseURL = "https://serbisyo-backend.onrender.com"; // Backend base URL
-            const fullImageURL = `${baseURL}${imageResponse.data}`;
-            setProfileImage(fullImageURL);
+          try {
+            // Get all customers to find the one matching this user
+            const customersResponse = await apiClient.get(getApiUrl('customers/getAll'));
+            
+            // Ensure data is an array before using .find
+            const customersData = Array.isArray(customersResponse.data) ? customersResponse.data : [];
+            console.log("Customers data type:", typeof customersData, "Is array:", Array.isArray(customersData), "Length:", customersData.length);
+            
+            // Find the customer that matches this user ID
+            const customer = customersData.find(c => 
+              c.userAuth && c.userAuth.userId == userId
+            );
+            
+            if (!customer) {
+              console.log("No matching customer found for user ID:", userId);
+              return;
+            }
+            entityId = customer.customerId;
+            
+            // Store the customer's first name
+            setUserFirstName(customer.firstName || "");
+            
+            // Now fetch image with the correct customer ID
+            const imageResponse = await apiClient.get(getApiUrl(`customers/getProfileImage/${entityId}`));
+            
+            if (imageResponse.data) {
+              // Use API_BASE_URL from apiConfig
+              const fullImageURL = `${API_BASE_URL}${imageResponse.data}`;
+              setProfileImage(fullImageURL);
+            }
+          } catch (error) {
+            console.error("Error fetching customer data:", error);
           }
         } 
         else if (role.toLowerCase() === "service provider") {
-          // Get all providers to find the one matching this user
-          const providersResponse = await axios.get("api/service-providers/getAll", {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          
-          // Find the provider that matches this user ID
-          const provider = providersResponse.data.find(p => 
-            p.userAuth && p.userAuth.userId == userId
-          );
-          
-          if (!provider) return;
-          entityId = provider.providerId;
-          
-          // Store the provider's first name
-          setUserFirstName(provider.firstName || "");
-          
-          // Now fetch image with the correct provider ID
-          const imageResponse = await axios.get(`api/service-providers/getServiceProviderImage/${entityId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          
-          if (imageResponse.data) {
-            // Prepend the base URL to make a complete image path
-            const baseURL = "https://serbisyo-backend.onrender.com"; // Backend base URL
-            const fullImageURL = `${baseURL}${imageResponse.data}`;
-            setProfileImage(fullImageURL);
+          try {
+            // Get all providers to find the one matching this user
+            const providersResponse = await apiClient.get(getApiUrl('service-providers/getAll'));
+            
+            // Ensure data is an array before using .find
+            const providersData = Array.isArray(providersResponse.data) ? providersResponse.data : [];
+            console.log("Providers data type:", typeof providersData, "Is array:", Array.isArray(providersData), "Length:", providersData.length);
+            
+            // Find the provider that matches this user ID
+            const provider = providersData.find(p => 
+              p.userAuth && p.userAuth.userId == userId
+            );
+            
+            if (!provider) {
+              console.log("No matching provider found for user ID:", userId);
+              return;
+            }
+            entityId = provider.providerId;
+            
+            // Store the provider's first name
+            setUserFirstName(provider.firstName || "");
+            
+            // Now fetch image with the correct provider ID
+            const imageResponse = await apiClient.get(getApiUrl(`service-providers/getServiceProviderImage/${entityId}`));
+            
+            if (imageResponse.data) {
+              // Use API_BASE_URL from apiConfig
+              const fullImageURL = `${API_BASE_URL}${imageResponse.data}`;
+              setProfileImage(fullImageURL);
+            }
+          } catch (error) {
+            console.error("Error fetching provider data:", error);
           }
         }
       } catch (error) {
