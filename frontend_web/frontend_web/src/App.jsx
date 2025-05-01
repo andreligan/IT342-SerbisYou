@@ -133,16 +133,11 @@ function App() {
             if (imageResponse.data) {
               console.log("Image path received:", imageResponse.data);
               
-              // Fix URL construction - prevent path duplication
-              let imagePath = imageResponse.data;
+              // Normalize image path - remove duplications and fix slashes
+              const normalizedPath = normalizeImagePath(imageResponse.data);
+              console.log("Normalized image path:", normalizedPath);
               
-              // Ensure we don't duplicate path segments by checking if the path needs a leading slash
-              const fullImageURL = imagePath.startsWith('/') 
-                ? `${API_BASE_URL}${imagePath}` 
-                : `${API_BASE_URL}/${imagePath}`;
-                
-              console.log("Full image URL constructed:", fullImageURL);
-              setProfileImage(fullImageURL);
+              setProfileImage(normalizedPath);
             }
           } catch (error) {
             console.error("Error fetching customer data:", error);
@@ -177,16 +172,11 @@ function App() {
             if (imageResponse.data) {
               console.log("Image path received:", imageResponse.data);
               
-              // Fix URL construction - prevent path duplication
-              let imagePath = imageResponse.data;
+              // Normalize image path - remove duplications and fix slashes
+              const normalizedPath = normalizeImagePath(imageResponse.data);
+              console.log("Normalized image path:", normalizedPath);
               
-              // Ensure we don't duplicate path segments by checking if the path needs a leading slash
-              const fullImageURL = imagePath.startsWith('/') 
-                ? `${API_BASE_URL}${imagePath}` 
-                : `${API_BASE_URL}/${imagePath}`;
-                
-              console.log("Full image URL constructed:", fullImageURL);
-              setProfileImage(fullImageURL);
+              setProfileImage(normalizedPath);
             }
           } catch (error) {
             console.error("Error fetching provider data:", error);
@@ -195,6 +185,25 @@ function App() {
       } catch (error) {
         console.error("Error fetching profile image:", error);
       }
+    };
+    
+    // Helper function to normalize image paths
+    const normalizeImagePath = (path) => {
+      if (!path) return null;
+      
+      // Convert backslashes to forward slashes
+      let normalizedPath = path.replace(/\\/g, '/');
+      
+      // Remove any duplicate 'uploads' folders
+      normalizedPath = normalizedPath.replace(/\/uploads\/uploads/, '/uploads');
+      
+      // Remove leading slash if present to prevent double slashes
+      if (normalizedPath.startsWith('/')) {
+        normalizedPath = normalizedPath.substring(1);
+      }
+      
+      // Construct the full URL
+      return `${API_BASE_URL}/${normalizedPath}`;
     };
     
     if (isAuthenticated) {
