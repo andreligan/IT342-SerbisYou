@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import apiClient, { getApiUrl, API_BASE_URL } from '../../utils/apiConfig';
 
 const ProviderVerification = () => {
   const [providers, setProviders] = useState([]);
@@ -22,15 +22,8 @@ const ProviderVerification = () => {
   const fetchProviders = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
       
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-      
-      const headers = { 'Authorization': `Bearer ${token}` };
-      
-      const response = await axios.get('api/service-providers/getAll', { headers });
+      const response = await apiClient.get(getApiUrl('service-providers/getAll'));
       console.log('Providers API response:', response.data);
       
       // Verify that the response contains an array
@@ -43,10 +36,10 @@ const ProviderVerification = () => {
       setProviders(providersData);
       
       const imagePromises = providersData.map(provider => 
-        axios.get(`api/service-providers/getServiceProviderImage/${provider.providerId}`, { headers })
+        apiClient.get(getApiUrl(`service-providers/getServiceProviderImage/${provider.providerId}`))
           .then(res => ({
             providerId: provider.providerId,
-            imageUrl: res.data ? `https://serbisyo-backend.onrender.com${res.data}` : null
+            imageUrl: res.data ? `${API_BASE_URL}${res.data}` : null
           }))
           .catch((err) => {
             console.error(`Error fetching image for provider ${provider.providerId}:`, err);
@@ -73,11 +66,9 @@ const ProviderVerification = () => {
   const handleApprove = async (providerId) => {
     try {
       setIsLoading(true);
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-      const headers = { 'Authorization': `Bearer ${token}` };
       
       const updateData = { verified: true };
-      await axios.put(`api/service-providers/update/${providerId}`, updateData, { headers });
+      await apiClient.put(getApiUrl(`service-providers/update/${providerId}`), updateData);
       
       setProviders(providers.map(provider => 
         provider.providerId === providerId 
@@ -113,11 +104,9 @@ const ProviderVerification = () => {
   const handleReject = async (providerId) => {
     try {
       setIsLoading(true);
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-      const headers = { 'Authorization': `Bearer ${token}` };
       
       const updateData = { verified: false };
-      await axios.put(`api/service-providers/update/${providerId}`, updateData, { headers });
+      await apiClient.put(getApiUrl(`service-providers/update/${providerId}`), updateData);
       
       setConfirmAction(null);
       fetchProviders();
@@ -249,12 +238,8 @@ const ProviderVerification = () => {
         >
           <div className="flex flex-col md:flex-row">
             <div className="p-6 md:w-1/2 relative overflow-hidden">
-              {/* <div className="absolute top-0 right-0 w-64 h-64 bg-[#F4CE14] opacity-10 rounded-full -mr-32 -mt-32"></div>
-              <div className="absolute bottom-0 right-0 w-32 h-32 bg-[#F4CE14] opacity-10 rounded-full -mr-16 -mb-16"></div> */}
-              
               <h1 className="text-3xl text-[#495E57] font-bold relative z-10 mb-2">Provider Verification</h1>
               <p className="text-[#495E57] mb-6 relative z-10">Manage and approve service provider verification requests</p>
-              
             </div>
             
             <div className="p-6 md:w-1/2 flex flex-col justify-center">

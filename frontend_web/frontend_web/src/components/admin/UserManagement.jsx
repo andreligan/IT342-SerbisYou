@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import BaseModal from '../shared/BaseModal';
+import apiClient, { getApiUrl } from '../../utils/apiConfig';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -32,15 +32,8 @@ const UserManagement = () => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-
-        if (!token) {
-          throw new Error('Authentication token not found');
-        }
-
-        const headers = { Authorization: `Bearer ${token}` };
-
-        const response = await axios.get('api/user-auth/getAll', { headers });
+        
+        const response = await apiClient.get(getApiUrl('user-auth/getAll'));
         console.log('User data from API:', response.data);
 
         // Verify that the response contains an array
@@ -156,11 +149,8 @@ const UserManagement = () => {
 
     if (window.confirm(`Are you sure you want to delete ${selectedUsers.length} users?`)) {
       try {
-        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-        const headers = { Authorization: `Bearer ${token}` };
-
         const deletePromises = selectedUsers.map((userId) =>
-          axios.delete(`api/user-auth/${userId}`, { headers })
+          apiClient.delete(getApiUrl(`user-auth/${userId}`))
         );
 
         await Promise.all(deletePromises);
@@ -186,10 +176,7 @@ const UserManagement = () => {
     if (!userToDelete) return;
 
     try {
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-      const headers = { Authorization: `Bearer ${token}` };
-
-      await axios.delete(`api/user-auth/${userToDelete}`, { headers });
+      await apiClient.delete(getApiUrl(`user-auth/${userToDelete}`));
       setUsers(users.filter((user) => user.userId !== userToDelete));
       setIsDeleteModalOpen(false);
       setUserToDelete(null);
