@@ -28,7 +28,7 @@ const LoginPopup = ({ open, onClose }) => {
       
       try {
         // First try with Axios
-        const response = await API.post('user-auth/login', loginData);
+        const response = await API.post('https://serbisyo-backend.onrender.com/api/user-auth/login', loginData);
         console.log("Login successful with Axios, received response:", response.status);
         
         // Extract the data
