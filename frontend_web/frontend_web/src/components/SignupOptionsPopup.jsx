@@ -3,13 +3,29 @@ import { useNavigate } from 'react-router-dom';
 import GoogleIcon from '../assets/google-icon.svg';
 import BaseModal from './shared/BaseModal';
 import { motion } from 'framer-motion';
+import { API_BASE_URL } from '../utils/apiConfig';
 
 const SignupOptionsPopup = ({ open, onClose }) => {
   const navigate = useNavigate();
 
   const handleGoogleSignup = () => {
-    // Redirect to Google OAuth2 signup endpoint
-    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+    try {
+      console.log("Redirecting to Google OAuth2 for signup...");
+      
+      // Fix the URL construction to avoid double slashes
+      const baseUrl = API_BASE_URL.endsWith('/') 
+        ? API_BASE_URL.slice(0, -1) 
+        : API_BASE_URL;
+      
+      const googleAuthUrl = `${baseUrl}/oauth2/authorization/google`;
+      
+      console.log(`Redirecting to Google OAuth URL: ${googleAuthUrl}`);
+      
+      // Use window.location.assign for more reliable redirects
+      window.location.assign(googleAuthUrl);
+    } catch (error) {
+      console.error("Error redirecting to Google signup:", error);
+    }
   };
 
   const handleManualSignup = () => {
