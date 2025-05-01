@@ -191,19 +191,28 @@ function App() {
     const normalizeImagePath = (path) => {
       if (!path) return null;
       
-      // Convert backslashes to forward slashes
-      let normalizedPath = path.replace(/\\/g, '/');
+      console.log("Original path:", path);
       
-      // Remove any duplicate 'uploads' folders
-      normalizedPath = normalizedPath.replace(/\/uploads\/uploads/, '/uploads');
-      
-      // Remove leading slash if present to prevent double slashes
-      if (normalizedPath.startsWith('/')) {
-        normalizedPath = normalizedPath.substring(1);
+      // Extract just the filename, ignoring full paths or relative paths
+      let filename;
+      if (path.includes('/')) {
+        // Get the last part after the last slash
+        filename = path.split('/').pop();
+      } else if (path.includes('\\')) {
+        // Handle Windows backslashes
+        filename = path.split('\\').pop();
+      } else {
+        // Just the filename
+        filename = path;
       }
       
-      // Construct the full URL
-      return `${API_BASE_URL}/${normalizedPath}`;
+      console.log("Extracted filename:", filename);
+      
+      // Create a direct URL to the uploads folder with just the filename
+      const fullImageURL = `${API_BASE_URL}/uploads/${filename}`;
+      
+      console.log("Final image URL:", fullImageURL);
+      return fullImageURL;
     };
     
     if (isAuthenticated) {
