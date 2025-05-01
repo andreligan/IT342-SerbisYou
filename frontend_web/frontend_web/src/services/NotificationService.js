@@ -1,4 +1,4 @@
-import axios from 'axios';
+import apiClient, { getApiUrl } from '../utils/apiConfig';
 import ChatService from './ChatService';
 
 const NotificationService = {
@@ -12,12 +12,9 @@ const NotificationService = {
   },
   
   getAuthHeaders: () => {
-    const token = NotificationService.getAuthToken();
-    if (!token) return {};
-    
+    // Note: We don't need to set Authorization headers as apiClient already does this
     return {
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     };
@@ -26,11 +23,10 @@ const NotificationService = {
   // Create a new notification
   createNotification: async (notification) => {
     try {
-      const authHeaders = NotificationService.getAuthHeaders();
       console.log("Creating notification with data:", notification);
-      console.log("Using auth headers:", authHeaders);
       
-      const response = await axios.post('/api/notifications/create', notification, authHeaders);
+      // Use apiClient instead of axios and getApiUrl for proper endpoint construction
+      const response = await apiClient.post(getApiUrl('/notifications/create'), notification);
       console.log("Notification created response:", response.data);
       return response.data;
     } catch (error) {
@@ -46,8 +42,8 @@ const NotificationService = {
   // Get all notifications for current user
   getNotifications: async () => {
     try {
-      const authHeaders = NotificationService.getAuthHeaders();
-      const response = await axios.get('/api/notifications/getAll', authHeaders);
+      // Use apiClient instead of axios
+      const response = await apiClient.get(getApiUrl('/notifications/getAll'));
       
       // Extract the current user's ID from localStorage
       const currentUserId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
@@ -62,6 +58,7 @@ const NotificationService = {
       
       return response.data || [];
     } catch (error) {
+      console.error('Error getting notifications:', error);
       return []; // Return empty array as fallback
     }
   },
@@ -121,8 +118,6 @@ const NotificationService = {
   // Mark a notification as read
   markAsRead: async (notificationId, notificationData) => {
     try {
-      const authHeaders = NotificationService.getAuthHeaders();
-      
       // Since we don't have a GET endpoint for a single notification,
       // we'll use the notification data passed from the components
       const notification = notificationData;
@@ -131,7 +126,7 @@ const NotificationService = {
       if (notification && notification.type?.toLowerCase() === 'message' && notification.referenceId) {
         try {
           // Get all messages first
-          const allMessagesResponse = await axios.get('/api/messages/getAll', authHeaders);
+          const allMessagesResponse = await apiClient.get(getApiUrl('/messages/getAll'));
           const allMessages = allMessagesResponse.data || [];
           
           // Get all notifications in one call
@@ -167,10 +162,9 @@ const NotificationService = {
                 if (msgNotification) {
                   // Mark as read
                   const updatedNotification = { read: true };
-                  await axios.put(
-                    `/api/notifications/update/${msgNotification.notificationId}`, 
-                    updatedNotification, 
-                    authHeaders
+                  await apiClient.put(
+                    getApiUrl(`/notifications/update/${msgNotification.notificationId}`), 
+                    updatedNotification
                   );
                   
                   // Delete notification - only for message notifications
@@ -181,14 +175,10 @@ const NotificationService = {
               }
             }
             
-            // We've already processed the notification for the clicked message,
-            // so we can return here without doing the default processing
             return { success: true };
           }
-          // If target message not found, continue with default notification processing
         } catch (msgError) {
           console.error('Failed to update message status or find related messages:', msgError);
-          // Continue with default notification processing
         }
       }
       
@@ -196,16 +186,21 @@ const NotificationService = {
       if (notification && notification.type?.toLowerCase() !== 'message') {
         const updatedNotification = {
           read: true
-          // We don't modify other fields, so the message will remain intact
         };
         
-        const response = await axios.put(`/api/notifications/update/${notificationId}`, updatedNotification, authHeaders);
+        const response = await apiClient.put(
+          getApiUrl(`/notifications/update/${notificationId}`), 
+          updatedNotification
+        );
         return response.data;
       } else {
         // For message notifications that weren't handled above
         // Mark as read first
         const updatedNotification = { read: true };
-        await axios.put(`/api/notifications/update/${notificationId}`, updatedNotification, authHeaders);
+        await apiClient.put(
+          getApiUrl(`/notifications/update/${notificationId}`), 
+          updatedNotification
+        );
         
         // Delete the message notification after marking as read
         try {
@@ -224,8 +219,7 @@ const NotificationService = {
   // Delete a notification
   deleteNotification: async (notificationId) => {
     try {
-      const authHeaders = NotificationService.getAuthHeaders();
-      const response = await axios.delete(`/api/notifications/delete/${notificationId}`, authHeaders);
+      const response = await apiClient.delete(getApiUrl(`/notifications/delete/${notificationId}`));
       return response.data;
     } catch (error) {
       throw error;
@@ -251,10 +245,9 @@ const NotificationService = {
             
             // Mark as read first
             const updatedNotification = { read: true };
-            await axios.put(
-              `/api/notifications/update/${notification.notificationId}`, 
-              updatedNotification, 
-              NotificationService.getAuthHeaders()
+            await apiClient.put(
+              getApiUrl(`/notifications/update/${notification.notificationId}`), 
+              updatedNotification
             );
             
             // Then delete it (only for message notifications)
@@ -266,10 +259,9 @@ const NotificationService = {
           // For non-message notifications, just mark as read without deleting
           try {
             const updatedNotification = { read: true };
-            await axios.put(
-              `/api/notifications/update/${notification.notificationId}`, 
-              updatedNotification, 
-              NotificationService.getAuthHeaders()
+            await apiClient.put(
+              getApiUrl(`/notifications/update/${notification.notificationId}`),
+              updatedNotification
             );
           } catch (notifError) {
             // Continue with next notification even if this one fails
