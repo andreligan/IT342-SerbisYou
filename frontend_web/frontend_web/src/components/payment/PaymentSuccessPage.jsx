@@ -121,15 +121,12 @@ const PaymentSuccessPage = () => {
         console.log("Service ID from pending booking:", serviceId);
         
         // Add an idempotency key based on timestamp and service to help prevent duplicates
+        // *** IMPORTANT CHANGE: Include idempotency key in the body instead of as a header ***
         const idempotencyKey = `booking_${bookingRequest.customer.customerId}_${bookingRequest.service.serviceId}_${Date.now()}`;
         bookingRequest.idempotencyKey = idempotencyKey;
         
         // Submit the booking to the backend
-        const response = await apiClient.post(getApiUrl('/bookings/postBooking'), bookingRequest, {
-          headers: { 
-            'X-Idempotency-Key': idempotencyKey // Add idempotency header
-          }
-        });
+        const response = await apiClient.post(getApiUrl('/bookings/postBooking'), bookingRequest);
         
         console.log('Booking created after successful payment:', response.data);
         setBookingDetails(response.data);
