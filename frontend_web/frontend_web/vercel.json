@@ -11,7 +11,7 @@
   ],
   "headers": [
     {
-      "source": "/(assets|fonts)/.*",
+      "source": "/(assets|fonts)/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -20,7 +20,7 @@
       ]
     },
     {
-      "source": "/(.*)\\.js$",
+      "source": "/(.*)\\.(js)",
       "headers": [
         {
           "key": "Content-Type",
