@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import apiClient, { getApiUrl, API_BASE_URL } from '../../utils/apiConfig';
 import BaseModal from '../shared/BaseModal';
 
-const ServiceDetailsModal = ({ isOpen, onClose, serviceId, position = { top: 0, left: 0 } }) => {
-  const [service, setService] = useState(null);
+const ServiceDetailsModal = ({ isOpen, onClose, service, serviceId, serviceRatings, clickPosition = { top: 0, left: 0 } }) => {
+  const [serviceData, setServiceData] = useState(null);
   const [provider, setProvider] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -14,19 +14,68 @@ const ServiceDetailsModal = ({ isOpen, onClose, serviceId, position = { top: 0, 
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchServiceDetails = async () => {
-      if (!serviceId) return;
+    // Reset states when modal closes
+    if (!isOpen) {
+      setIsLoading(false);
+      return;
+    }
 
+    const fetchServiceDetails = async () => {
       try {
         setIsLoading(true);
         setError(null);
-
-        // Get service details
+        
+        // If service object is already provided, use it directly instead of fetching
+        if (service) {
+          console.log("Using provided service data:", service);
+          setServiceData(service);
+          
+          // If service has provider data, use it or fetch more details if needed
+          if (service.provider?.providerId) {
+            // Check if we need to fetch additional provider details
+            if (service.provider.businessName || (service.provider.firstName && service.provider.lastName)) {
+              setProvider(service.provider);
+            } else {
+              // Fetch more provider details only if necessary
+              const providerResponse = await apiClient.get(
+                getApiUrl(`/service-providers/getById/${service.provider.providerId}`)
+              );
+              setProvider(providerResponse.data);
+            }
+          }
+          
+          // If service already has an image URL, use it
+          if (service.serviceImage) {
+            setServiceImage(`${API_BASE_URL}${service.serviceImage}`);
+          } else {
+            // Only fetch image if not already available
+            try {
+              const imageResponse = await apiClient.get(getApiUrl(`/services/getServiceImage/${service.serviceId}`));
+              if (imageResponse.data) {
+                setServiceImage(`${API_BASE_URL}${imageResponse.data}`);
+              }
+            } catch (err) {
+              console.warn("Could not load service image:", err);
+            }
+          }
+          
+          setIsLoading(false);
+          return;
+        }
+        
+        // Only fetch service details if we don't have the service object but have a serviceId
+        if (!serviceId) {
+          setIsLoading(false);
+          setError("No service information provided");
+          return;
+        }
+        
+        // Fetch service details using serviceId
         const serviceResponse = await apiClient.get(getApiUrl(`/services/getById/${serviceId}`));
         const serviceData = serviceResponse.data;
-
-        setService(serviceData);
-
+        
+        setServiceData(serviceData);
+        
         // If service has provider data, fetch provider details
         if (serviceData?.provider?.providerId) {
           const providerResponse = await apiClient.get(
@@ -34,19 +83,17 @@ const ServiceDetailsModal = ({ isOpen, onClose, serviceId, position = { top: 0, 
           );
           setProvider(providerResponse.data);
         }
-
+        
         // Fetch service image
         try {
           const imageResponse = await apiClient.get(getApiUrl(`/services/getServiceImage/${serviceId}`));
           if (imageResponse.data) {
-            // Use API_BASE_URL to construct complete image URL
             setServiceImage(`${API_BASE_URL}${imageResponse.data}`);
           }
         } catch (err) {
           console.warn("Could not load service image:", err);
-          // Continue without image
         }
-
+        
         setIsLoading(false);
       } catch (err) {
         console.error('Error fetching service details:', err);
@@ -55,20 +102,12 @@ const ServiceDetailsModal = ({ isOpen, onClose, serviceId, position = { top: 0, 
       }
     };
 
-    if (isOpen && serviceId) {
-      fetchServiceDetails();
-    } else {
-      // Reset state when modal is closed
-      setService(null);
-      setProvider(null);
-      setServiceImage(null);
-      setError(null);
-    }
-  }, [isOpen, serviceId]);
+    fetchServiceDetails();
+  }, [isOpen, service, serviceId]);
 
   const handleBookNow = () => {
-    // Ensure serviceId is passed correctly
-    navigate(`/book-service/${serviceId}`);
+    // Navigate to booking page with the service ID
+    navigate(`/book-service/${serviceData?.serviceId}`);
     onClose();
   };
 
@@ -86,9 +125,12 @@ const ServiceDetailsModal = ({ isOpen, onClose, serviceId, position = { top: 0, 
     return text.slice(0, maxLength) + '...';
   };
 
+  // If modal is not open, don't render anything
+  if (!isOpen) return null;
+
   return (
-    <BaseModal isOpen={isOpen} onClose={onClose} maxWidth="max-w-4xl" clickPosition={position}>
-      <motion.div
+    <BaseModal isOpen={isOpen} onClose={onClose} maxWidth="max-w-4xl" clickPosition={clickPosition}>
+      <motion.div 
         className="bg-white rounded-lg shadow-lg overflow-hidden"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -107,14 +149,14 @@ const ServiceDetailsModal = ({ isOpen, onClose, serviceId, position = { top: 0, 
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Error Loading Service Details</h3>
             <p className="text-gray-600">{error}</p>
           </div>
-        ) : service ? (
+        ) : serviceData ? (
           <>
             <div className="relative">
               <div className="h-56 bg-gray-200">
                 {serviceImage ? (
-                  <motion.img
-                    src={serviceImage}
-                    alt={service.serviceName}
+                  <motion.img 
+                    src={serviceImage} 
+                    alt={serviceData.serviceName}
                     className="w-full h-full object-cover"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -127,8 +169,8 @@ const ServiceDetailsModal = ({ isOpen, onClose, serviceId, position = { top: 0, 
                     </svg>
                   </div>
                 )}
-
-                <button
+                
+                <button 
                   onClick={onClose}
                   className="absolute top-4 right-4 p-1 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
                 >
@@ -137,23 +179,23 @@ const ServiceDetailsModal = ({ isOpen, onClose, serviceId, position = { top: 0, 
                   </svg>
                 </button>
               </div>
-
+              
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-800">{service.serviceName}</h2>
+                    <h2 className="text-2xl font-bold text-gray-800">{serviceData.serviceName}</h2>
                     <div className="flex items-center mt-1">
                       <span className="text-[#F4CE14] font-semibold text-xl">
-                        {service.price && formatPrice(service.price)}
+                        {serviceData.price && formatPrice(serviceData.price)}
                       </span>
-                      {service.durationEstimate && (
+                      {serviceData.durationEstimate && (
                         <span className="ml-3 bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
-                          {service.durationEstimate}
+                          {serviceData.durationEstimate}
                         </span>
                       )}
                     </div>
                   </div>
-
+                  
                   <motion.button
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
@@ -190,11 +232,11 @@ const ServiceDetailsModal = ({ isOpen, onClose, serviceId, position = { top: 0, 
                   <h3 className="text-lg font-semibold text-gray-800 mb-2">Description</h3>
                   <div className="text-gray-600">
                     {showFullDescription ? (
-                      service.serviceDescription
+                      serviceData.serviceDescription
                     ) : (
-                      truncateDescription(service.serviceDescription)
+                      truncateDescription(serviceData.serviceDescription)
                     )}
-                    {service.serviceDescription?.length > 150 && (
+                    {serviceData.serviceDescription?.length > 150 && (
                       <button
                         onClick={() => setShowFullDescription(!showFullDescription)}
                         className="text-blue-600 hover:text-blue-800 font-medium ml-1"
@@ -206,11 +248,11 @@ const ServiceDetailsModal = ({ isOpen, onClose, serviceId, position = { top: 0, 
                 </div>
 
                 {/* Service Category */}
-                {service.category && (
+                {serviceData.category && (
                   <div className="mb-4">
                     <h3 className="text-lg font-semibold text-gray-800 mb-2">Category</h3>
                     <span className="bg-[#495E57]/10 text-[#495E57] px-3 py-1 rounded-full">
-                      {service.category.categoryName}
+                      {serviceData.category.categoryName}
                     </span>
                   </div>
                 )}
