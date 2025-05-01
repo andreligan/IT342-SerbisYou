@@ -33,11 +33,31 @@ const BookServicePage = () => {
   const [providerInfo, setProviderInfo] = useState(null);
   const [isFullPayment, setIsFullPayment] = useState(true);
 
+  // First log the location state for debugging
+  useEffect(() => {
+    console.log("Location state in BookServicePage:", location.state);
+  }, [location]);
+  
+  // Get service from state or create a default
   const serviceData = location.state?.service || {
     serviceName: "Service",
     price: 1000,
     provider: { providerId: null },
   };
+  
+  // Add debug logging for serviceData
+  useEffect(() => {
+    console.log("Service data received:", serviceData);
+    console.log("Provider ID:", serviceData?.provider?.providerId);
+  }, [serviceData]);
+
+  // Add useEffect to create a fallback if serviceData is empty
+  useEffect(() => {
+    if (!serviceData || !serviceData.serviceId) {
+      console.error("No service data available in BookServicePage");
+      setError("Service information is missing. Please try again.");
+    }
+  }, [serviceData]);
 
   useEffect(() => {
     const fetchAddress = async () => {
@@ -304,7 +324,28 @@ const BookServicePage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 px-4">
-      {/* JSX content */}
+      <div className="max-w-5xl mx-auto">
+        <h1 className="text-3xl sm:text-4xl font-bold text-[#495E57] mb-6 text-center">
+          Book Service
+        </h1>
+
+        {/* Display error if service data is missing */}
+        {!serviceData?.serviceId && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+            <p className="text-red-700">
+              Service information is missing. Please go back and try again.
+            </p>
+            <button 
+              onClick={() => navigate(-1)}
+              className="mt-3 px-4 py-2 bg-[#495E57] text-white rounded-lg"
+            >
+              Go Back
+            </button>
+          </div>
+        )}
+
+        {/* JSX content */}
+      </div>
     </div>
   );
 };

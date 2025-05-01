@@ -217,6 +217,53 @@ const ServiceDetailsModal = ({
     return `${diffInYears} ${diffInYears === 1 ? 'year' : 'years'} ago`;
   };
 
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return "/default-profile.jpg";
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    if (imagePath.startsWith('/')) {
+      return `${API_BASE_URL}${imagePath}`;
+    }
+    return `${API_BASE_URL}/${imagePath}`;
+  };
+
+  const handleImageError = (e) => {
+    console.error("Provider image failed to load:", e.target.src);
+    if (!imageFailed) {
+      setImageFailed(true);
+      e.target.src = "/default-profile.jpg";
+    }
+  };
+
+  const handleProviderClick = (e) => {
+    e.stopPropagation();
+    const providerId = currentService.provider?.providerId || currentService.provider?.userId || currentService.provider?.id;
+    if (providerId) {
+      console.log(`Navigating to provider details: ${providerId}`);
+      onClose();
+      setTimeout(() => {
+        navigate(`/providerDetails/${providerId}`);
+      }, 100);
+    } else {
+      console.error("No provider ID found in:", currentService.provider);
+    }
+  };
+
+  const handleBookNow = () => {
+    // Navigate to booking page with the service ID
+    if (currentService?.serviceId) {
+      navigate('/bookService', { 
+        state: { 
+          service: currentService
+        } 
+      });
+    } else if (typeof onBookService === 'function') {
+      onBookService();
+    }
+    onClose();
+  };
+
   // Use either the passed service or the fetched serviceData
   const currentService = serviceData || service;
 
@@ -265,49 +312,6 @@ const ServiceDetailsModal = ({
     };
   }
 
-  const getImageUrl = (imagePath) => {
-    if (!imagePath) return "/default-profile.jpg";
-    if (imagePath.startsWith('http')) {
-      return imagePath;
-    }
-    if (imagePath.startsWith('/')) {
-      return `${API_BASE_URL}${imagePath}`;
-    }
-    return `${API_BASE_URL}/${imagePath}`;
-  };
-
-  const handleImageError = (e) => {
-    console.error("Provider image failed to load:", e.target.src);
-    if (!imageFailed) {
-      setImageFailed(true);
-      e.target.src = "/default-profile.jpg";
-    }
-  };
-
-  const handleProviderClick = (e) => {
-    e.stopPropagation();
-    const providerId = currentService.provider?.providerId || currentService.provider?.userId || currentService.provider?.id;
-    if (providerId) {
-      console.log(`Navigating to provider details: ${providerId}`);
-      onClose();
-      setTimeout(() => {
-        navigate(`/providerDetails/${providerId}`);
-      }, 100);
-    } else {
-      console.error("No provider ID found in:", currentService.provider);
-    }
-  };
-
-  const handleBookNow = () => {
-    // Navigate to booking page with the service ID
-    if (currentService?.serviceId) {
-      navigate(`/bookService?serviceId=${currentService.serviceId}`);
-    } else if (typeof onBookService === 'function') {
-      onBookService();
-    }
-    onClose();
-  };
-
   return (
     <BaseModal
       isOpen={isOpen}
@@ -328,9 +332,13 @@ const ServiceDetailsModal = ({
           <div className="relative h-[180px] flex-shrink-0 overflow-hidden w-full">
             <div className="absolute inset-0 bg-gradient-to-b from-[rgba(0,0,0,0.3)] to-[rgba(0,0,0,0.7)]"></div>
             <img 
-              src={`${API_BASE_URL}${currentService.serviceImage}`}
+              src={currentService.serviceImage ? `${API_BASE_URL}${currentService.serviceImage}` : "/default-service.jpg"}
               alt={currentService.serviceName}
               className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = "/default-service.jpg"; 
+              }}
             />
             <div className="absolute top-6 right-6 bg-[#F4CE14] text-[#495E57] text-2xl font-bold px-6 py-2 rounded-lg shadow-lg">
               ₱{currentService.price}
