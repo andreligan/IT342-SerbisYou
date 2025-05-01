@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import BaseModal from './shared/BaseModal';
-import API from '../utils/API';  // Import the API utility
+// Replace API import with apiClient and getApiUrl from apiConfig
+import apiClient, { getApiUrl } from '../utils/apiConfig';
 
 const LoginPopup = ({ open, onClose }) => {
   const [userName, setUserName] = useState('');
@@ -24,21 +25,21 @@ const LoginPopup = ({ open, onClose }) => {
         password: password
       };
       
-      console.log("Sending login request to:", `${API.defaults.baseURL}user-auth/login`);
+      console.log("Sending login request to:", getApiUrl('user-auth/login'));
       
       try {
-        // First try with Axios
-        const response = await API.post('https://serbisyo-backend.onrender.com/api/user-auth/login', loginData);
-        console.log("Login successful with Axios, received response:", response.status);
+        // First try with apiClient
+        const response = await apiClient.post(getApiUrl('user-auth/login'), loginData);
+        console.log("Login successful with apiClient, received response:", response.status);
         
         // Extract the data
         const { token, role, userId } = response.data;
         handleSuccessfulLogin(token, role, userId);
       } catch (axiosError) {
-        console.error("Axios login failed, trying direct fetch:", axiosError);
+        console.error("apiClient login failed, trying direct fetch:", axiosError);
         
-        // If Axios fails, try with direct fetch as a fallback
-        const fetchResponse = await fetch('https://serbisyo-backend.onrender.com/api/user-auth/login', {
+        // If apiClient fails, try with direct fetch as a fallback
+        const fetchResponse = await fetch(getApiUrl('user-auth/login'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -121,7 +122,7 @@ const LoginPopup = ({ open, onClose }) => {
     try {
       console.log("Redirecting to Google OAuth2...");
       // The OAuth redirect URI must match what's configured in the backend and Google Cloud Console
-      const googleAuthUrl = "https://serbisyo-backend.onrender.com/oauth2/authorization/google";
+      const googleAuthUrl = `${apiClient.defaults.baseURL || ''}/oauth2/authorization/google`;
       
       // Open in the same window, not a popup, to avoid popup blockers
       window.location.href = googleAuthUrl;
