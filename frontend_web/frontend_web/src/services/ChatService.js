@@ -1,9 +1,8 @@
-import axios from 'axios';
+import apiClient, { getApiUrl, API_BASE_URL } from '../utils/apiConfig';
 import NotificationService from './NotificationService';
 
-// Remove absolute URL to use relative URLs with Vite proxy
-const API_URL = ''; 
-const baseURL = "http://localhost:8080"; // Backend base URL for image paths
+// Use API_BASE_URL from apiConfig instead of hardcoded value
+const baseURL = API_BASE_URL;
 
 // Mock data for fallback when API is unavailable
 const MOCK_USERS = [
@@ -34,37 +33,22 @@ const MOCK_USERS = [
 ];
 
 const ChatService = {
-  // Get auth token from storage
-  getAuthToken: () => {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-    if (!token) {
-      console.warn('No auth token found in storage');
-    }
-    return token;
-  },
-  
-  // Get authentication headers with bearer token
-  getAuthHeaders: () => {
-    const token = ChatService.getAuthToken();
-    if (!token) return {};
+  // Get the current user's ID from storage
+  getCurrentUserId: () => {
+    // First try to get userId directly from storage
+    const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+    if (userId) return parseInt(userId, 10);
     
-    return {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    };
+    return 1; // Default to user ID 1 if not found
   },
   
   // Get all users (both customers and service providers)
   getAllUsers: async () => {
     try {
-      const authHeaders = ChatService.getAuthHeaders();
-      
       // Make parallel requests to get both customers and providers
       const [customersResponse, providersResponse] = await Promise.allSettled([
-        axios.get(`/api/customers/getAll`, authHeaders),
-        axios.get(`/api/service-providers/getAll`, authHeaders)
+        apiClient.get(getApiUrl('customers/getAll')),
+        apiClient.get(getApiUrl('service-providers/getAll'))
       ]);
 
       // If both requests failed, use mock data
@@ -128,19 +112,9 @@ const ChatService = {
     }
   },
 
-  // Get the current user's ID from storage
-  getCurrentUserId: () => {
-    // First try to get userId directly from storage
-    const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-    if (userId) return parseInt(userId, 10);
-    
-    return 1; // Default to user ID 1 if not found
-  },
-
   // Send a message to another user
   sendMessage: async (receiverId, messageText) => {
     try {
-      const authHeaders = ChatService.getAuthHeaders();
       const currentUserId = ChatService.getCurrentUserId();
       
       if (!currentUserId) {
@@ -156,8 +130,8 @@ const ChatService = {
       };
       
       console.log('Sending message:', messageData);
-      // Send message
-      const response = await axios.post('/api/messages/postMessage', messageData, authHeaders);
+      // Send message using apiClient and getApiUrl
+      const response = await apiClient.post(getApiUrl('messages/postMessage'), messageData);
       const sentMessage = response.data;
       console.log('Message sent successfully:', sentMessage);
       
@@ -198,12 +172,10 @@ const ChatService = {
   // Get user by ID (find user with matching userId from all customers and providers)
   getUserById: async (userId) => {
     try {
-      const authHeaders = ChatService.getAuthHeaders();
-      
-      // Get all customers and providers
+      // Get all customers and providers using apiClient
       const [customersResponse, providersResponse] = await Promise.allSettled([
-        axios.get(`/api/customers/getAll`, authHeaders),
-        axios.get(`/api/service-providers/getAll`, authHeaders)
+        apiClient.get(getApiUrl('customers/getAll')),
+        apiClient.get(getApiUrl('service-providers/getAll'))
       ]);
       
       // Look through customers
@@ -267,15 +239,14 @@ const ChatService = {
   // Get conversation history between two users
   getConversation: async (otherUserId) => {
     try {
-      const authHeaders = ChatService.getAuthHeaders();
       const currentUserId = ChatService.getCurrentUserId();
       
       if (!currentUserId) {
         throw new Error("No authenticated user found");
       }
       
-      // This endpoint would need to be implemented on your backend
-      const response = await axios.get(`/api/messages/conversation/${currentUserId}/${otherUserId}`, authHeaders);
+      // Use apiClient and getApiUrl for endpoint
+      const response = await apiClient.get(getApiUrl(`messages/conversation/${currentUserId}/${otherUserId}`));
       return response.data;
     } catch (error) {
       console.error('Failed to fetch conversation:', error);
@@ -287,16 +258,15 @@ const ChatService = {
   // Get conversation partners
   getConversationPartners: async () => {
     try {
-      const authHeaders = ChatService.getAuthHeaders();
       const currentUserId = ChatService.getCurrentUserId();
       
       if (!currentUserId) {
         throw new Error("No authenticated user found");
       }
       
-      // Try to use the dedicated endpoint
+      // Try to use the dedicated endpoint with apiClient
       try {
-        const response = await axios.get(`/api/messages/conversation-partners/${currentUserId}`, authHeaders);
+        const response = await apiClient.get(getApiUrl(`messages/conversation-partners/${currentUserId}`));
         
         // Get the user roles for each partner to help with profile image fetching
         const partners = response.data || [];
@@ -305,7 +275,7 @@ const ChatService = {
           const enhancedPartners = await Promise.all(partners.map(async (partner) => {
             try {
               if (partner.userId) {
-                const userResponse = await axios.get(`/api/user-auth/getById/${partner.userId}`, authHeaders);
+                const userResponse = await apiClient.get(getApiUrl(`user-auth/getById/${partner.userId}`));
                 if (userResponse.data) {
                   return {
                     ...partner,
@@ -327,8 +297,8 @@ const ChatService = {
       } catch (error) {
         console.warn('Conversation partners endpoint not available, falling back to alternative method');
         
-        // Fallback: Fetch all messages for this user and process them
-        const messagesResponse = await axios.get(`/api/messages/getAll`, authHeaders);
+        // Fallback: Fetch all messages for this user and process them using apiClient
+        const messagesResponse = await apiClient.get(getApiUrl('messages/getAll'));
         const allMessages = messagesResponse.data || [];
         
         // Filter messages where current user is sender or receiver
@@ -379,13 +349,12 @@ const ChatService = {
   // Mark a message as read while preserving the message text
   markMessageAsRead: async (messageId) => {
     try {
-      const authHeaders = ChatService.getAuthHeaders();
       let messageText = null;
       
       // First try to find the message from the conversation API
       try {
-        // Get all messages
-        const allMessagesResponse = await axios.get('/api/messages/getAll', authHeaders);
+        // Get all messages using apiClient
+        const allMessagesResponse = await apiClient.get(getApiUrl('messages/getAll'));
         const allMessages = allMessagesResponse.data;
         
         // Find the specific message
@@ -412,7 +381,7 @@ const ChatService = {
       }
       
       console.log(`Updating message ${messageId} status to READ${messageText ? ' with preserved text' : ''}`);
-      const response = await axios.put(`/api/messages/updateMessage/${messageId}`, updateData, authHeaders);
+      const response = await apiClient.put(getApiUrl(`messages/updateMessage/${messageId}`), updateData);
       console.log('Message marked as read:', response.data);
       return response.data;
     } catch (error) {
