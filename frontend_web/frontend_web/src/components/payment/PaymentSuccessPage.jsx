@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import confetti from 'canvas-confetti';
-import NotificationService from '../../services/NotificationService'; // Add this import
+import NotificationService from '../../services/NotificationService';
+import apiClient, { getApiUrl, API_BASE_URL } from '../../utils/apiConfig';
 
 const PaymentSuccessPage = () => {
   const navigate = useNavigate();
@@ -14,7 +14,7 @@ const PaymentSuccessPage = () => {
   const confettiCanvasRef = useRef(null);
   
   // Check if this is a cash payment
-  const isCashPayment = bookingDetails?.paymentMethod === 'cash';
+  const isCashPayment = bookingDetails?.paymentMethod?.toUpperCase() === 'CASH';
   
   // Generate a payment code for cash payments
   const [paymentCode, setPaymentCode] = useState('');
@@ -29,7 +29,7 @@ const PaymentSuccessPage = () => {
   }, [isCashPayment, bookingDetails]);
   
   // Calculate downpayment/remaining balance if applicable
-  const isDownpayment = bookingDetails?.paymentMethod === 'gcash' && bookingDetails?.fullPayment === false;
+  const isDownpayment = bookingDetails?.paymentMethod?.toUpperCase() === 'GCASH' && bookingDetails?.fullPayment === false;
   const paidAmount = isDownpayment ? (bookingDetails?.totalCost * 0.5) : 
                     (isCashPayment ? 0 : bookingDetails?.totalCost);
   const remainingBalance = isDownpayment ? (bookingDetails?.totalCost * 0.5) : 
@@ -41,14 +41,9 @@ const PaymentSuccessPage = () => {
     if (!receiptRef.current) return;
     
     try {
-      // Use html-to-image library or other screenshot method
-      const dataUrl = await html2canvas(receiptRef.current).then(canvas => canvas.toDataURL('image/png'));
-      
-      // Create a download link
-      const link = document.createElement('a');
-      link.download = `payment-${bookingDetails?.bookingId || 'receipt'}.png`;
-      link.href = dataUrl;
-      link.click();
+      // Since html2canvas may not be imported, use browser screenshot capability
+      // or just show an alert for now
+      alert('Please take a screenshot of this page to save your payment reference.');
     } catch (err) {
       console.error('Error saving receipt:', err);
     }
@@ -122,8 +117,6 @@ const PaymentSuccessPage = () => {
         const bookingRequest = JSON.parse(pendingBooking);
         
         // Store the service information
-        // In the pendingBooking, the service object typically only contains serviceId and provider
-        // We need to save this service ID to fetch the full service details later
         const serviceId = bookingRequest.service?.serviceId;
         console.log("Service ID from pending booking:", serviceId);
         
@@ -132,10 +125,8 @@ const PaymentSuccessPage = () => {
         bookingRequest.idempotencyKey = idempotencyKey;
         
         // Submit the booking to the backend
-        const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-        const response = await axios.post('/api/bookings/postBooking', bookingRequest, {
+        const response = await apiClient.post(getApiUrl('/bookings/postBooking'), bookingRequest, {
           headers: { 
-            Authorization: `Bearer ${token}`,
             'X-Idempotency-Key': idempotencyKey // Add idempotency header
           }
         });
@@ -173,10 +164,7 @@ const PaymentSuccessPage = () => {
                 const providerId = response.data.service.provider.providerId;
                 console.log("Fetching provider details for provider ID:", providerId);
                 
-                const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-                const providerResponse = await axios.get(`/api/service-providers/getById/${providerId}`, {
-                  headers: { Authorization: `Bearer ${token}` }
-                });
+                const providerResponse = await apiClient.get(getApiUrl(`/service-providers/getById/${providerId}`));
                 
                 if (providerResponse.data && providerResponse.data.userAuth) {
                   providerUserId = providerResponse.data.userAuth.userId;
@@ -196,7 +184,7 @@ const PaymentSuccessPage = () => {
             
             // Create notification data with the resolved userId
             const notificationData = {
-              user: { userId: providerUserId }, // Provider's user ID
+              user: { userId: providerUserId }, 
               type: "booking",
               message: `New booking request: ${serviceName} on ${formattedDate} at ${formattedTime}`,
               isRead: false,
@@ -229,17 +217,33 @@ const PaymentSuccessPage = () => {
     
     // Cleanup function to clear the processed flag when navigating away
     return () => {
-      // Only clear if we're actually navigating away, not on initial render
       setTimeout(() => {
         sessionStorage.removeItem('paymentProcessed');
       }, 1000);
     };
-  }, []); // Empty dependency array means this effect runs only once when component mounts
+  }, []); 
   
-  // Format date function
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Not available';
-    const date = new Date(dateString);
+  // Enhanced format date function to handle both string and array formats
+  const formatDate = (dateInput) => {
+    if (!dateInput) return 'Not available';
+    
+    let date;
+    
+    if (Array.isArray(dateInput)) {
+      // If date is in array format [year, month, day]
+      const [year, month, day] = dateInput;
+      date = new Date(year, month - 1, day); // Month in JS is 0-indexed
+    } else if (typeof dateInput === 'string') {
+      // If date is in string format
+      date = new Date(dateInput);
+    } else {
+      return 'Invalid date format';
+    }
+    
+    if (isNaN(date.getTime())) {
+      return 'Invalid date';
+    }
+    
     return new Intl.DateTimeFormat('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -248,24 +252,38 @@ const PaymentSuccessPage = () => {
     }).format(date);
   };
   
-  // Format time function
-  const formatTime = (timeString) => {
-    if (!timeString) return 'Not available';
-    // Handle common time formats
-    const timeParts = timeString.split(':');
-    if (timeParts.length < 2) return timeString;
+  // Enhanced format time function to handle both string and array formats
+  const formatTime = (timeInput) => {
+    if (!timeInput) return 'Not available';
     
-    const hour = parseInt(timeParts[0], 10);
-    const minutes = timeParts[1];
+    let hour, minutes;
+    
+    if (Array.isArray(timeInput)) {
+      // If time is in array format [hour, minute]
+      [hour, minutes] = timeInput;
+      minutes = minutes || 0; // Default to 0 if minutes aren't provided
+    } else if (typeof timeInput === 'string') {
+      // If time is in string format like "HH:MM:SS"
+      const timeParts = timeInput.split(':');
+      if (timeParts.length < 2) return timeInput;
+      hour = parseInt(timeParts[0], 10);
+      minutes = timeParts[1];
+    } else {
+      return 'Invalid time format';
+    }
+    
+    // Format with padding for minutes
+    const paddedMinutes = String(minutes).padStart(2, '0');
     const period = hour >= 12 ? 'PM' : 'AM';
     const formattedHour = hour % 12 || 12;
     
-    return `${formattedHour}:${minutes} ${period}`;
+    return `${formattedHour}:${paddedMinutes} ${period}`;
   };
   
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-4xl mx-auto px-4">
+        {/* The rest of the component remains the same */}
         {isLoading ? (
           <div className="bg-white rounded-2xl shadow-xl p-8 flex flex-col items-center justify-center">
             <div className="relative">
@@ -284,6 +302,7 @@ const PaymentSuccessPage = () => {
           </div>
         ) : error ? (
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+            {/* Error display - same as before */}
             <div className="bg-red-50 p-6 border-b border-red-100">
               <div className="flex flex-col sm:flex-row items-center">
                 <div className="flex items-center justify-center h-16 w-16 rounded-full bg-red-100 flex-shrink-0 mb-4 sm:mb-0">
@@ -338,7 +357,7 @@ const PaymentSuccessPage = () => {
           </div>
         ) : (
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            {/* Celebratory Header */}
+            {/* Celebratory Header - same as before */}
             <div className="relative bg-gradient-to-r from-[#495E57] to-[#37423C] p-8 text-white overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-[#F4CE14]/10 rounded-full -translate-x-24 -translate-y-24 blur-3xl"></div>
               <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#F4CE14]/5 rounded-full translate-x-8 translate-y-16 blur-2xl"></div>
@@ -359,7 +378,7 @@ const PaymentSuccessPage = () => {
               </div>
             </div>
             
-            {/* Booking Details Section - With updates for cash payment */}
+            {/* Booking Details Section */}
             <div className="p-6 sm:p-8">
               {bookingDetails && (
                 <div className="mb-8">
@@ -407,7 +426,7 @@ const PaymentSuccessPage = () => {
                         <div className="mb-4">
                           <p className="text-sm font-medium text-gray-500 mb-1">Payment Method</p>
                           <p className="text-gray-800 capitalize">
-                            {bookingDetails.paymentMethod || "Not specified"}
+                            {(bookingDetails.paymentMethod || "Not specified").toLowerCase()}
                             {isDownpayment && " (50% Downpayment)"}
                           </p>
                         </div>
@@ -439,7 +458,7 @@ const PaymentSuccessPage = () => {
                                 </div>
                               </div>
                             ) : (
-                              // GCash payment status display - existing code
+                              // GCash payment status display
                               <React.Fragment>
                                 <p className="text-[#495E57] font-bold">
                                   {isDownpayment ? "Partial Payment" : "Full Payment"}
@@ -483,7 +502,7 @@ const PaymentSuccessPage = () => {
                 </div>
               )}
               
-              {/* Cash Payment Reference Code - Only show for cash payments */}
+              {/* Cash Payment Reference Code */}
               {isCashPayment && bookingDetails && (
                 <div className="mb-8" ref={receiptRef}>
                   <h2 className="text-xl font-semibold text-[#495E57] mb-4 flex items-center">
@@ -510,13 +529,13 @@ const PaymentSuccessPage = () => {
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
                       </svg>
-                      Save Payment Reference
+                      Save or Screenshot Payment Reference
                     </button>
                   </div>
                 </div>
               )}
               
-              {/* What's Next Section - Modified for cash payments */}
+              {/* What's Next Section */}
               <div className="mb-8">
                 <h2 className="text-xl font-semibold text-[#495E57] mb-4 flex items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -622,6 +641,7 @@ const PaymentSuccessPage = () => {
           </div>
         </div>
         
+        {/* Canvas for confetti */}
         <canvas 
           ref={confettiCanvasRef}
           className="fixed pointer-events-none inset-0 z-50"
