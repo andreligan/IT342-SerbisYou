@@ -122,9 +122,13 @@ const LoginPopup = ({ open, onClose }) => {
     try {
       console.log("Redirecting to Google OAuth2...");
       // The OAuth redirect URI must match what's configured in the backend and Google Cloud Console
-      const googleAuthUrl = `${apiClient.defaults.baseURL || ''}/oauth2/authorization/google`;
+      const googleAuthUrl = `${API_BASE_URL}/oauth2/authorization/google`;
+      
+      console.log("Google Auth URL:", googleAuthUrl);
       
       // Open in the same window, not a popup, to avoid popup blockers
+      // Using window.location.href ensures this is treated as a full navigation,
+      // not a React Router navigation
       window.location.href = googleAuthUrl;
     } catch (error) {
       console.error("Error redirecting to Google login:", error);
