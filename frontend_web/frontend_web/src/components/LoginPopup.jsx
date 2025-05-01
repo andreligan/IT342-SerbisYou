@@ -121,14 +121,15 @@ const LoginPopup = ({ open, onClose }) => {
     try {
       console.log("Redirecting to Google OAuth2...");
       
-      // Build the OAuth URL using the API_BASE_URL to ensure domain consistency
-      // This prevents CORS issues by ensuring the redirect comes from the same origin
-      const googleAuthUrl = `${API.defaults.baseURL}/oauth2/authorization/google`;
+      // Fix the double slash issue by ensuring there's no trailing slash in the base URL
+      const baseUrl = API.defaults.baseURL.endsWith('/') 
+        ? API.defaults.baseURL.slice(0, -1) 
+        : API.defaults.baseURL;
+      
+      const googleAuthUrl = `${baseUrl}/oauth2/authorization/google`;
       
       console.log(`Redirecting to Google OAuth URL: ${googleAuthUrl}`);
       
-      // Use window.location.assign for more reliable redirects
-      // This ensures a complete page navigation rather than an AJAX request
       window.location.assign(googleAuthUrl);
     } catch (error) {
       console.error("Error redirecting to Google login:", error);

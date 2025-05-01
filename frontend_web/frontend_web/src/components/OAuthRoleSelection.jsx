@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+// Replace axios with the configured apiClient
+import apiClient, { getApiUrl } from '../utils/apiConfig';
 
 function OAuthRoleSelection() {
   const navigate = useNavigate();
@@ -81,7 +82,7 @@ function OAuthRoleSelection() {
       }
       
       // Register user with Google info
-      const response = await axios.post('/api/oauth/register', userData);
+      const response = await apiClient.post(getApiUrl('oauth/register'), userData);
       
       // Store authentication data
       localStorage.setItem('authToken', response.data.token);
