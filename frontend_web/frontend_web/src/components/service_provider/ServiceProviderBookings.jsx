@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import apiClient, { getApiUrl } from '../../utils/apiConfig';
 
 const ServiceProviderBookings = () => {
   const [bookings, setBookings] = useState([]);
@@ -46,19 +46,11 @@ const ServiceProviderBookings = () => {
   const fetchProviderBookings = async () => {
     try {
       setIsLoading(true);
-      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-      
-      if (!token) {
-        setError("Authentication token not found. Please log in again.");
-        setIsLoading(false);
-        return;
-      }
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
       
-      const response = await axios.get("/api/bookings/getProviderBookings", {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await apiClient.get(getApiUrl('bookings/getProviderBookings'), {
         signal: controller.signal
       });
       
@@ -160,17 +152,12 @@ const ServiceProviderBookings = () => {
 
   const handleUpdateStatus = async (bookingId, newStatus) => {
     try {
-      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-      
       if (newStatus === 'COMPLETED') {
-        await axios.put(`/api/bookings/complete/${bookingId}`, {}, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await apiClient.put(getApiUrl(`bookings/complete/${bookingId}`), {});
       } else {
-        await axios.put(`/api/bookings/updateStatus/${bookingId}`, 
-          { status: newStatus },
-          { headers: { Authorization: `Bearer ${token}` }
-        });
+        await apiClient.put(getApiUrl(`bookings/updateStatus/${bookingId}`), 
+          { status: newStatus }
+        );
       }
       
       setBookings(bookings.map(booking => 
@@ -191,11 +178,7 @@ const ServiceProviderBookings = () => {
   const handleConfirmCashPayment = async (bookingId) => {
     if (window.confirm("Confirm that you've received cash payment for this booking?")) {
       try {
-        const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-        
-        await axios.post(`/api/transactions/confirm-cash-payment/${bookingId}`, {}, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await apiClient.post(getApiUrl(`transactions/confirm-cash-payment/${bookingId}`), {});
         
         alert("Payment has been confirmed successfully.");
         fetchProviderBookings();
