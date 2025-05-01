@@ -239,8 +239,16 @@ const BookServicePage = () => {
 
   const formatTimeForBackend = (timeStr) => {
     if (!timeStr) return null;
-    if (timeStr.split(':').length === 3) return timeStr;
-    if (timeStr.split(':').length === 2) return `${timeStr}:00`;
+    
+    // Parse the time string to ensure proper formatting
+    const timeParts = timeStr.split(':');
+    if (timeParts.length >= 2) {
+      // Ensure hours and minutes have 2 digits
+      const hours = timeParts[0].padStart(2, '0');
+      const minutes = timeParts[1].padStart(2, '0');
+      return `${hours}:${minutes}:00`;
+    }
+    
     console.error("Unexpected time format:", timeStr);
     return null;
   };
@@ -294,6 +302,7 @@ const BookServicePage = () => {
         return;
       }
       
+      // Extract and properly format the time
       let timeString = bookingTime.split('-')[0].trim();
       timeString = formatTimeForBackend(timeString);
       
@@ -307,21 +316,22 @@ const BookServicePage = () => {
         ? totalPrice * 0.5
         : totalPrice;
       
+      // Create booking request with proper structure
       const bookingRequest = {
         customer: { customerId: customerId },
-        service: { 
-          serviceId: serviceData.serviceId,
-          serviceName: serviceData.serviceName,
-          provider: serviceData.provider ? { providerId: serviceData.provider.providerId } : null 
-        },
+        service: { serviceId: serviceData.serviceId },
+        provider: { providerId: serviceData.provider.providerId }, // Extract provider as a top-level field
         bookingDate: format(bookingDate, 'yyyy-MM-dd'),
         bookingTime: timeString,
-        status: "Pending",
-        totalCost: totalPrice,
+        status: "PENDING", // Use uppercase to match enum values on backend
+        totalCost: parseFloat(totalPrice.toFixed(2)), // Ensure it's a proper number
         note: note || "",
-        paymentMethod: paymentMethod,
+        paymentMethod: paymentMethod.toUpperCase(), // Use uppercase to match enum values
         fullPayment: isFullPayment
       };
+      
+      // Remove the provider from nested service object to avoid duplication
+      delete bookingRequest.service.provider;
       
       const debugData = {
         requestData: bookingRequest,
