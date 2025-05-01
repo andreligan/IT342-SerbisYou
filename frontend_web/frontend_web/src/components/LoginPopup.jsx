@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import BaseModal from './shared/BaseModal';
-// Replace API import with apiClient and getApiUrl from apiConfig
-import apiClient, { getApiUrl } from '../utils/apiConfig';
+import API from '../utils/API';  // Import the API utility
 
 const LoginPopup = ({ open, onClose }) => {
   const [userName, setUserName] = useState('');
@@ -25,21 +24,21 @@ const LoginPopup = ({ open, onClose }) => {
         password: password
       };
       
-      console.log("Sending login request to:", getApiUrl('user-auth/login'));
+      console.log("Sending login request to:", `${API.defaults.baseURL}user-auth/login`);
       
       try {
-        // First try with apiClient
-        const response = await apiClient.post(getApiUrl('user-auth/login'), loginData);
-        console.log("Login successful with apiClient, received response:", response.status);
+        // First try with Axios
+        const response = await API.post('user-auth/login', loginData);
+        console.log("Login successful with Axios, received response:", response.status);
         
         // Extract the data
         const { token, role, userId } = response.data;
         handleSuccessfulLogin(token, role, userId);
       } catch (axiosError) {
-        console.error("apiClient login failed, trying direct fetch:", axiosError);
+        console.error("Axios login failed, trying direct fetch:", axiosError);
         
-        // If apiClient fails, try with direct fetch as a fallback
-        const fetchResponse = await fetch(getApiUrl('user-auth/login'), {
+        // If Axios fails, try with direct fetch as a fallback
+        const fetchResponse = await fetch('https://serbisyo-backend.onrender.com/api/user-auth/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -121,15 +120,16 @@ const LoginPopup = ({ open, onClose }) => {
   const handleGoogleLogin = () => {
     try {
       console.log("Redirecting to Google OAuth2...");
-      // The OAuth redirect URI must match what's configured in the backend and Google Cloud Console
-      const googleAuthUrl = `${API_BASE_URL}/oauth2/authorization/google`;
       
-      console.log("Google Auth URL:", googleAuthUrl);
+      // Build the OAuth URL using the API_BASE_URL to ensure domain consistency
+      // This prevents CORS issues by ensuring the redirect comes from the same origin
+      const googleAuthUrl = `${API.defaults.baseURL}/oauth2/authorization/google`;
       
-      // Open in the same window, not a popup, to avoid popup blockers
-      // Using window.location.href ensures this is treated as a full navigation,
-      // not a React Router navigation
-      window.location.href = googleAuthUrl;
+      console.log(`Redirecting to Google OAuth URL: ${googleAuthUrl}`);
+      
+      // Use window.location.assign for more reliable redirects
+      // This ensures a complete page navigation rather than an AJAX request
+      window.location.assign(googleAuthUrl);
     } catch (error) {
       console.error("Error redirecting to Google login:", error);
       setErrorMessage("Failed to initialize Google login. Please try again.");
