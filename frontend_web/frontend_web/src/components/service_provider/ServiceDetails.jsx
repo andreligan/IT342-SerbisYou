@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import axios from 'axios';
 import { Star, MapPin, Clock, Phone, Mail, Briefcase, CreditCard, CheckCircle, Calendar, User, Shield, Award, Tag } from 'lucide-react';
+import apiClient, { getApiUrl, API_BASE_URL } from '../../utils/apiConfig';
 
 // StarRating component
 function StarRating({ rating }) {
@@ -37,14 +37,11 @@ function ServiceDetails() {
   const [currentCategory, setCurrentCategory] = useState(null);
   const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
   const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
-  const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
 
   useEffect(() => {
     const fetchService = async () => {
       try {
-        const response = await axios.get(`/api/services/getById/${serviceId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await apiClient.get(getApiUrl(`services/getById/${serviceId}`));
         setService(response.data);
         setLoading(false);
       } catch (err) {
@@ -55,14 +52,12 @@ function ServiceDetails() {
     };
 
     fetchService();
-  }, [serviceId, token]);
+  }, [serviceId]);
 
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const response = await axios.get('/api/customers/getAll', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await apiClient.get(getApiUrl('customers/getAll'));
         setCustomers(response.data);
       } catch (err) {
         console.error('Error fetching customers:', err);
@@ -70,7 +65,7 @@ function ServiceDetails() {
     };
     
     fetchCustomers();
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -78,9 +73,7 @@ function ServiceDetails() {
       
       try {
         // Step 1: Get all bookings for this specific service
-        const bookingsResponse = await axios.get('/api/bookings/getAll', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const bookingsResponse = await apiClient.get(getApiUrl('bookings/getAll'));
         
         // Step 2: Filter bookings for this specific service
         const serviceBookings = bookingsResponse.data.filter(booking => {
@@ -101,9 +94,7 @@ function ServiceDetails() {
         const providerId = service.provider?.providerId;
         
         // Step 5: Get all reviews for this provider
-        const reviewsResponse = await axios.get(`/api/reviews/getByProvider/${providerId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const reviewsResponse = await apiClient.get(getApiUrl(`reviews/getByProvider/${providerId}`));
         
         // Step 6: IMPROVED FILTERING - Multiple conditions to make it service-specific
         const serviceSpecificReviews = reviewsResponse.data.filter(review => {
@@ -182,14 +173,12 @@ function ServiceDetails() {
     if (service) {
       fetchReviews();
     }
-  }, [service, serviceId, token]);
+  }, [service, serviceId]);
 
   useEffect(() => {
     const fetchServiceCategories = async () => {
       try {
-        const response = await axios.get('/api/service-categories/getAll', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await apiClient.get(getApiUrl('service-categories/getAll'));
         setServiceCategories(response.data);
         console.log('Service Categories:', response.data);
       } catch (err) {
@@ -198,7 +187,7 @@ function ServiceDetails() {
     };
     
     fetchServiceCategories();
-  }, [token]);
+  }, []);
   
   useEffect(() => {
     if (service && serviceCategories.length > 0) {
