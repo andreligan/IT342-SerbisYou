@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import apiClient, { getApiUrl } from "../../../utils/apiConfig";
 
 const ChangePasswordContent = ({ interceptSuccessMessage, isMandatory }) => {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -27,24 +27,18 @@ const ChangePasswordContent = ({ interceptSuccessMessage, isMandatory }) => {
 
     try {
       setIsLoading(true);
-      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
       const authId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
 
-      if (!token || !authId) {
+      if (!authId) {
         setErrorMessage("Authentication token or user ID not found.");
         setIsLoading(false);
         return;
       }
 
-      // Call the backend API to change the password
-      const response = await axios.put(
-        `/api/user-auth/change-password/${authId}`,
-        { oldPassword: currentPassword, newPassword },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      // Update to use apiClient and getApiUrl
+      const response = await apiClient.put(
+        getApiUrl(`user-auth/change-password/${authId}`),
+        { oldPassword: currentPassword, newPassword }
       );
 
       const successMsg = response.data || "Password updated successfully.";
