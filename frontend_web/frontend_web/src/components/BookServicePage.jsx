@@ -33,29 +33,34 @@ const BookServicePage = () => {
   const [providerInfo, setProviderInfo] = useState(null);
   const [isFullPayment, setIsFullPayment] = useState(true);
 
-  // First log the location state for debugging
-  useEffect(() => {
-    console.log("Location state in BookServicePage:", location.state);
-  }, [location]);
-  
-  // Get service from state or create a default
   const serviceData = location.state?.service || {
     serviceName: "Service",
     price: 1000,
     provider: { providerId: null },
   };
-  
-  // Add debug logging for serviceData
+
   useEffect(() => {
     console.log("Service data received:", serviceData);
     console.log("Provider ID:", serviceData?.provider?.providerId);
+    if (serviceData?.provider) {
+      setProviderInfo({
+        providerId: serviceData.provider.providerId,
+        firstName: serviceData.provider.firstName,
+        lastName: serviceData.provider.lastName
+      });
+    }
   }, [serviceData]);
 
-  // Add useEffect to create a fallback if serviceData is empty
   useEffect(() => {
-    if (!serviceData || !serviceData.serviceId) {
-      console.error("No service data available in BookServicePage");
-      setError("Service information is missing. Please try again.");
+    if (serviceData && serviceData.price) {
+      const price = parseFloat(serviceData.price);
+      const payMongoFeeAmount = price * 0.025;
+      const appFeeAmount = price * 0.025;
+      
+      setPayMongoFee(payMongoFeeAmount);
+      setAppFee(appFeeAmount);
+      setServiceFee(payMongoFeeAmount + appFeeAmount);
+      setTotalPrice(price + payMongoFeeAmount + appFeeAmount);
     }
   }, [serviceData]);
 
@@ -135,6 +140,12 @@ const BookServicePage = () => {
     fetchAddress();
   }, []);
 
+  useEffect(() => {
+    if (bookingDate && serviceData?.provider?.providerId) {
+      fetchAvailableTimeSlots();
+    }
+  }, [bookingDate, serviceData?.provider?.providerId]);
+
   const fetchAvailableTimeSlots = async () => {
     setIsLoadingTimeSlots(true);
     setError(null);
@@ -192,6 +203,27 @@ const BookServicePage = () => {
     }
   };
 
+  const formatTimeWithAMPM = (time) => {
+    if (!time) return "";
+    const [hours, minutes] = time.split(":");
+    const hour = parseInt(hours, 10);
+    const period = hour >= 12 ? "PM" : "AM";
+    const formattedHours = hour % 12 || 12;
+    return `${formattedHours}:${minutes} ${period}`;
+  };
+
+  const formatDateForDisplay = (date) => {
+    return format(date, 'EEEE, MMMM d, yyyy');
+  };
+
+  const formatTimeForBackend = (timeStr) => {
+    if (!timeStr) return null;
+    if (timeStr.split(':').length === 3) return timeStr;
+    if (timeStr.split(':').length === 2) return `${timeStr}:00`;
+    console.error("Unexpected time format:", timeStr);
+    return null;
+  };
+
   const createGCashCheckout = async (checkoutPayload) => {
     try {
       console.log("Creating GCash checkout with payload:", checkoutPayload);
@@ -205,6 +237,26 @@ const BookServicePage = () => {
       console.error("Error creating GCash checkout:", error);
       throw new Error("Failed to create GCash payment session.");
     }
+  };
+
+  const handleNext = () => {
+    if (step === 1) {
+      if (!bookingDate || !bookingTime) {
+        setError("Please select both date and time for your booking.");
+        return;
+      }
+      if (!address) {
+        setError("Please add your address in your profile.");
+        return;
+      }
+    }
+    
+    setError(null);
+    setStep(step + 1);
+  };
+
+  const handleBack = () => {
+    setStep(step - 1);
   };
 
   const handleSubmit = async () => {
@@ -249,6 +301,27 @@ const BookServicePage = () => {
         paymentMethod: paymentMethod,
         fullPayment: isFullPayment
       };
+      
+      const debugData = {
+        requestData: bookingRequest,
+        additionalInfo: {
+          serviceName: serviceData.serviceName,
+          providerName: `${serviceData?.provider?.firstName || ''} ${serviceData?.provider?.lastName || ''}`,
+          providerId: serviceData?.provider?.providerId || 'Not set',
+          providerObject: providerInfo,
+          formattedTime: formatTimeWithAMPM(timeString),
+          basePrice: serviceData.price,
+          payMongoFee: payMongoFee,
+          appFee: appFee,
+          customerAddress: address,
+          paymentMethod: paymentMethod,
+          isFullPayment: isFullPayment,
+          actualPaymentAmount: actualPaymentAmount
+        }
+      };
+      
+      setDebugInfo(debugData);
+      console.log('DEBUG - Complete Booking Request:', debugData);
       
       if (paymentMethod === 'gcash') {
         try {
@@ -322,6 +395,18 @@ const BookServicePage = () => {
     }
   };
 
+  const pageVariants = {
+    initial: { opacity: 0, x: 20 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: -20 }
+  };
+
+  const stepVariants = {
+    inactive: { scale: 0.9, opacity: 0.7 },
+    active: { scale: 1, opacity: 1 },
+    completed: { scale: 1, opacity: 1 }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 px-4">
       <div className="max-w-5xl mx-auto">
@@ -329,22 +414,112 @@ const BookServicePage = () => {
           Book Service
         </h1>
 
-        {/* Display error if service data is missing */}
-        {!serviceData?.serviceId && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
-            <p className="text-red-700">
-              Service information is missing. Please go back and try again.
-            </p>
-            <button 
-              onClick={() => navigate(-1)}
-              className="mt-3 px-4 py-2 bg-[#495E57] text-white rounded-lg"
-            >
-              Go Back
-            </button>
+        <div className="mb-12 relative">
+          <div className="flex justify-between">
+            {['Select Date & Time', 'Review Details', 'Payment'].map((label, index) => (
+              <div key={index} className="flex flex-col items-center z-10">
+                <motion.div 
+                  className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-lg md:text-2xl font-semibold shadow-md ${
+                    step >= index + 1 
+                      ? 'bg-[#F4CE14] text-[#495E57]' 
+                      : 'bg-gray-100 text-gray-300'
+                  }`}
+                  whileHover={step >= index + 1 ? { scale: 1.05, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" } : {}}
+                >
+                  {index + 1}
+                </motion.div>
+                <div className="text-xs md:text-sm mt-2 text-center px-1">{label}</div>
+              </div>
+            ))}
           </div>
+          
+          <div className="absolute top-8 md:top-10 left-0 right-0 flex justify-center w-4/5 mx-auto z-0">
+            {[1, 2].map((_, index) => (
+              <div key={`connector-${index}`} className="w-full mx-2">
+                <div className={`h-1 ${
+                  step > index + 1 ? 'bg-[#F4CE14]' : 'bg-gray-200'
+                } transition-all duration-500`}></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {error && (
+          <div className="text-red-500 text-center mb-4">{error}</div>
         )}
 
-        {/* JSX content */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            variants={pageVariants}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+          >
+            {step === 1 && (
+              <DateTimeSelection
+                serviceData={serviceData}
+                bookingDate={bookingDate}
+                setBookingDate={setBookingDate}
+                bookingTime={bookingTime}
+                setBookingTime={setBookingTime}
+                address={address}
+                isLoading={isLoading}
+                isLoadingTimeSlots={isLoadingTimeSlots}
+                error={error}
+                availableTimeSlots={availableTimeSlots}
+                selectedTimeSlotIndex={selectedTimeSlotIndex}
+                setSelectedTimeSlotIndex={setSelectedTimeSlotIndex}
+                navigate={navigate}
+                payMongoFee={payMongoFee}
+                appFee={appFee}
+                totalPrice={totalPrice}
+                handleNext={handleNext}
+                formatTimeWithAMPM={formatTimeWithAMPM}
+                fetchAvailableTimeSlots={fetchAvailableTimeSlots}
+              />
+            )}
+
+            {step === 2 && (
+              <ReviewBookingDetails 
+                serviceData={serviceData}
+                bookingDate={bookingDate}
+                bookingTime={bookingTime}
+                address={address}
+                note={note}
+                setNote={setNote}
+                paymentMethod={paymentMethod}
+                setPaymentMethod={setPaymentMethod}
+                isFullPayment={isFullPayment}
+                setIsFullPayment={setIsFullPayment}
+                payMongoFee={payMongoFee}
+                appFee={appFee}
+                totalPrice={totalPrice}
+                handleBack={handleBack}
+                handleNext={handleNext}
+                formatDateForDisplay={formatDateForDisplay}
+                formatTimeWithAMPM={formatTimeWithAMPM}
+                navigate={navigate}
+              />
+            )}
+
+            {step === 3 && (
+              <PaymentConfirmation
+                serviceData={serviceData}
+                paymentMethod={paymentMethod}
+                isFullPayment={isFullPayment}
+                payMongoFee={payMongoFee}
+                appFee={appFee}
+                totalPrice={totalPrice}
+                debugInfo={debugInfo}
+                isProcessingPayment={isProcessingPayment}
+                handleBack={handleBack}
+                handleSubmit={handleSubmit}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
