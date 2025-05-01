@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import ChatService from '../../services/ChatService';
-import axios from 'axios';
+import apiClient, { getApiUrl, API_BASE_URL } from '../../utils/apiConfig';
 
 function ChatList({ onSelectUser, searchQuery }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const baseURL = "http://localhost:8080";
 
   useEffect(() => {
     const fetchConversationPartners = async () => {
@@ -20,44 +19,35 @@ function ChatList({ onSelectUser, searchQuery }) {
           const enhancedUsers = await Promise.all(conversationPartners.map(async (user) => {
             try {
               let profileImagePath = null;
-              const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
 
               if (user.role?.toLowerCase() === 'customer') {
                 // Get customer profile image
-                const customersResponse = await axios.get('/api/customers/getAll', {
-                  headers: { Authorization: `Bearer ${token}` }
-                });
+                const customersResponse = await apiClient.get(getApiUrl('customers/getAll'));
 
                 const customer = customersResponse.data.find(
                   c => c.userAuth && c.userAuth.userId == user.userId
                 );
 
                 if (customer) {
-                  const imageResponse = await axios.get(`/api/customers/getProfileImage/${customer.customerId}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                  });
+                  const imageResponse = await apiClient.get(getApiUrl(`customers/getProfileImage/${customer.customerId}`));
 
                   if (imageResponse.data) {
-                    profileImagePath = `${baseURL}${imageResponse.data}`;
+                    profileImagePath = `${API_BASE_URL}${imageResponse.data}`;
                   }
                 }
               } else if (user.role?.toLowerCase() === 'service provider') {
                 // Get service provider profile image
-                const providersResponse = await axios.get('/api/service-providers/getAll', {
-                  headers: { Authorization: `Bearer ${token}` }
-                });
+                const providersResponse = await apiClient.get(getApiUrl('service-providers/getAll'));
 
                 const provider = providersResponse.data.find(
                   p => p.userAuth && p.userAuth.userId == user.userId
                 );
 
                 if (provider) {
-                  const imageResponse = await axios.get(`/api/service-providers/getServiceProviderImage/${provider.providerId}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                  });
+                  const imageResponse = await apiClient.get(getApiUrl(`service-providers/getServiceProviderImage/${provider.providerId}`));
 
                   if (imageResponse.data) {
-                    profileImagePath = `${baseURL}${imageResponse.data}`;
+                    profileImagePath = `${API_BASE_URL}${imageResponse.data}`;
                   }
                 }
               }

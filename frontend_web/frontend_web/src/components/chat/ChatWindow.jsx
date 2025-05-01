@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios'; // Add this import
+import apiClient, { getApiUrl } from '../../utils/apiConfig';
 import ChatHeader from './ChatHeader';
 import ChatList from './ChatList';
 import UserSearch from './UserSearch';
@@ -73,9 +73,7 @@ function ChatWindow({ onClose }) {
           
           if (referenceId) {
             // Fetch the specific message to find the sender
-            const allMessagesResponse = await axios.get('/api/messages/getAll', {
-              headers: ChatService.getAuthHeaders().headers
-            });
+            const allMessagesResponse = await apiClient.get(getApiUrl('messages/getAll'));
             
             if (allMessagesResponse.data) {
               const message = allMessagesResponse.data.find(msg => msg.messageId === parseInt(referenceId));

@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient, { getApiUrl, API_BASE_URL } from "../../utils/apiConfig";
 import ServiceDetailsModal from "../modals/ServiceDetailsModal";
 import Footer from "../Footer";
-
-const BASE_URL = "http://localhost:8080";
 
 const ServiceProviderDetails = () => {
   const { providerId } = useParams();
@@ -25,12 +23,9 @@ const ServiceProviderDetails = () => {
     const fetchProviderDetails = async () => {
       try {
         console.log("Fetching provider details for ID:", providerId);
-        const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
         
         try {
-          const response = await axios.get(`${BASE_URL}/api/service-providers/getById/${providerId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          const response = await apiClient.get(getApiUrl(`service-providers/getById/${providerId}`));
           
           console.log("Provider data received:", response.data);
           setProvider(response.data);
@@ -39,18 +34,14 @@ const ServiceProviderDetails = () => {
           console.log("First endpoint failed, trying alternative...");
           
           try {
-            const altResponse = await axios.get(`${BASE_URL}/api/serviceProvider/${providerId}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
+            const altResponse = await apiClient.get(getApiUrl(`serviceProvider/${providerId}`));
             
             console.log("Provider data received from alt endpoint:", altResponse.data);
             setProvider(altResponse.data);
             setLoading(false);
           } catch (err2) {
             console.log("Second endpoint failed, trying final alternative...");
-            const altResponse2 = await axios.get(`${BASE_URL}/api/providers/${providerId}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
+            const altResponse2 = await apiClient.get(getApiUrl(`providers/${providerId}`));
             
             console.log("Provider data received from final alt endpoint:", altResponse2.data);
             setProvider(altResponse2.data);
@@ -78,14 +69,9 @@ const ServiceProviderDetails = () => {
   const fetchProviderServices = async () => {
     try {
       setServicesLoading(true);
-      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
       
       try {
-        const servicesResponse = await axios.get(`${BASE_URL}/api/services/getAll`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const servicesResponse = await apiClient.get(getApiUrl('services/getAll'));
         
         const providerIdNum = parseInt(providerId);
         let services = servicesResponse.data.filter(service => 
@@ -109,15 +95,11 @@ const ServiceProviderDetails = () => {
         const servicesWithImages = await Promise.all(
           services.map(async (service) => {
             try {
-              const imageResponse = await axios.get(`${BASE_URL}/api/services/getServiceImage/${service.serviceId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-              });
+              const imageResponse = await apiClient.get(getApiUrl(`services/getServiceImage/${service.serviceId}`));
               service.serviceImage = imageResponse.data;
               
               try {
-                const ratingResponse = await axios.get(`${BASE_URL}/api/reviews/getServiceRating/${service.serviceId}`, {
-                  headers: { Authorization: `Bearer ${token}` },
-                });
+                const ratingResponse = await apiClient.get(getApiUrl(`reviews/getServiceRating/${service.serviceId}`));
                 ratingsMap[service.serviceId] = ratingResponse.data;
               } catch (error) {
                 console.error(`Error fetching rating for service ${service.serviceId}:`, error);
@@ -142,9 +124,7 @@ const ServiceProviderDetails = () => {
         console.error("Error fetching services:", err);
         
         try {
-          const altResponse = await axios.get(`${BASE_URL}/api/services/getByProviderId/${providerId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          const altResponse = await apiClient.get(getApiUrl(`services/getByProviderId/${providerId}`));
           
           console.log("Provider services received from direct endpoint:", altResponse.data);
           
@@ -160,9 +140,7 @@ const ServiceProviderDetails = () => {
           await Promise.all(
             servicesData.map(async (service) => {
               try {
-                const ratingResponse = await axios.get(`${BASE_URL}/api/reviews/getServiceRating/${service.serviceId}`, {
-                  headers: { Authorization: `Bearer ${token}` },
-                });
+                const ratingResponse = await apiClient.get(getApiUrl(`reviews/getServiceRating/${service.serviceId}`));
                 ratingsMap[service.serviceId] = ratingResponse.data;
               } catch (e) {
                 console.warn(`Couldn't fetch rating for service ${service.serviceId}:`, e);
@@ -233,10 +211,10 @@ const ServiceProviderDetails = () => {
     }
     
     if (imagePath.startsWith('/')) {
-      return `${BASE_URL}${imagePath}`;
+      return `${API_BASE_URL}${imagePath}`;
     }
     
-    return `${BASE_URL}/${imagePath}`;
+    return `${API_BASE_URL}/${imagePath}`;
   };
 
   const handleImageError = (e) => {
@@ -519,7 +497,7 @@ const ServiceProviderDetails = () => {
                   <div className="relative">
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
                     <img
-                      src={service.serviceImage ? `${BASE_URL}${service.serviceImage}` : "/default-service.jpg"}
+                      src={service.serviceImage ? `${API_BASE_URL}${service.serviceImage}` : "/default-service.jpg"}
                       alt={service.serviceName}
                       className="w-full h-48 object-cover"
                       loading="lazy"
