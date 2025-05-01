@@ -30,9 +30,9 @@ const CustomerChangePasswordContent = ({ interceptSuccessMessage, isMandatory })
         return;
       }
   
-      // Call the backend API to change the password
+      // Call the backend API to change the password - fixed the URL path by removing leading slash
       const response = await apiClient.put(
-        getApiUrl(`/user-auth/change-password/${authId}`),
+        getApiUrl(`user-auth/change-password/${authId}`),
         { oldPassword: currentPassword, newPassword }
       );
   
