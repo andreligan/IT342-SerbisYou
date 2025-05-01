@@ -1,6 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite'
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ mode }) => {
   // Load environment variables
@@ -10,7 +10,8 @@ export default defineConfig(({ mode }) => {
   const apiUrl = env.VITE_API_URL || 'https://serbisyo-backend.onrender.com';
   
   return {
-    base: './',
+    // Add this base configuration to ensure assets use absolute paths
+    base: '/',
     plugins: [
       tailwindcss(),
       react()
@@ -32,7 +33,8 @@ export default defineConfig(({ mode }) => {
       sourcemap: false,
       minify: 'terser',
       target: 'es2015',
-      assetsInlineLimit: 4096,
+      assetsInlineLimit: 0,
+      assetsDir: 'assets',
       rollupOptions: {
         output: {
           manualChunks: {
