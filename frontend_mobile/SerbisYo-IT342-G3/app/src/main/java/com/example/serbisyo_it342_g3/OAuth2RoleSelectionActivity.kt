@@ -165,6 +165,7 @@ class OAuth2RoleSelectionActivity : AppCompatActivity() {
                 userAuthObj.put("userName", email)
                 userAuthObj.put("email", email)
                 userAuthObj.put("role", role)
+                userAuthObj.put("platform", "android") // Add platform flag to specify Android
                 jsonObj.put("userAuth", userAuthObj)
                 
                 // Default address (will be updated later by user)
@@ -195,7 +196,8 @@ class OAuth2RoleSelectionActivity : AppCompatActivity() {
                 val requestBody = jsonObj.toString()
                     .toRequestBody("application/json".toMediaTypeOrNull())
                 
-                val requestUrl = "${baseApiClient.getBaseUrl()}/api/oauth/register"
+                // Add mobile app redirect flag to URL
+                val requestUrl = "${baseApiClient.getBaseUrl()}/api/oauth/register?redirectToMobile=true"
                 
                 Log.d(TAG, "Sending OAuth registration to: $requestUrl")
                 Log.d(TAG, "Request body: $jsonObj")
@@ -234,14 +236,13 @@ class OAuth2RoleSelectionActivity : AppCompatActivity() {
                                 }
                                 
                                 runOnUiThread {
-                                    // Navigate based on role
-                                    val intent = if (userRole.contains("Customer", ignoreCase = true)) {
-                                        Intent(this, CustomerDashboardActivity::class.java)
-                                    } else {
-                                        Intent(this, ServiceProviderDashboardActivity::class.java)
+                                    // Navigate to password change activity instead of dashboard
+                                    val intent = Intent(this, OAuth2PasswordChangeActivity::class.java).apply {
+                                        putExtra("token", token)
+                                        putExtra("userId", userId?.toLongOrNull() ?: 0L)
+                                        putExtra("role", userRole)
+                                        putExtra("email", email)
                                     }
-                                    
-                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                     startActivity(intent)
                                     finish()
                                 }
@@ -251,26 +252,22 @@ class OAuth2RoleSelectionActivity : AppCompatActivity() {
                                 }
                             }
                         } catch (e: Exception) {
-                            Log.e(TAG, "Error parsing response", e)
+                            Log.e(TAG, "Error parsing registration response", e)
                             runOnUiThread {
                                 Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
                             }
                         }
                     } else {
-                        val errorBody = response.body?.string() ?: ""
-                        Log.e(TAG, "Registration failed: ${response.code} - $errorBody")
-                        
+                        // Handle error response
+                        val errorBody = response.body?.string() ?: "Unknown error"
+                        Log.e(TAG, "Error response: $errorBody")
                         runOnUiThread {
-                            when (response.code) {
-                                409 -> Toast.makeText(this, "Email already registered. Please login instead.", Toast.LENGTH_LONG).show()
-                                400 -> Toast.makeText(this, "Invalid registration data", Toast.LENGTH_LONG).show()
-                                else -> Toast.makeText(this, "Registration failed (${response.code})", Toast.LENGTH_LONG).show()
-                            }
+                            Toast.makeText(this, "Registration failed: ${response.code}", Toast.LENGTH_LONG).show()
                         }
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error during OAuth registration", e)
+                Log.e(TAG, "Exception during registration", e)
                 runOnUiThread {
                     Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
                 }

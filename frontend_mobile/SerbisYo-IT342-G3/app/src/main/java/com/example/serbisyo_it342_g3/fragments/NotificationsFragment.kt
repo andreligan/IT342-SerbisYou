@@ -93,7 +93,13 @@ class NotificationsFragment : Fragment() {
         recyclerView.adapter = adapter
     }
     
-    private fun loadNotifications() {
+    fun loadNotifications() {
+        // Prevent multiple concurrent calls to loadNotifications
+        if (progressBar.visibility == View.VISIBLE) {
+            Log.d(TAG, "Skipping loadNotifications call - already loading")
+            return
+        }
+        
         Log.d(TAG, "loadNotifications called, loading for userId: $userId")
         progressBar.visibility = View.VISIBLE
         tvNoNotifications.visibility = View.GONE
@@ -225,20 +231,29 @@ class NotificationsFragment : Fragment() {
             // Update local data
             val index = notifications.indexOfFirst { it.notificationId == notification.notificationId }
             if (index >= 0) {
+                // Ensure we set both isRead and read flags to true
                 val updatedNotification = notification.copy(isRead = true, read = true)
                 notifications[index] = updatedNotification
+                
                 requireActivity().runOnUiThread {
+                    // Update the specific item in the adapter
                     adapter.notifyItemChanged(index)
                     
                     // Update badge count
                     updateNotificationBadge()
                     
+                    // If there are no more unread notifications, hide the mark all as read button
+                    val unreadCount = notifications.count { !it.isRead && !it.read }
+                    btnMarkAllAsRead.visibility = if (unreadCount > 0) View.VISIBLE else View.GONE
+                    
                     // Handle navigation based on notification type
-                    handleNotificationByType(notification)
+                    handleNotificationByType(updatedNotification)
                 }
             } else {
                 // Notification not found in local list, still handle it
+                // But don't reload notifications to avoid recursive call loop
                 requireActivity().runOnUiThread {
+                    Log.d(TAG, "Notification not found in local list, handling without reload")
                     handleNotificationByType(notification)
                 }
             }
@@ -375,11 +390,14 @@ class NotificationsFragment : Fragment() {
     }
     
     private fun updateNotificationBadge() {
+        // Only count notifications that haven't been read
         val unreadCount = notifications.count { !it.isRead && !it.read }
         Log.d(TAG, "Unread notification count: $unreadCount")
         
         // Use an interface or shared ViewModel to communicate with activity
         (requireActivity() as? NotificationBadgeListener)?.updateNotificationBadge(unreadCount)
+        
+        // Do NOT call loadNotifications() here - this was causing the infinite loop
     }
     
     // Interface for communication with activity
@@ -414,6 +432,29 @@ class NotificationsFragment : Fragment() {
                 }
             }
         }
+    }
+    
+    /**
+     * Update the UI to reflect that all notifications are read
+     * without reloading data from the server
+     */
+    fun updateAllNotificationsAsRead() {
+        // Update all notifications in our local list
+        for (i in 0 until notifications.size) {
+            if (!notifications[i].isRead || !notifications[i].read) {
+                notifications[i] = notifications[i].copy(isRead = true, read = true)
+            }
+        }
+        
+        // Update UI
+        adapter.updateNotifications(notifications)
+        btnMarkAllAsRead.visibility = View.GONE
+        
+        // Update badge
+        updateNotificationBadge()
+        
+        // Log this operation
+        Log.d(TAG, "Updated UI to mark all notifications as read")
     }
     
     companion object {

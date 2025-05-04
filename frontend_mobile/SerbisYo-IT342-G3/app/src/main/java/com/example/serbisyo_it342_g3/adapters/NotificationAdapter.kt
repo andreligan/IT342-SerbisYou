@@ -20,6 +20,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import java.util.Calendar
 
 class NotificationAdapter(
     private val context: Context,
@@ -71,9 +72,19 @@ class NotificationAdapter(
         private val isoDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.getDefault())
         // Fallback date format without milliseconds
         private val fallbackIsoDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-        private val displayDateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
+        // Simple format for dates from API
+        private val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        // Display format for older dates
+        private val displayDateFormat = SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault())
+        // Time-only format for same-day dates
+        private val timeOnlyFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+        // Date-only format for different years
+        private val dateOnlyFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
 
         fun bind(notification: Notification) {
+            // Log timestamp for debugging
+            Log.d(TAG, "Notification ${notification.notificationId} createdAt: ${notification.createdAt}")
+            
             // Set appropriate icon and title based on notification type
             when (notification.type?.lowercase() ?: notification.referenceType.lowercase()) {
                 "message" -> setupMessageNotification(notification)
@@ -83,9 +94,10 @@ class NotificationAdapter(
                 else -> setupGenericNotification(notification)
             }
             
-            // Format time
+            // Format time with more detailed logging
             val timeAgo = getTimeAgo(notification.createdAt)
             tvTime.text = timeAgo
+            Log.d(TAG, "Notification ${notification.notificationId} formatted time: $timeAgo")
             
             // Show/hide unread indicator based on isRead or read property
             val isRead = notification.isRead || notification.read
@@ -251,41 +263,121 @@ class NotificationAdapter(
         }
         
         private fun getTimeAgo(createdAtStr: String): String {
-            return try {
-                // Parse the date string into a Date object, trying both date formats
-                val createdAtDate = try {
-                    isoDateFormat.parse(createdAtStr)
-                } catch (e: ParseException) {
-                    try {
-                        fallbackIsoDateFormat.parse(createdAtStr)
-                    } catch (e2: ParseException) {
-                        Log.e(TAG, "Failed to parse date: $createdAtStr", e2)
-                        return "Recently" // Return a default value if parsing fails
-                    }
-                } ?: Date()
+            Log.d(TAG, "Processing timestamp: $createdAtStr")
+            
+            if (createdAtStr.isEmpty()) {
+                Log.d(TAG, "Empty timestamp, returning 'Recently'")
+                return "Recently"
+            }
+
+            try {
+                // Parse the date string into a Date object
+                val createdAtDate = parseDate(createdAtStr)
+                if (createdAtDate == null) {
+                    Log.e(TAG, "Could not parse date: $createdAtStr")
+                    return "Recently"
+                }
                 
+                // Get current date for comparison
                 val now = Date()
                 
                 // Calculate time difference in milliseconds
                 val diffMillis = now.time - createdAtDate.time
                 
-                // Convert to minutes, hours and days
+                // Convert to various time units
                 val diffMinutes = TimeUnit.MILLISECONDS.toMinutes(diffMillis)
                 val diffHours = TimeUnit.MILLISECONDS.toHours(diffMillis)
                 val diffDays = TimeUnit.MILLISECONDS.toDays(diffMillis)
                 
-                when {
+                // Formatting logic with more detailed output for debugging
+                val result = when {
                     diffMinutes < 1 -> "Just now"
                     diffMinutes < 60 -> "$diffMinutes min ago"
                     diffHours < 24 -> "$diffHours hour${if (diffHours > 1) "s" else ""} ago"
                     diffDays < 7 -> "$diffDays day${if (diffDays > 1) "s" else ""} ago"
                     else -> {
-                        displayDateFormat.format(createdAtDate)
+                        // For older messages, show actual date
+                        val nowCalendar = Calendar.getInstance()
+                        val createdCalendar = Calendar.getInstance().apply { time = createdAtDate }
+                        
+                        if (nowCalendar.get(Calendar.YEAR) == createdCalendar.get(Calendar.YEAR)) {
+                            // Same year, show month and day
+                            dateOnlyFormat.format(createdAtDate)
+                        } else {
+                            // Different year, include year
+                            dateOnlyFormat.format(createdAtDate)
+                        }
                     }
                 }
+                
+                Log.d(TAG, "Timestamp $createdAtStr formatted as: $result")
+                return result
             } catch (e: Exception) {
-                Log.e(TAG, "Error calculating time ago", e)
-                "Recently"
+                Log.e(TAG, "Error calculating time ago for $createdAtStr", e)
+                return "Recently"
+            }
+        }
+        
+        private fun parseDate(dateStr: String): Date? {
+            // First try standard formats
+            try {
+                // Try the ISO format with milliseconds
+                return isoDateFormat.parse(dateStr)
+            } catch (e: ParseException) {
+                try {
+                    // Try the ISO format without milliseconds
+                    return fallbackIsoDateFormat.parse(dateStr)
+                } catch (e2: ParseException) {
+                    try {
+                        // Try simple date format (from our deserializer)
+                        return simpleDateFormat.parse(dateStr)
+                    } catch (e3: ParseException) {
+                        // None of our formats worked, log the error
+                        Log.e(TAG, "Failed to parse date with standard formats: $dateStr")
+                    }
+                }
+            }
+            
+            // If we get here, try to parse array format directly
+            return try {
+                // Check if the string looks like an array representation: [2025,4,30,9,44,22]
+                if (dateStr.startsWith("[") && dateStr.endsWith("]")) {
+                    val parts = dateStr.substring(1, dateStr.length - 1).split(",")
+                    if (parts.size >= 3) {
+                        // Extract date components
+                        val year = parts[0].trim().toInt()
+                        val month = parts[1].trim().toInt() - 1 // Month is 0-based in Calendar
+                        val day = parts[2].trim().toInt()
+                        
+                        // Initialize calendar with date
+                        val calendar = Calendar.getInstance()
+                        calendar.set(Calendar.YEAR, year)
+                        calendar.set(Calendar.MONTH, month)
+                        calendar.set(Calendar.DAY_OF_MONTH, day)
+                        
+                        // Add time if available
+                        if (parts.size >= 6) {
+                            val hour = parts[3].trim().toInt()
+                            val minute = parts[4].trim().toInt()
+                            val second = parts[5].trim().toInt()
+                            
+                            calendar.set(Calendar.HOUR_OF_DAY, hour)
+                            calendar.set(Calendar.MINUTE, minute)
+                            calendar.set(Calendar.SECOND, second)
+                        }
+                        
+                        calendar.time
+                    } else {
+                        Log.e(TAG, "Invalid array date format: $dateStr")
+                        null
+                    }
+                } else {
+                    Log.e(TAG, "Unknown date format: $dateStr")
+                    null
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing date array: $dateStr", e)
+                null
             }
         }
     }

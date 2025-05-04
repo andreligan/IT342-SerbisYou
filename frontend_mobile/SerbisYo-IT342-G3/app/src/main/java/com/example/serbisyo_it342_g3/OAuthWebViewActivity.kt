@@ -57,11 +57,26 @@ class OAuthWebViewActivity : AppCompatActivity() {
                 val url = request.url.toString()
                 Log.d(TAG, "URL loading: $url")
                 
+                // Enhanced logging for all URLs
+                Log.d(TAG, "Full URL details: ${request.url}")
+                Log.d(TAG, "URL host: ${request.url.host}, path: ${request.url.path}, query: ${request.url.query}")
+                
                 // Skip initial authorization URLs - only process actual redirects
                 // Don't intercept the initial Google auth URL
                 if (url.contains("/oauth2/authorization/google") || 
                     url.startsWith("https://accounts.google.com/o/oauth2/auth")) {
+                    Log.d(TAG, "Allowing Google auth URL to load normally")
                     return false // Let WebView handle this URL normally
+                }
+                
+                // Check for localhost redirects that should be handled by the deployed backend
+                if (url.contains("localhost:8080")) {
+                    Log.e(TAG, "Detected localhost URL that should be using the production URL: $url")
+                    // Attempt to modify the URL to use the production domain
+                    val productionUrl = url.replace("localhost:8080", "serbisyo-backend.onrender.com")
+                    Log.d(TAG, "Redirecting to production URL: $productionUrl")
+                    view.loadUrl(productionUrl)
+                    return true
                 }
                 
                 // Handle OAuth redirect URLs
@@ -80,11 +95,41 @@ class OAuthWebViewActivity : AppCompatActivity() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 progressBar.visibility = View.VISIBLE
+                Log.d(TAG, "Page loading started: $url")
             }
             
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 progressBar.visibility = View.GONE
+                Log.d(TAG, "Page loading finished: $url")
+                
+                // Detect page not found or error pages
+                if (url?.contains("localhost") == true) {
+                    Log.e(TAG, "Potential error: Page loaded with localhost URL: $url")
+                    // Could check page content here if needed
+                }
+            }
+            
+            override fun onReceivedError(
+                view: WebView?, 
+                request: WebResourceRequest?, 
+                error: android.webkit.WebResourceError?
+            ) {
+                super.onReceivedError(view, request, error)
+                Log.e(TAG, "WebView error: ${error?.description} for URL: ${request?.url}")
+                Toast.makeText(
+                    this@OAuthWebViewActivity, 
+                    "Error loading page: ${error?.description}", 
+                    Toast.LENGTH_SHORT
+                ).show()
+                
+                // If we hit a "Page not found" for localhost:8080, try to redirect to the production URL
+                if (request?.url?.toString()?.contains("localhost:8080") == true) {
+                    val productionUrl = request.url.toString()
+                        .replace("localhost:8080", "serbisyo-backend.onrender.com")
+                    Log.d(TAG, "Attempting to recover by loading production URL: $productionUrl")
+                    view?.loadUrl(productionUrl)
+                }
             }
         }
         

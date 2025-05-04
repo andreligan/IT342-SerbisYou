@@ -118,14 +118,14 @@ class LoginActivity : AppCompatActivity() {
     
     private fun signInWithGoogle() {
         try {
-            // Get the server base URL
-            val baseUrl = baseApiClient.getBaseUrl()
+            // Get the OAuth URL with mobile parameters
+            val finalAuthUrl = baseApiClient.getGoogleOAuthUrlForMobile()
             
-            // Create direct URL to Google Sign-In endpoint
-            val googleAuthUrl = "$baseUrl/oauth2/authorization/google"
+            // Enhanced logging for debugging
+            Log.d(loginActivityTag, "Starting Google Sign-In with URL: $finalAuthUrl")
             
             // Open in Chrome Custom Tabs (preferred by Google) or external browser
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(googleAuthUrl))
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalAuthUrl))
             
             // To customize Chrome Custom Tabs for better experience
             try {
@@ -143,15 +143,26 @@ class LoginActivity : AppCompatActivity() {
                 // Find Chrome or other browser that supports Custom Tabs
                 val packageName = "com.android.chrome" // Default to Chrome
                 customTabsIntent.intent.setPackage(packageName)
-                customTabsIntent.launchUrl(this, Uri.parse(googleAuthUrl))
+                
+                // Add additional headers to ensure mobile redirection
+                customTabsIntent.intent.putExtra("android_package_name", packageName)
+                customTabsIntent.intent.putExtra("platform", "android")
+                
+                Log.d(loginActivityTag, "Launching Chrome Custom Tabs with URL: $finalAuthUrl")
+                customTabsIntent.launchUrl(this, Uri.parse(finalAuthUrl))
+                
+                Log.d(loginActivityTag, "Launched Chrome Custom Tabs for Google Auth")
             } catch (e: Exception) {
                 // Fallback to regular browser intent
+                Log.d(loginActivityTag, "Falling back to regular browser with URL: $finalAuthUrl")
+                
+                // Add headers to regular intent as well
+                intent.putExtra("android_package_name", packageName)
+                intent.putExtra("platform", "android")
+                
                 startActivity(intent)
-                Log.e(loginActivityTag, "Error using CustomTabs: ${e.message}", e)
+                Log.e(loginActivityTag, "Error using CustomTabs, falling back to regular browser: ${e.message}", e)
             }
-            
-            // Log for debugging
-            Log.d(loginActivityTag, "Opening Google auth URL with Custom Tabs: $googleAuthUrl")
             
             // Register redirect handler activity in manifest
             Toast.makeText(
@@ -162,6 +173,10 @@ class LoginActivity : AppCompatActivity() {
             
         } catch (e: Exception) {
             Log.e(loginActivityTag, "Error starting Google Sign-In: ${e.message}", e)
+            // Enhanced error logging
+            Log.e(loginActivityTag, "Stack trace: ", e)
+            Log.e(loginActivityTag, "BaseURL: ${baseApiClient.getBaseUrl()}")
+            
             Toast.makeText(this, "Error starting Google Sign-In: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }

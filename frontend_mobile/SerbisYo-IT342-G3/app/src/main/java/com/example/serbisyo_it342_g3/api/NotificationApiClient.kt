@@ -3,11 +3,14 @@ package com.example.serbisyo_it342_g3.api
 import android.content.Context
 import android.util.Log
 import com.example.serbisyo_it342_g3.data.Notification
-import com.google.gson.Gson
+import com.example.serbisyo_it342_g3.data.NotificationDeserializer
+import com.example.serbisyo_it342_g3.data.UserData
+import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import java.text.SimpleDateFormat
@@ -16,7 +19,10 @@ import java.util.*
 class NotificationApiClient(private val context: Context) {
     private val baseApiClient = BaseApiClient(context)
     private val client = baseApiClient.client
-    private val gson = baseApiClient.gson
+    // Create a custom Gson instance with our NotificationDeserializer
+    private val gson = GsonBuilder()
+        .registerTypeAdapter(Notification::class.java, NotificationDeserializer())
+        .create()
     
     private val TAG = "NotificationApiClient"
 
@@ -52,6 +58,7 @@ class NotificationApiClient(private val context: Context) {
                 
                 if (response.isSuccessful) {
                     try {
+                        // Use our custom deserializer
                         val type = object : TypeToken<List<Notification>>() {}.type
                         val allNotifications = gson.fromJson<List<Notification>>(responseBody, type)
                         
@@ -129,7 +136,88 @@ class NotificationApiClient(private val context: Context) {
                         callback(processedNotifications, null)
                     } catch (e: Exception) {
                         Log.e(TAG, "Error parsing notifications", e)
-                        callback(null, e)
+                        
+                        // Try manual parsing as a fallback
+                        try {
+                            val jsonArray = JSONArray(responseBody)
+                            val manualNotifications = ArrayList<Notification>()
+                            
+                            for (i in 0 until jsonArray.length()) {
+                                val jsonObject = jsonArray.getJSONObject(i)
+                                
+                                // Extract user ID from the user object
+                                var notifUserId: Long? = null
+                                if (jsonObject.has("user") && !jsonObject.isNull("user")) {
+                                    val userObj = jsonObject.getJSONObject("user")
+                                    if (userObj.has("userId")) {
+                                        notifUserId = userObj.getLong("userId")
+                                    }
+                                }
+                                
+                                // Only process notifications for our user
+                                if (notifUserId == userId) {
+                                    // Parse createdAt date from array format
+                                    var createdAt = ""
+                                    if (jsonObject.has("createdAt")) {
+                                        val createdAtObj = jsonObject.get("createdAt")
+                                        if (createdAtObj is JSONArray) {
+                                            val dateArray = jsonObject.getJSONArray("createdAt")
+                                            if (dateArray.length() >= 3) {
+                                                val year = dateArray.getInt(0)
+                                                val month = dateArray.getInt(1)
+                                                val day = dateArray.getInt(2)
+                                                
+                                                // Include time if available
+                                                if (dateArray.length() >= 6) {
+                                                    val hour = dateArray.getInt(3)
+                                                    val minute = dateArray.getInt(4)
+                                                    val second = dateArray.getInt(5)
+                                                    createdAt = String.format("%04d-%02d-%02d %02d:%02d:%02d", 
+                                                        year, month, day, hour, minute, second)
+                                                } else {
+                                                    createdAt = String.format("%04d-%02d-%02d", year, month, day)
+                                                }
+                                            }
+                                        } else if (createdAtObj is String) {
+                                            createdAt = createdAtObj
+                                        }
+                                    }
+                                    
+                                    // Create the notification object
+                                    val notification = Notification(
+                                        notificationId = jsonObject.optLong("notificationId", 0),
+                                        userId = notifUserId,
+                                        type = jsonObject.optString("type", ""),
+                                        message = jsonObject.optString("message", ""),
+                                        isRead = jsonObject.optBoolean("isRead", false),
+                                        read = jsonObject.optBoolean("read", false),
+                                        createdAt = createdAt,
+                                        referenceId = jsonObject.optLong("referenceId", 0),
+                                        referenceType = jsonObject.optString("referenceType", ""),
+                                        senderName = jsonObject.optString("senderName", ""),
+                                        senderId = jsonObject.optLong("senderId", 0)
+                                    )
+                                    
+                                    manualNotifications.add(notification)
+                                }
+                            }
+                            
+                            // Process these manually-parsed notifications
+                            val enhancedNotifications = manualNotifications.map { notification ->
+                                if (notification.message.isNullOrBlank() || notification.type.isNullOrBlank()) {
+                                    enhanceNotification(notification)
+                                } else {
+                                    notification
+                                }
+                            }
+                            
+                            Log.d(TAG, "Manually parsed ${enhancedNotifications.size} notifications for user $userId")
+                            val processedNotifications = processNotifications(enhancedNotifications)
+                            callback(processedNotifications, null)
+                        } catch (jsonEx: Exception) {
+                            Log.e(TAG, "Error with manual JSON parsing", jsonEx)
+                            callback(null, e)  // Return the original exception
+                        }
                     }
                 } else {
                     Log.e(TAG, "Error getting notifications", Exception("Failed to get notifications: ${response.code}"))
@@ -189,165 +277,30 @@ class NotificationApiClient(private val context: Context) {
         )
     }
     
-    // For debugging - create test notifications if none are found
-    private fun createDebugNotifications(userId: Long): List<Notification> {
-        val now = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(Date())
+    // Process notifications to group messages by sender
+    private fun processNotifications(notifications: List<Notification>): List<Notification> {
+        // Group all message notifications by sender
+        val messagesByReferenceType = notifications.groupBy { it.referenceType }
         
-        val user = mapOf(
-            "userId" to userId,
-            "userName" to "TestUser",
-            "email" to "test@example.com",
-            "role" to "Customer"
+        val processedNotifications = mutableListOf<Notification>()
+        
+        // Add all non-message notifications directly
+        processedNotifications.addAll(
+            messagesByReferenceType.getOrDefault("Message", emptyList())
         )
         
-        return listOf(
-            Notification(
-                notificationId = 1000,
-                userId = userId,
-                user = user,
-                type = "message",
-                message = "TestUser sent you a message",
-                isRead = false,
-                read = false,
-                createdAt = now,
-                referenceId = 1000,
-                referenceType = "Message" // Match the capitalization in the server response
-            ),
-            Notification(
-                notificationId = 1001,
-                userId = userId,
-                user = user,
-                type = "booking",
-                message = "You have a new booking request",
-                isRead = false,
-                read = false,
-                createdAt = now,
-                referenceId = 1001,
-                referenceType = "Booking" // Match the capitalization in the server response
-            ),
-            Notification(
-                notificationId = 1002,
-                userId = userId,
-                user = user,
-                type = "transaction",
-                message = "Payment received for your service",
-                isRead = false,
-                read = false,
-                createdAt = now,
-                referenceId = 1002,
-                referenceType = "Transaction" // Match the capitalization in the server response
-            )
-        )
+        // Add all other notification types
+        messagesByReferenceType.forEach { (referenceType, notifs) ->
+            if (referenceType != "Message") {
+                processedNotifications.addAll(notifs)
+            }
+        }
+        
+        // Sort by creation date, most recent first
+        return processedNotifications.sortedByDescending { it.createdAt }
     }
     
-    // Process notifications to group messages by sender, similar to the web implementation
-    private fun processNotifications(notificationsList: List<Notification>): List<Notification> {
-        // Always enhance ALL notifications to ensure they have proper values
-        val enhancedList = notificationsList.map { notification ->
-            enhanceNotification(notification)
-        }
-        
-        // Log the enhanced notifications for debugging
-        Log.d(TAG, "Enhanced ${enhancedList.size} notifications:")
-        enhancedList.forEach { notification ->
-            Log.d(TAG, "  - ID: ${notification.notificationId}, Type: ${notification.type}, Message: ${notification.message}, SenderName: ${notification.senderName}")
-        }
-        
-        // Simply sort notifications by timestamp (newest first) without any grouping
-        return enhancedList.sortedByDescending { it.createdAt }
-    }
-    
-    // Create a new notification
-    fun createNotification(userId: Long, type: String, message: String, token: String, 
-                          referenceId: Long = 0, referenceType: String = "", 
-                          callback: (Notification?, Exception?) -> Unit) {
-        if (token.isBlank()) {
-            Log.e(TAG, "Token is empty or blank")
-            callback(null, Exception("Authentication token is required"))
-            return
-        }
-
-        Log.d(TAG, "Creating notification for user: $userId, type: $type, message: $message")
-        
-        // Create current timestamp in ISO format
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-        val currentDateTime = dateFormat.format(Date())
-        
-        // Create request body with user object like the API expects
-        val jsonObject = JSONObject().apply {
-            // Create user object with user ID
-            val userObject = JSONObject().apply {
-                put("userId", userId)
-            }
-            // Put user object in the request
-            put("user", userObject)
-            
-            // Put other notification fields
-            put("type", type)
-            put("message", message)
-            put("isRead", false)
-            put("createdAt", currentDateTime)
-            
-            // Add reference fields if provided
-            if (referenceId > 0) {
-                put("referenceId", referenceId)
-            }
-            if (referenceType.isNotEmpty()) {
-                put("referenceType", referenceType)
-            }
-        }
-        
-        val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
-        
-        Log.d(TAG, "Request body: ${jsonObject.toString()}")
-        
-        val request = Request.Builder()
-            .url("${baseApiClient.getBaseUrl()}/api/notifications/create")
-            .post(requestBody)
-            .header("Authorization", "Bearer $token")
-            .header("Content-Type", "application/json")
-            .build()
-
-        Log.d(TAG, "Sending notification creation request to: ${request.url}")
-        Log.d(TAG, "Headers: ${request.headers}")
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.e(TAG, "Failed to create notification", e)
-                callback(null, e)
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                val responseBody = response.body?.string()
-                Log.d(TAG, "Response code: ${response.code}")
-                Log.d(TAG, "Response body: $responseBody")
-                
-                if (response.isSuccessful) {
-                    try {
-                        val notification = gson.fromJson(responseBody, Notification::class.java)
-                        Log.d(TAG, "Successfully created notification: $notification")
-                        callback(notification, null)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error parsing created notification", e)
-                        callback(null, e)
-                    }
-                } else {
-                    val errorMessage = try {
-                        val errorJson = JSONObject(responseBody ?: "{}")
-                        val message = errorJson.optString("message", "Failed to create notification: ${response.code}")
-                        Log.e(TAG, "Error from server: $message")
-                        message
-                    } catch (e: Exception) {
-                        "Failed to create notification: ${response.code}"
-                    }
-                    
-                    callback(null, Exception(errorMessage))
-                }
-            }
-        })
-    }
-    
-    // Mark notification as read
+    // Mark a specific notification as read
     fun markNotificationAsRead(notificationId: Long, token: String, callback: (Boolean, Exception?) -> Unit) {
         if (token.isBlank()) {
             Log.e(TAG, "Token is empty or blank")
@@ -355,23 +308,15 @@ class NotificationApiClient(private val context: Context) {
             return
         }
 
-        Log.d(TAG, "Marking notification as read: $notificationId")
-        
-        val jsonObject = JSONObject().apply {
-            put("isRead", true)  // Changed from "read" to "isRead" to match our model
-        }
-        
-        val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
+        Log.d(TAG, "Marking notification $notificationId as read with token: ${token.take(10)}...")
         
         val request = Request.Builder()
-            .url("${baseApiClient.getBaseUrl()}/api/notifications/update/$notificationId")
-            .put(requestBody)
+            .url("${baseApiClient.getBaseUrl()}/api/notifications/markAsRead/$notificationId")
+            .put("".toRequestBody(null))
             .header("Authorization", "Bearer $token")
-            .header("Content-Type", "application/json")
             .build()
 
         Log.d(TAG, "Request URL: ${request.url}")
-        Log.d(TAG, "Request body: ${jsonObject.toString()}")
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -380,21 +325,62 @@ class NotificationApiClient(private val context: Context) {
             }
 
             override fun onResponse(call: Call, response: Response) {
-                val responseBody = response.body?.string()
-                Log.d(TAG, "Response code: ${response.code}")
-                Log.d(TAG, "Response body: $responseBody")
+                val responseBody = response.body?.string() ?: ""
+                Log.d(TAG, "Response code: ${response.code}, body: $responseBody")
                 
                 if (response.isSuccessful) {
+                    Log.d(TAG, "Successfully marked notification $notificationId as read")
                     callback(true, null)
                 } else {
-                    val errorMessage = try {
-                        val errorJson = JSONObject(responseBody ?: "{}")
-                        errorJson.optString("message", "Failed to mark notification as read: ${response.code}")
-                    } catch (e: Exception) {
-                        "Failed to mark notification as read: ${response.code}"
-                    }
+                    val errorMsg = "Error marking notification as read: ${response.code}"
+                    Log.e(TAG, "$errorMsg - Response body: $responseBody")
                     
-                    callback(false, Exception(errorMessage))
+                    // Try again with alternative endpoint if possible (some backends use different endpoints)
+                    if (response.code == 404) {
+                        tryAlternateMarkAsReadEndpoint(notificationId, token, callback)
+                    } else {
+                        callback(false, Exception(errorMsg))
+                    }
+                }
+            }
+        })
+    }
+    
+    // Try an alternative endpoint for marking notification as read
+    private fun tryAlternateMarkAsReadEndpoint(notificationId: Long, token: String, callback: (Boolean, Exception?) -> Unit) {
+        Log.d(TAG, "Trying alternate endpoint for marking notification $notificationId as read")
+        
+        val requestBody = JSONObject().apply {
+            put("notificationId", notificationId)
+            put("isRead", true)
+        }.toString().toRequestBody("application/json".toMediaTypeOrNull())
+        
+        val request = Request.Builder()
+            .url("${baseApiClient.getBaseUrl()}/api/notifications/update/$notificationId")
+            .put(requestBody)
+            .header("Authorization", "Bearer $token")
+            .header("Content-Type", "application/json")
+            .build()
+
+        Log.d(TAG, "Alternate request URL: ${request.url}")
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to mark notification as read with alternate endpoint", e)
+                callback(false, e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string() ?: ""
+                Log.d(TAG, "Alternate endpoint response code: ${response.code}, body: $responseBody")
+                
+                if (response.isSuccessful) {
+                    Log.d(TAG, "Successfully marked notification as read using alternate endpoint")
+                    callback(true, null)
+                } else {
+                    val errorMsg = "Error marking notification as read with alternate endpoint: ${response.code}"
+                    Log.e(TAG, "$errorMsg - Response body: $responseBody")
+                    callback(false, Exception(errorMsg))
                 }
             }
         })
@@ -408,55 +394,88 @@ class NotificationApiClient(private val context: Context) {
             return
         }
         
-        Log.d(TAG, "Marking all notifications as read for user: $userId")
+        Log.d(TAG, "Marking all notifications as read for user $userId with token: ${token.take(10)}...")
+
+        val request = Request.Builder()
+            .url("${baseApiClient.getBaseUrl()}/api/notifications/markAllAsRead/$userId")
+            .put("".toRequestBody(null))
+            .header("Authorization", "Bearer $token")
+            .build()
+
+        Log.d(TAG, "Request URL: ${request.url}")
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to mark all notifications as read", e)
+                callback(false, e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string() ?: ""
+                Log.d(TAG, "Response code: ${response.code}, body: $responseBody")
+                
+                if (response.isSuccessful) {
+                    Log.d(TAG, "Successfully marked all notifications as read for user $userId")
+                    callback(true, null)
+                } else {
+                    val errorMsg = "Error marking all notifications as read: ${response.code}"
+                    Log.e(TAG, "$errorMsg - Response body: $responseBody")
+                    
+                    // Try again with alternative endpoint if possible (some backends use different endpoints)
+                    if (response.code == 404) {
+                        tryMarkAllAsReadAlternate(userId, token, callback)
+                    } else {
+                        callback(false, Exception(errorMsg))
+                    }
+                }
+            }
+        })
+    }
+    
+    // Try an alternative method to mark all notifications as read
+    private fun tryMarkAllAsReadAlternate(userId: Long, token: String, callback: (Boolean, Exception?) -> Unit) {
+        Log.d(TAG, "Trying alternate method for marking all notifications as read for user $userId")
         
-        // First, fetch all notifications for this user
+        // First get all notifications for the user
         getNotificationsByUserId(userId, token) { notifications, error ->
-            if (error != null) {
-                Log.e(TAG, "Failed to get notifications", error)
-                callback(false, error)
+            if (error != null || notifications == null) {
+                Log.e(TAG, "Failed to get notifications for alternate mark all read", error)
+                callback(false, error ?: Exception("Failed to get notifications"))
                 return@getNotificationsByUserId
             }
             
-            if (notifications == null || notifications.isEmpty()) {
-                Log.d(TAG, "No notifications found to mark as read")
-                callback(true, null) // No notifications to mark as read is still a success
-                return@getNotificationsByUserId
-            }
-            
-            // Filter unread notifications
+            // Filter to only unread notifications
             val unreadNotifications = notifications.filter { !it.isRead && !it.read }
-            if (unreadNotifications.isEmpty()) {
-                Log.d(TAG, "No unread notifications found")
-                callback(true, null) // No unread notifications is still a success
-                return@getNotificationsByUserId
-            }
-            
             Log.d(TAG, "Found ${unreadNotifications.size} unread notifications to mark as read")
             
-            // Track how many notifications we've processed
+            if (unreadNotifications.isEmpty()) {
+                // No unread notifications, return success
+                callback(true, null)
+                return@getNotificationsByUserId
+            }
+            
+            // Keep track of how many we've processed
             var processedCount = 0
             var successCount = 0
-            var lastError: Exception? = null
+            var failureCount = 0
             
-            // Mark each notification as read
+            // Mark each notification as read individually
             unreadNotifications.forEach { notification ->
                 markNotificationAsRead(notification.notificationId, token) { success, markError ->
+                    synchronized(this) {
                     processedCount++
                     if (success) {
                         successCount++
                     } else {
+                            failureCount++
                         Log.e(TAG, "Failed to mark notification ${notification.notificationId} as read", markError)
-                        lastError = markError
                     }
                     
-                    // If we've processed all notifications, return the result
+                        // If we've processed all notifications, call the callback
                     if (processedCount == unreadNotifications.size) {
-                        val allSuccess = successCount == unreadNotifications.size
-                        if (allSuccess) {
-                            callback(true, null)
-                        } else {
-                            callback(false, lastError ?: Exception("Failed to mark all notifications as read"))
+                            val allSuccessful = failureCount == 0
+                            Log.d(TAG, "Finished marking all notifications as read: $successCount success, $failureCount failures")
+                            callback(allSuccessful, if (allSuccessful) null else Exception("Failed to mark some notifications as read"))
                         }
                     }
                 }
@@ -464,45 +483,95 @@ class NotificationApiClient(private val context: Context) {
         }
     }
 
-    // Get unread notification count
-    fun getUnreadNotificationCount(userId: Long, token: String, callback: (Int, Exception?) -> Unit) {
-        getNotificationsByUserId(userId, token) { notifications, error ->
-            if (error != null) {
-                Log.e(TAG, "Error getting unread notification count", error)
-                callback(0, error)
-                return@getNotificationsByUserId
-            }
-            
-            if (notifications != null) {
-                val unreadCount = notifications.count { !it.isRead && !it.read }
-                callback(unreadCount, null)
-            } else {
-                callback(0, null)
-            }
+    // Send a notification
+    fun sendNotification(
+        userId: Long,
+        message: String,
+        type: String,
+        referenceId: Long,
+        referenceType: String,
+        token: String,
+        callback: (Boolean, Exception?) -> Unit
+    ) {
+        if (token.isBlank()) {
+            Log.e(TAG, "Token is empty or blank")
+            callback(false, Exception("Authentication token is required"))
+            return
         }
+
+        Log.d(TAG, "Sending notification to user $userId: $message")
+
+        val jsonObject = JSONObject().apply {
+            put("user", JSONObject().apply {
+                put("userId", userId)
+            })
+            put("message", message)
+            put("type", type)
+            put("referenceId", referenceId)
+            put("referenceType", referenceType)
+        }
+
+        val requestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
+
+        val request = Request.Builder()
+            .url("${baseApiClient.getBaseUrl()}/api/notifications/postNotification")
+            .post(requestBody)
+            .header("Authorization", "Bearer $token")
+            .header("Content-Type", "application/json")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to send notification", e)
+                callback(false, e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                Log.d(TAG, "Response code: ${response.code}")
+                
+                if (response.isSuccessful) {
+                    Log.d(TAG, "Successfully sent notification to user $userId")
+                    callback(true, null)
+            } else {
+                    Log.e(TAG, "Error sending notification: ${response.code}")
+                    Log.e(TAG, "Error response body: $responseBody")
+                    callback(false, Exception("Failed to send notification: ${response.code}"))
+                }
+            }
+        })
     }
 
-    // Helper method to get userId from any user object
+    // Helper function to extract userId from various user object types
     private fun getUserIdFromObject(userObj: Any?): Long? {
         if (userObj == null) return null
         
-        return when (userObj) {
-            is Map<*, *> -> (userObj["userId"] as? Number)?.toLong()
-            else -> try {
-                val userIdField = userObj::class.java.getDeclaredField("userId")
-                userIdField.isAccessible = true
-                val value = userIdField.get(userObj)
-                if (value is Number) value.toLong() else null
-            } catch (e: Exception) {
-                try {
+        return try {
+            when (userObj) {
+                is Map<*, *> -> {
+                    // If it's a Map, try to get the userId field
+                    val userIdVal = userObj["userId"]
+                    when (userIdVal) {
+                        is Number -> userIdVal.toLong()
+                        is String -> userIdVal.toLongOrNull()
+                        else -> null
+                    }
+                }
+                else -> {
+                    // Try using reflection to get the userId field
                     val method = userObj::class.java.getDeclaredMethod("getUserId")
                     method.isAccessible = true
-                    val value = method.invoke(userObj)
-                    if (value is Number) value.toLong() else null
-                } catch (e: Exception) {
-                    null
+                    val result = method.invoke(userObj)
+                    when (result) {
+                        is Number -> result.toLong()
+                        is String -> result.toLongOrNull()
+                        else -> null
+                    }
                 }
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error extracting userId from user object", e)
+            null
         }
     }
 }

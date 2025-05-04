@@ -45,6 +45,11 @@ import java.util.*
 import android.widget.FrameLayout
 import android.widget.TextView
 import android.net.ConnectivityManager
+import android.view.Gravity
+import android.graphics.Color
+import androidx.core.content.ContextCompat
+import com.google.android.material.bottomnavigation.BottomNavigationMenuView
+import com.google.android.material.bottomnavigation.BottomNavigationItemView
 
 class CustomerDashboardActivity : AppCompatActivity(), NotificationsFragment.NotificationBadgeListener {
     // Existing view variables
@@ -99,7 +104,16 @@ class CustomerDashboardActivity : AppCompatActivity(), NotificationsFragment.Not
     private val notificationCheckRunnable = object : Runnable {
         override fun run() {
             checkForNotifications()
-            notificationHandler.postDelayed(this, 60000) // Check every minute
+            notificationHandler.postDelayed(this, 30000) // Check every 30 seconds
+        }
+    }
+    
+    // Add a handler for auto-marking notifications as read when tab is viewed
+    private val autoMarkAsReadHandler = Handler(Looper.getMainLooper())
+    private val autoMarkAsReadRunnable = Runnable {
+        if (bottomNavigation.selectedItemId == R.id.navigation_notifications) {
+            // Auto-mark all notifications as read after viewing the tab for a while
+            markAllNotificationsAsRead()
         }
     }
     
@@ -248,6 +262,8 @@ class CustomerDashboardActivity : AppCompatActivity(), NotificationsFragment.Not
                     dashboardContent.visibility = View.VISIBLE
                     fragmentContainer.visibility = View.GONE
                     supportActionBar?.title = "SerbisYo"
+                    // Cancel auto mark as read when leaving notifications tab
+                    autoMarkAsReadHandler.removeCallbacks(autoMarkAsReadRunnable)
                     true
                 }
                 R.id.navigation_chat -> {
@@ -256,6 +272,8 @@ class CustomerDashboardActivity : AppCompatActivity(), NotificationsFragment.Not
                     dashboardContent.visibility = View.GONE
                     fragmentContainer.visibility = View.VISIBLE
                     supportActionBar?.title = "Chats"
+                    // Cancel auto mark as read when leaving notifications tab
+                    autoMarkAsReadHandler.removeCallbacks(autoMarkAsReadRunnable)
                     true
                 }
                 R.id.navigation_notifications -> {
@@ -264,12 +282,19 @@ class CustomerDashboardActivity : AppCompatActivity(), NotificationsFragment.Not
                     dashboardContent.visibility = View.GONE
                     fragmentContainer.visibility = View.VISIBLE
                     supportActionBar?.title = "Notifications"
+                    
+                    // Schedule auto-marking all notifications as read after 5 seconds of viewing
+                    autoMarkAsReadHandler.removeCallbacks(autoMarkAsReadRunnable)
+                    autoMarkAsReadHandler.postDelayed(autoMarkAsReadRunnable, 5000) // 5 seconds
+                    
                     true
                 }
                 R.id.navigation_profile -> {
                     // Launch ProfileManagementActivity instead of just loading ProfileFragment
                     val intent = Intent(this, ProfileManagementActivity::class.java)
                     startActivity(intent)
+                    // Cancel auto mark as read when leaving notifications tab
+                    autoMarkAsReadHandler.removeCallbacks(autoMarkAsReadRunnable)
                     true
                 }
                 else -> false
@@ -765,7 +790,7 @@ class CustomerDashboardActivity : AppCompatActivity(), NotificationsFragment.Not
                         Toast.makeText(this, "Booking created successfully! Status: ${booking.status}", Toast.LENGTH_LONG).show()
                         
                         // Send notification to service provider
-                        sendBookingNotificationToProvider(booking, customerName)
+                        createNotification(customerId, booking, customerName)
                         
                         // Log that we sent the notification
                         Log.d(TAG, "Booking successful, notification sent to provider for booking ID: ${booking.bookingId}")
@@ -777,26 +802,9 @@ class CustomerDashboardActivity : AppCompatActivity(), NotificationsFragment.Not
         }
     }
     
-    private fun sendBookingNotificationToProvider(booking: Booking, customerName: String) {
-        // Get the service provider from the booking
-        val provider = booking.service?.provider
-        
-        // Log all the information we have about the provider
-        Log.d(TAG, "Provider info: ${provider?.toString()}")
-        
-        // Try to get the provider's user ID in multiple ways
-        val providerId = provider?.providerId
-        val providerUserId = provider?.userAuth?.userId
-        
-        // Log what we found
-        Log.d(TAG, "Provider ID: $providerId")
-        Log.d(TAG, "Provider User ID: $providerUserId")
-        
-        // Check if we have a user ID to send notification to
-        val targetUserId = providerUserId ?: providerId
-        
-        if (targetUserId == null) {
-            Log.e(TAG, "Error: Provider User ID and Provider ID are both null. Cannot send notification.")
+    private fun createNotification(targetUserId: Long, booking: Booking, customerName: String) {
+        if (targetUserId <= 0) {
+            Log.e(TAG, "Invalid target user ID: $targetUserId")
             Log.e(TAG, "Service details: ${booking.service}")
             Log.e(TAG, "Provider details: ${booking.service?.provider}")
             return
@@ -811,14 +819,15 @@ class CustomerDashboardActivity : AppCompatActivity(), NotificationsFragment.Not
         // Create notification message
         val message = "$customerName has booked $serviceName for ${booking.bookingDate}"
         
-        // Create notification
-        val notificationApiClient = NotificationApiClient(this)
-        notificationApiClient.createNotification(
+        // Using sendNotification method from NotificationApiClient instead of createNotification
+        notificationApiClient.sendNotification(
             targetUserId,
-            "booking",
             message,
+            "booking",
+            booking.bookingId,
+            "booking",
             token
-        ) { notification, error -> 
+        ) { success, error -> 
             if (error != null) {
                 Log.e(TAG, "Error sending notification to provider: ${error.message}", error)
                 // Try to log details of the error for debugging
@@ -826,13 +835,7 @@ class CustomerDashboardActivity : AppCompatActivity(), NotificationsFragment.Not
                     Log.e(TAG, "API Error response: ${error.message}")
                 }
             } else {
-                Log.d(TAG, "Notification sent to provider: $notification")
-                if (notification != null) {
-                    Log.d(TAG, "Notification ID: ${notification.notificationId}, User ID: ${notification.userId}")
-                    Log.d(TAG, "Notification message: ${notification.message}")
-                } else {
-                    Log.e(TAG, "Notification object is null even though no error was reported")
-                }
+                Log.d(TAG, "Notification sent to provider successfully")
             }
         }
     }
@@ -877,14 +880,15 @@ class CustomerDashboardActivity : AppCompatActivity(), NotificationsFragment.Not
         // Show progress
         progressBar.visibility = View.VISIBLE
         
-        // Create and send the notification
-        val notificationApiClient = NotificationApiClient(this)
-        notificationApiClient.createNotification(
+        // Using sendNotification method from NotificationApiClient instead of createNotification
+        notificationApiClient.sendNotification(
             targetUserId,
-            "test",
             message,
+            "test",
+            0, // no reference id for test
+            "test",
             token
-        ) { notification, error -> 
+        ) { success, error -> 
             runOnUiThread {
                 progressBar.visibility = View.GONE
                 
@@ -892,7 +896,7 @@ class CustomerDashboardActivity : AppCompatActivity(), NotificationsFragment.Not
                     Log.e(TAG, "Error sending test notification: ${error.message}", error)
                     Toast.makeText(this, "Failed to send test notification: ${error.message}", Toast.LENGTH_LONG).show()
                 } else {
-                    Log.d(TAG, "Test notification sent successfully: $notification")
+                    Log.d(TAG, "Test notification sent successfully")
                     Toast.makeText(this, "Test notification sent successfully", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -953,6 +957,8 @@ class CustomerDashboardActivity : AppCompatActivity(), NotificationsFragment.Not
         slideshowHandler.removeCallbacks(slideshowRunnable)
         // Stop notification checking when activity is paused
         stopNotificationChecking()
+        // Stop auto mark as read handler
+        autoMarkAsReadHandler.removeCallbacks(autoMarkAsReadRunnable)
     }
 
     override fun onDestroy() {
@@ -961,6 +967,8 @@ class CustomerDashboardActivity : AppCompatActivity(), NotificationsFragment.Not
         slideshowHandler.removeCallbacks(slideshowRunnable)
         // Stop notification checking when activity is destroyed
         stopNotificationChecking()
+        // Stop auto mark as read handler
+        autoMarkAsReadHandler.removeCallbacks(autoMarkAsReadRunnable)
     }
 
     private fun startSlideshow() {
@@ -1092,47 +1100,141 @@ class CustomerDashboardActivity : AppCompatActivity(), NotificationsFragment.Not
     // Override the method from NotificationBadgeListener
     override fun updateNotificationBadge(count: Int) {
         runOnUiThread {
-            val menuItem = bottomNavigation.menu.findItem(R.id.navigation_notifications)
-            if (count > 0) {
-                if (notificationBadge == null) {
-                    // Initialize badge if not already done
-                    val actionView = LayoutInflater.from(this).inflate(R.layout.notification_badge_layout, null)
-                    notificationBadge = actionView.findViewById(R.id.notificationBadgeCount)
-                    menuItem.actionView = actionView
-                    
-                    // Make the action view clickable to navigate to notifications
-                    actionView.setOnClickListener {
-                        bottomNavigation.selectedItemId = R.id.navigation_notifications
-                    }
+            Log.d(TAG, "Updating notification badge: $count unread notifications")
+            
+            // Find the notification icon view in the bottom navigation
+            try {
+                // Get the BottomNavigationMenuView
+                val bottomNavigationMenuView = bottomNavigation.getChildAt(0) as BottomNavigationMenuView
+                
+                // Get the notification item view (index 2 for notifications)
+                val itemView = bottomNavigationMenuView.getChildAt(2) as BottomNavigationItemView
+                
+                // Remove existing badge if it exists
+                val existingBadge = itemView.findViewById<TextView>(R.id.badge)
+                if (existingBadge != null) {
+                    (existingBadge.parent as ViewGroup).removeView(existingBadge)
                 }
                 
-                notificationBadge?.text = if (count > 99) "99+" else count.toString()
-                notificationBadge?.visibility = View.VISIBLE
-            } else {
-                notificationBadge?.visibility = View.GONE
+                // If we have notifications, add a badge
+            if (count > 0) {
+                    // Inflate a new badge
+                    val inflater = LayoutInflater.from(this)
+                    val badge = inflater.inflate(R.layout.custom_notification_badge, bottomNavigationMenuView, false) as TextView
+                    
+                    // Set the count
+                    badge.text = if (count > 99) "99+" else count.toString()
+                    badge.id = R.id.badge
+                    
+                    // Add badge to the notification item
+                    itemView.addView(badge)
+                    
+                    Log.d(TAG, "Badge added with count: $count")
+                } else {
+                    Log.d(TAG, "No unread notifications, badge removed")
+                }
+                
+                // Refresh notification fragment if it's visible
+                refreshNotificationFragmentIfVisible()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating notification badge", e)
+            }
+        }
+    }
+    
+    private fun refreshNotificationFragmentIfVisible() {
+        // If the notifications fragment is currently displayed, refresh it
+        // but only if needed (don't create an infinite loop)
+        if (bottomNavigation.selectedItemId == R.id.navigation_notifications) {
+            val fragment = supportFragmentManager.findFragmentById(R.id.fragmentContainer)
+            if (fragment is NotificationsFragment) {
+                // Don't refresh again if we just updated the badge - this prevents loops
+                Log.d(TAG, "Not refreshing notifications fragment to avoid infinite loop")
+                // We no longer call fragment.loadNotifications() here
             }
         }
     }
     
     private fun checkForNotifications() {
         if (userId > 0 && token.isNotEmpty()) {
-            notificationApiClient.getUnreadNotificationCount(userId, token) { count, error ->
+            Log.d(TAG, "Checking for notifications for user $userId")
+            // Using getNotificationsByUserId instead of the non-existent getUnreadNotificationCount
+            notificationApiClient.getNotificationsByUserId(userId, token) { notifications, error ->
                 if (error != null) {
-                    Log.e(TAG, "Error checking notifications", error)
-                    return@getUnreadNotificationCount
+                    Log.e(TAG, "Error checking notifications: ${error.message}", error)
+                    return@getNotificationsByUserId
                 }
-                updateNotificationBadge(count)
+                
+                if (notifications == null) {
+                    Log.e(TAG, "Notifications list is null")
+                    runOnUiThread {
+                        updateNotificationBadge(0)
+                    }
+                    return@getNotificationsByUserId
+                }
+                
+                // Debug print all notifications to verify we're getting them
+                Log.d(TAG, "Got ${notifications.size} notifications for user $userId")
+                
+                // Count unread notifications
+                val unreadCount = notifications.count { !it.isRead && !it.read }
+                Log.d(TAG, "Found $unreadCount unread notifications out of ${notifications.size} total")
+                
+                // Log details of unread notifications for debugging
+                if (unreadCount > 0) {
+                    Log.d(TAG, "Unread notifications:")
+                    notifications.filter { !it.isRead && !it.read }.forEach { notification ->
+                        Log.d(TAG, "  ID: ${notification.notificationId}, type: ${notification.type}, message: ${notification.message}")
+                    }
+                }
+                
+                // Update the badge on the main thread
+                runOnUiThread {
+                    updateNotificationBadge(unreadCount)
             }
+            }
+        } else {
+            Log.e(TAG, "Invalid userId ($userId) or empty token when checking for notifications")
         }
     }
 
     private fun startNotificationChecking() {
-        // Start periodic notification checking
-        notificationHandler.postDelayed(notificationCheckRunnable, 5000) // First check after 5 seconds
+        // Check immediately on start
+        checkForNotifications()
+        
+        // Start periodic notification checking every 30 seconds
+        notificationHandler.postDelayed(notificationCheckRunnable, 30000) // Check every 30 seconds
     }
 
     private fun stopNotificationChecking() {
         // Remove callbacks to stop the periodic checking
         notificationHandler.removeCallbacks(notificationCheckRunnable)
+    }
+
+    // Method to mark all notifications as read programmatically
+    private fun markAllNotificationsAsRead() {
+        if (userId > 0 && token.isNotEmpty()) {
+            Log.d(TAG, "Auto-marking all notifications as read")
+            notificationApiClient.markAllAsRead(userId, token) { success, error ->
+                if (error != null) {
+                    Log.e(TAG, "Error marking all notifications as read", error)
+                    return@markAllAsRead
+                }
+                
+                if (success) {
+                    runOnUiThread {
+                        // Update badge immediately to show zero notifications
+                        updateNotificationBadge(0)
+                        
+                        // Update the UI of any visible fragment without reloading
+                        val fragment = supportFragmentManager.findFragmentById(R.id.fragmentContainer)
+                        if (fragment is NotificationsFragment) {
+                            fragment.updateAllNotificationsAsRead()
+                            Log.d(TAG, "Updated notifications fragment UI after marking all as read")
+                        }
+                    }
+                }
+            }
+        }
     }
 }

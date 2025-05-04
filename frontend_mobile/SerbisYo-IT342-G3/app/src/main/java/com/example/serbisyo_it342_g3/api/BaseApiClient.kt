@@ -98,6 +98,31 @@ open class BaseApiClient(private val context: Context) {
         return BASE_URL
     }
     
+    // Get mobile-specific OAuth redirect URL
+    fun getMobileRedirectUrl(): String {
+        // Use custom scheme for mobile app
+        return "serbisyo://oauth2callback"
+    }
+    
+    // Get complete OAuth URL for Google sign-in with mobile parameters
+    fun getGoogleOAuthUrlForMobile(): String {
+        val baseOAuthUrl = "$BASE_URL/oauth2/authorization/google"
+        val mobileFlag = "mobile=true" 
+        val redirectUri = "redirect_uri=${getMobileRedirectUrl()}"
+        val registerFlag = "register=true"
+        val platformFlag = "platform=android" // Add platform flag to specify Android
+        
+        // Construct the final URL with parameters
+        val finalUrl = if (baseOAuthUrl.contains("?")) {
+            "$baseOAuthUrl&$mobileFlag&$redirectUri&$registerFlag&$platformFlag"
+        } else {
+            "$baseOAuthUrl?$mobileFlag&$redirectUri&$registerFlag&$platformFlag"
+        }
+        
+        Log.d(TAG, "Generated Google OAuth URL: $finalUrl")
+        return finalUrl
+    }
+    
     // Helper methods that match the backend's expected URLs
     fun getSuccessUrl(): String {
         // Return the deployed frontend URL for payment success

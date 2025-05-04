@@ -4,4 +4,9 @@
     <dimen name="service_card_width">280dp</dimen>
     <dimen name="service_card_margin">8dp</dimen>
     <dimen name="time_slot_margin">8dp</dimen>
+    
+    <!-- Notification Badge Dimensions -->
+    <dimen name="badge_top_margin">2dp</dimen>
+    <dimen name="badge_size">16dp</dimen>
+    <dimen name="badge_padding">8dp</dimen>
 </resources> 

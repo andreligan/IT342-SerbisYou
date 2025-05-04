@@ -12,6 +12,8 @@ import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.browser.customtabs.CustomTabColorSchemeParams
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -84,19 +86,43 @@ class RegistrationTypeFragment : Fragment() {
             try {
                 // Get the base URL
                 val baseApiClient = BaseApiClient(requireContext())
-                val baseUrl = baseApiClient.getBaseUrl()
                 
-                // Create direct Google OAuth URL
-                val googleAuthUrl = "$baseUrl/oauth2/authorization/google"
+                // Get the OAuth URL with mobile parameters
+                val finalAuthUrl = baseApiClient.getGoogleOAuthUrlForMobile()
                 
-                // Open using Chrome Custom Tabs or external browser
-                val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(googleAuthUrl))
-                startActivity(intent)
+                Log.d(TAG, "Starting Google Sign-In with URL: $finalAuthUrl")
+                
+                // Try to use Chrome Custom Tabs for a better user experience
+                try {
+                    // Create and customize the Chrome Custom Tabs intent
+                    val customTabsIntent = CustomTabsIntent.Builder()
+                        .setColorSchemeParams(
+                            CustomTabsIntent.COLOR_SCHEME_LIGHT,
+                            CustomTabColorSchemeParams.Builder()
+                                .setToolbarColor(ContextCompat.getColor(requireContext(), R.color.colorPrimary))
+                                .build()
+                        )
+                        .setShowTitle(true)
+                        .build()
+                    
+                    // Use Chrome browser if available
+                    val packageName = "com.android.chrome"
+                    customTabsIntent.intent.setPackage(packageName)
+                    
+                    Log.d(TAG, "Launching Chrome Custom Tabs for Google Auth")
+                    customTabsIntent.launchUrl(requireContext(), Uri.parse(finalAuthUrl))
+                } catch (e: Exception) {
+                    // Fallback to regular browser if Chrome Custom Tabs fails
+                    Log.d(TAG, "Falling back to regular browser with URL: $finalAuthUrl")
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(finalAuthUrl))
+                    startActivity(intent)
+                    Log.e(TAG, "Error using CustomTabs: ${e.message}", e)
+                }
                 
                 // Show more detailed instructions to the user
                 Toast.makeText(
                     requireContext(), 
-                    "Please sign in with Google in the browser. After signing in, if you're not redirected to the app, manually return here.",
+                    "Please sign in with Google. After signing in, you'll be redirected back to the app to complete registration.",
                     Toast.LENGTH_LONG
                 ).show()
             } catch (e: Exception) {

@@ -75,6 +75,9 @@
             android:name=".OAuth2RoleSelectionActivity"
             android:exported="false" />
         <activity
+            android:name=".OAuth2PasswordChangeActivity"
+            android:exported="false" />
+        <activity
             android:name=".MobileOAuthHandlerActivity"
             android:exported="true"
             android:launchMode="singleTask">
@@ -85,6 +88,33 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="serbisyo" 
                       android:host="oauth2callback" />
+            </intent-filter>
+            <!-- Add new intent filter for production backend redirects -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" 
+                      android:host="serbisyo-backend.onrender.com"
+                      android:pathPrefix="/oauth2/redirect" />
+            </intent-filter>
+            <!-- Add intent filter for web frontend redirects - priority high to ensure mobile app gets priority -->
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" 
+                      android:host="serbisyo.vercel.app"
+                      android:pathPrefix="/oauth-role-selection" />
+            </intent-filter>
+            <!-- Add additional intent filter for other web frontend paths -->
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" 
+                      android:host="serbisyo.vercel.app"
+                      android:pathPrefix="/oauth2/redirect" />
             </intent-filter>
         </activity>
         <!-- Previous WebView-based solution - keep as fallback but not used directly -->
@@ -97,12 +127,39 @@
             android:name=".OAuth2RedirectHandlerActivity"
             android:exported="true">
             <!-- To handle OAuth redirects from the backend -->
-            <intent-filter>
+            <intent-filter android:priority="999">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="serbisyo"
                     android:host="oauth2callback" />
+            </intent-filter>
+            <!-- Add new intent filter for production backend redirects -->
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" 
+                      android:host="serbisyo-backend.onrender.com"
+                      android:pathPrefix="/oauth2/redirect" />
+            </intent-filter>
+            <!-- Add intent filter for web frontend redirects -->
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" 
+                      android:host="serbisyo.vercel.app"
+                      android:pathPrefix="/oauth-role-selection" />
+            </intent-filter>
+            <!-- Add intent filter for web frontend redirects with oauth2/redirect path -->
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" 
+                      android:host="serbisyo.vercel.app"
+                      android:pathPrefix="/oauth2/redirect" />
             </intent-filter>
         </activity>
         
@@ -127,25 +184,25 @@
             android:exported="true"
             android:configChanges="orientation|screenSize"
             android:theme="@style/Theme.SerbisYo">
-            <!-- Handle success URL -->
+            <!-- Handle success URL - keep both localhost and production URLs -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" android:host="localhost" android:path="/payment-success" />
-
                 <!-- Production URL for payment success -->
                 <data android:scheme="https" android:host="serbisyo.vercel.app" android:path="/payment-success" />
+                <!-- Localhost URL for testing -->
+                <data android:scheme="http" android:host="localhost" android:path="/payment-success" />
             </intent-filter>
-            <!-- Handle cancel URL -->
+            <!-- Handle cancel URL - keep both localhost and production URLs -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" android:host="localhost" android:path="/payment-cancel" />
-                
                 <!-- Production URL for payment cancel -->
                 <data android:scheme="https" android:host="serbisyo.vercel.app" android:path="/payment-cancel" />
+                <!-- Localhost URL for testing -->
+                <data android:scheme="http" android:host="localhost" android:path="/payment-cancel" />
             </intent-filter>
         </activity>
     </application>
