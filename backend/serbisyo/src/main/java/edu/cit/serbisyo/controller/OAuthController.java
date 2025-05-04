@@ -3,6 +3,7 @@ package edu.cit.serbisyo.controller;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.HashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -11,6 +12,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import edu.cit.serbisyo.config.JwtUtil;
@@ -35,13 +37,19 @@ public class OAuthController {
     private JwtUtil jwtUtil;
     
     @PostMapping("/register")
-    public ResponseEntity<Map<String, String>> registerOAuthUser(@RequestBody Map<String, Object> requestBody) {
+    public ResponseEntity<Map<String, String>> registerOAuthUser(
+            @RequestBody Map<String, Object> requestBody, 
+            @RequestParam(value = "redirectToMobile", required = false) Boolean redirectToMobile) {
         try {
             // Extract user data
             Map<String, Object> userAuthMap = (Map<String, Object>) requestBody.get("userAuth");
             String userName = (String) userAuthMap.get("userName");
             String email = (String) userAuthMap.get("email");
             String role = (String) userAuthMap.get("role");
+            
+            // Check for mobile platform
+            String platform = (String) userAuthMap.get("platform");
+            boolean isMobile = "android".equalsIgnoreCase(platform) || Boolean.TRUE.equals(redirectToMobile);
             
             // Check if email already exists
             if (userAuthRepository.findByEmail(email) != null) {
@@ -107,12 +115,19 @@ public class OAuthController {
             UserAuthEntity createdUser = userAuthRepository.findByEmail(email);
             String token = jwtUtil.generateToken(createdUser.getUserName(), createdUser.getEmail(), createdUser.getRole());
             
-            return ResponseEntity.ok(Map.of(
-                "token", token,
-                "userId", createdUser.getUserId().toString(),
-                "role", createdUser.getRole(),
-                "message", "Registration successful"
-            ));
+            // Create response map
+            Map<String, String> responseMap = new HashMap<>();
+            responseMap.put("token", token);
+            responseMap.put("userId", createdUser.getUserId().toString());
+            responseMap.put("role", createdUser.getRole());
+            responseMap.put("message", "Registration successful");
+            
+            // Add mobile flag if using mobile platform
+            if (isMobile) {
+                responseMap.put("platform", "android");
+            }
+            
+            return ResponseEntity.ok(responseMap);
             
         } catch (Exception e) {
             e.printStackTrace();

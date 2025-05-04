@@ -54,32 +54,64 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         // Check if user exists
         UserAuthEntity existingUser = userAuthRepository.findByEmail(email);
         
-        // Determine the correct frontend URL based on the origin
-        String origin = request.getHeader("Origin");
-        String redirectBaseUrl = (origin != null && origin.contains("vercel.app")) 
-            ? "https://serbisyo.vercel.app" 
-            : frontendUrl;
-            
+        // Check if request is from a mobile device
+        String platform = request.getParameter("platform");
+        boolean isMobile = "android".equalsIgnoreCase(platform) || 
+                          "true".equalsIgnoreCase(request.getParameter("mobile"));
+        
+        // Get custom redirect URI if provided (for mobile apps)
+        String redirectUri = request.getParameter("redirect_uri");
+        
         String redirectUrl;
         
-        if (existingUser == null) {
-            // For new users, redirect to role selection
-            redirectUrl = UriComponentsBuilder
-                .fromUriString(redirectBaseUrl + "/oauth-role-selection")
-                .queryParam("email", email)
-                .queryParam("name", name)
-                .queryParam("picture", picture)
-                .build().toUriString();
+        // If we have mobile parameters, use them for redirection
+        if (isMobile && redirectUri != null && !redirectUri.isEmpty()) {
+            // Use the mobile app's custom URI scheme
+            if (existingUser == null) {
+                // For new users, redirect with user info
+                redirectUrl = UriComponentsBuilder
+                    .fromUriString(redirectUri)
+                    .queryParam("email", email)
+                    .queryParam("name", name)
+                    .queryParam("picture", picture)
+                    .build().toUriString();
+            } else {
+                // For existing users, generate token
+                String token = jwtUtil.generateToken(existingUser.getUserName(), existingUser.getEmail(), existingUser.getRole());
+                
+                redirectUrl = UriComponentsBuilder
+                    .fromUriString(redirectUri)
+                    .queryParam("token", token)
+                    .queryParam("userId", existingUser.getUserId())
+                    .queryParam("role", existingUser.getRole())
+                    .build().toUriString();
+            }
         } else {
-            // For existing users, generate token and redirect to home
-            String token = jwtUtil.generateToken(existingUser.getUserName(), existingUser.getEmail(), existingUser.getRole());
-            
-            redirectUrl = UriComponentsBuilder
-                .fromUriString(redirectBaseUrl + "/oauth2/redirect")
-                .queryParam("token", token)
-                .queryParam("userId", existingUser.getUserId())
-                .queryParam("role", existingUser.getRole())
-                .build().toUriString();
+            // Determine the correct frontend URL based on the origin
+            String origin = request.getHeader("Origin");
+            String redirectBaseUrl = (origin != null && origin.contains("vercel.app")) 
+                ? "https://serbisyo.vercel.app" 
+                : frontendUrl;
+                
+            if (existingUser == null) {
+                // For new users, redirect to role selection
+                redirectUrl = UriComponentsBuilder
+                    .fromUriString(redirectBaseUrl + "/oauth-role-selection")
+                    .queryParam("email", email)
+                    .queryParam("name", name)
+                    .queryParam("picture", picture)
+                    .build().toUriString();
+            } else {
+                // For existing users, generate token and redirect to home
+                String token = jwtUtil.generateToken(existingUser.getUserName(), existingUser.getEmail(), existingUser.getRole());
+                
+                redirectUrl = UriComponentsBuilder
+                    .fromUriString(redirectBaseUrl + "/oauth2/redirect")
+                    .queryParam("token", token)
+                    .queryParam("userId", existingUser.getUserId())
+                    .queryParam("role", existingUser.getRole())
+                    .build().toUriString();
+            }
         }
         
         // Redirect to frontend
