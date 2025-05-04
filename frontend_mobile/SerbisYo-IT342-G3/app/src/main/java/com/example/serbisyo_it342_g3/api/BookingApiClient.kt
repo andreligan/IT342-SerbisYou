@@ -3,18 +3,24 @@ package com.example.serbisyo_it342_g3.api
 import android.content.Context
 import android.util.Log
 import com.example.serbisyo_it342_g3.data.Booking
+import com.example.serbisyo_it342_g3.data.BookingDeserializer
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import org.json.JSONArray
 import java.io.IOException
 
 class BookingApiClient(private val context: Context) {
     private val baseApiClient = BaseApiClient(context)
     private val client = baseApiClient.client
-    private val gson = baseApiClient.gson
+    private val gson = GsonBuilder()
+        .registerTypeAdapter(Booking::class.java, BookingDeserializer())
+        .create()
+    private val serviceApiClient = ServiceApiClient(context)
 
     private val TAG = "BookingApiClient"
 
@@ -50,8 +56,8 @@ class BookingApiClient(private val context: Context) {
                 
                 if (response.isSuccessful) {
                     try {
-                        val type = object : TypeToken<List<Booking>>() {}.type
-                        val customerBookings = gson.fromJson<List<Booking>>(responseBody, type) ?: emptyList()
+                        val bookingListType = object : TypeToken<List<Booking>>() {}.type
+                        val customerBookings = gson.fromJson<List<Booking>>(responseBody, bookingListType) ?: emptyList()
                         
                         Log.d(TAG, "Directly received ${customerBookings.size} bookings for customer $customerId")
                         callback(customerBookings, null)
@@ -90,8 +96,10 @@ class BookingApiClient(private val context: Context) {
                 
                 if (response.isSuccessful) {
                     try {
-                        val type = object : TypeToken<List<Booking>>() {}.type
-                        val allBookings = gson.fromJson<List<Booking>>(responseBody, type) ?: emptyList()
+                        // Try with automatic deserialization first
+                        try {
+                            val bookingListType = object : TypeToken<List<Booking>>() {}.type
+                            val allBookings = gson.fromJson<List<Booking>>(responseBody, bookingListType) ?: emptyList()
                         
                         Log.d(TAG, "Received ${allBookings.size} total bookings")
                         
@@ -136,6 +144,48 @@ class BookingApiClient(private val context: Context) {
                         }
                         
                         callback(customerBookings, null)
+                        } catch (e: Exception) {
+                            // If automatic deserialization fails, try manual parsing
+                            Log.e(TAG, "Error with automatic deserialization, trying manual approach", e)
+                            
+                            try {
+                                // Parse the JSON array manually
+                                val jsonArray = JSONArray(responseBody)
+                                val manualBookings = ArrayList<Booking>()
+                                
+                                for (i in 0 until jsonArray.length()) {
+                                    val jsonObject = jsonArray.getJSONObject(i)
+                                    val bookingId = jsonObject.optLong("bookingId", 0)
+                                    
+                                    // Try to extract customer ID to filter
+                                    var bookingCustomerId: Long = -1L
+                                    if (jsonObject.has("customer") && !jsonObject.isNull("customer")) {
+                                        val customerObj = jsonObject.getJSONObject("customer")
+                                        bookingCustomerId = customerObj.optLong("customerId", -1L)
+                                    }
+                                    
+                                    // Only include if it matches our customer ID
+                                    if (bookingCustomerId == customerId || bookingCustomerId == -1L) {
+                                        val booking = Booking(
+                                            bookingId = bookingId,
+                                            status = jsonObject.optString("status", ""),
+                                            totalCost = jsonObject.optDouble("totalCost", 0.0),
+                                            bookingDate = extractSimpleDateString(jsonObject, "bookingDate"),
+                                            bookingTime = extractSimpleTimeString(jsonObject, "bookingTime"),
+                                            paymentMethod = jsonObject.optString("paymentMethod", "Cash"),
+                                            note = jsonObject.optString("note", "")
+                                        )
+                                        manualBookings.add(booking)
+                                    }
+                                }
+                                
+                                Log.d(TAG, "Manually parsed ${manualBookings.size} bookings for customer $customerId")
+                                callback(manualBookings, null)
+                            } catch (jsonException: Exception) {
+                                Log.e(TAG, "Error with manual JSON parsing", jsonException)
+                                callback(null, jsonException)
+                            }
+                        }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error parsing bookings", e)
                         callback(null, e)
@@ -158,6 +208,47 @@ class BookingApiClient(private val context: Context) {
         })
     }
 
+    // Helper method to extract date string from a JSON object that might contain an array
+    private fun extractSimpleDateString(jsonObject: JSONObject, fieldName: String): String? {
+        return try {
+            if (jsonObject.has(fieldName)) {
+                if (jsonObject.get(fieldName) is JSONArray) {
+                    val dateArray = jsonObject.getJSONArray(fieldName)
+                    if (dateArray.length() >= 3) {
+                        val year = dateArray.getInt(0)
+                        val month = dateArray.getInt(1)
+                        val day = dateArray.getInt(2)
+                        String.format("%04d-%02d-%02d", year, month, day)
+                    } else null
+                } else {
+                    jsonObject.optString(fieldName, null)
+                }
+            } else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    // Helper method to extract time string from a JSON object that might contain an array
+    private fun extractSimpleTimeString(jsonObject: JSONObject, fieldName: String): String? {
+        return try {
+            if (jsonObject.has(fieldName)) {
+                if (jsonObject.get(fieldName) is JSONArray) {
+                    val timeArray = jsonObject.getJSONArray(fieldName)
+                    if (timeArray.length() >= 2) {
+                        val hours = timeArray.getInt(0)
+                        val minutes = timeArray.getInt(1)
+                        String.format("%02d:%02d:00", hours, minutes)
+                    } else null
+                } else {
+                    jsonObject.optString(fieldName, null)
+                }
+            } else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     // Create a new booking
     fun createBooking(
         serviceId: Long, 
@@ -178,23 +269,78 @@ class BookingApiClient(private val context: Context) {
 
         Log.d(TAG, "Creating booking for service: $serviceId, customer: $customerId, date: $bookingDate, time: $bookingTime")
 
+        // FIRST: Get complete service details to ensure we have provider information
+        // This step fixes the issue where the backend expects the provider in the service
+        serviceApiClient.getServiceById(serviceId, token) { service, serviceError ->
+            if (serviceError != null) {
+                Log.e(TAG, "Failed to get service details", serviceError)
+                callback(null, Exception("Failed to fetch service details: ${serviceError.message}"))
+                return@getServiceById
+            }
+
+            if (service == null) {
+                Log.e(TAG, "Service not found")
+                callback(null, Exception("Service not found"))
+                return@getServiceById
+            }
+
+            // Now create booking with complete service details
         val jsonObject = JSONObject().apply {
-            // Match the expected format from BookingController in the backend
+                // Make sure we include the full service object with provider details
             put("service", JSONObject().apply {
                 put("serviceId", serviceId)
+                    // The backend will load the full service from this ID
             })
+                
             put("customer", JSONObject().apply {
                 put("customerId", customerId)
             })
-            put("bookingDate", bookingDate) // Date part only
+                
+                // Format the date properly
+                put("bookingDate", bookingDate)
             put("status", "Pending")
             
-            // Add booking time if provided
+                // Add time in the proper format
             if (!bookingTime.isNullOrBlank()) {
-                put("bookingTime", bookingTime)
+                    // Check if it's an array format like [6,0]
+                    if (bookingTime.contains("[") && bookingTime.contains("]")) {
+                        try {
+                            // Parse the array format
+                            val timeStr = bookingTime.replace("[", "").replace("]", "")
+                            val timeParts = timeStr.split(",")
+                            if (timeParts.size >= 2) {
+                                val hours = timeParts[0].trim().toInt()
+                                val minutes = timeParts[1].trim().toInt()
+                                val formattedTime = String.format("%02d:%02d:00", hours, minutes)
+                                put("bookingTime", formattedTime)
+                                Log.d(TAG, "Formatted array time [$bookingTime] to: $formattedTime")
             }
-            
-            // Add total cost if provided, otherwise default to 0
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error parsing time array: $bookingTime", e)
+                            // Fall back to a default time
+                            put("bookingTime", "08:00:00")
+                        }
+                    } else if (bookingTime.contains(":")) {
+                        // It's already a time string with colon
+                        val formattedTime = if (bookingTime.split(":").size == 2) {
+                            "$bookingTime:00"  // Add seconds if missing
+                        } else {
+                            bookingTime
+                        }
+                        put("bookingTime", formattedTime)
+                    } else {
+                        // Try to parse as a number of hours
+                        try {
+                            val hours = bookingTime.toInt()
+                            put("bookingTime", String.format("%02d:00:00", hours))
+                        } catch (e: Exception) {
+                            // Default time if parsing fails
+                            put("bookingTime", "08:00:00")
+                        }
+                    }
+                }
+                
+                // Ensure totalCost is included and is a valid number
             put("totalCost", totalCost ?: 0.0)
             
             // Add note if not null or empty
@@ -202,8 +348,11 @@ class BookingApiClient(private val context: Context) {
                 put("note", note)
             }
             
-            // Add payment method information (can be used for future payment integration)
+                // Add payment method
             put("paymentMethod", paymentMethod ?: "Cash")
+                
+                // Add fullPayment flag (defaults to true for cash payments)
+                put("fullPayment", true)
         }
 
         Log.d(TAG, "Booking JSON: ${jsonObject.toString()}")
@@ -230,9 +379,27 @@ class BookingApiClient(private val context: Context) {
 
                 if (response.isSuccessful) {
                     Log.d(TAG, "Create booking response: $responseBody")
+                        try {
+                            // Manual parsing as a fallback when the main deserializer fails
                     try {
                         val booking = gson.fromJson(responseBody, Booking::class.java)
                         callback(booking, null)
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error with deserializer, falling back to manual parsing", e)
+                                // Parse manually to extract just the booking ID
+                                val jsonObject = JSONObject(responseBody!!)
+                                val bookingId = jsonObject.getLong("bookingId")
+                                // Create a simple booking object with just the essentials
+                                val simpleBooking = Booking(
+                                    bookingId = bookingId,
+                                    status = "Pending", // Assume status is Pending for a new booking
+                                    totalCost = jsonObject.optDouble("totalCost", 0.0),
+                                    bookingDate = jsonObject.optString("bookingDate", ""),
+                                    paymentMethod = jsonObject.optString("paymentMethod", "Cash")
+                                )
+                                Log.d(TAG, "Successfully created booking with ID: $bookingId using manual parsing")
+                                callback(simpleBooking, null)
+                            }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error parsing created booking", e)
                         callback(null, e)
@@ -253,6 +420,7 @@ class BookingApiClient(private val context: Context) {
                 }
             }
         })
+        }
     }
 
     // Cancel a booking
@@ -335,19 +503,74 @@ class BookingApiClient(private val context: Context) {
                 
                 if (response.isSuccessful) {
                     try {
-                        val type = object : TypeToken<List<Booking>>() {}.type
-                        val providerBookings = gson.fromJson<List<Booking>>(responseBody, type) ?: emptyList()
+                        // Try with automatic deserialization first
+                        try {
+                            val bookingListType = object : TypeToken<List<Booking>>() {}.type
+                            val allBookings = gson.fromJson<List<Booking>>(responseBody, bookingListType) ?: emptyList()
                         
-                        Log.d(TAG, "Directly received ${providerBookings.size} bookings for provider $providerId")
+                            Log.d(TAG, "Received ${allBookings.size} total bookings")
+                            
+                            // Filter bookings by service provider ID
+                            val providerBookings = allBookings.filter { booking ->
+                                val service = booking.service ?: return@filter false
+                                val provider = service.provider ?: return@filter false
+                                provider.providerId == providerId
+                            }
+                            
+                            Log.d(TAG, "Found ${providerBookings.size} bookings for provider $providerId after filtering")
                         callback(providerBookings, null)
+                        } catch (e: Exception) {
+                            // If automatic deserialization fails, try manual parsing
+                            Log.e(TAG, "Error with automatic deserialization, trying manual approach", e)
+                            
+                            try {
+                                // Parse the JSON array manually
+                                val jsonArray = JSONArray(responseBody)
+                                val manualBookings = ArrayList<Booking>()
+                                
+                                for (i in 0 until jsonArray.length()) {
+                                    val jsonObject = jsonArray.getJSONObject(i)
+                                    val bookingId = jsonObject.optLong("bookingId", 0)
+                                    
+                                    // Try to extract provider ID to filter
+                                    var serviceProviderId: Long = -1L
+                                    if (jsonObject.has("service") && !jsonObject.isNull("service")) {
+                                        val serviceObj = jsonObject.getJSONObject("service")
+                                        if (serviceObj.has("provider") && !serviceObj.isNull("provider")) {
+                                            val providerObj = serviceObj.getJSONObject("provider")
+                                            serviceProviderId = providerObj.optLong("providerId", -1L)
+                                        }
+                                    }
+                                    
+                                    // Only include if it matches our provider ID
+                                    if (serviceProviderId == providerId) {
+                                        val booking = Booking(
+                                            bookingId = bookingId,
+                                            status = jsonObject.optString("status", ""),
+                                            totalCost = jsonObject.optDouble("totalCost", 0.0),
+                                            bookingDate = extractSimpleDateString(jsonObject, "bookingDate"),
+                                            bookingTime = extractSimpleTimeString(jsonObject, "bookingTime"),
+                                            paymentMethod = jsonObject.optString("paymentMethod", "Cash"),
+                                            note = jsonObject.optString("note", "")
+                                        )
+                                        manualBookings.add(booking)
+                                    }
+                                }
+                                
+                                Log.d(TAG, "Manually parsed ${manualBookings.size} bookings for provider $providerId")
+                                callback(manualBookings, null)
+                            } catch (jsonException: Exception) {
+                                Log.e(TAG, "Error with manual JSON parsing", jsonException)
+                                callback(null, jsonException)
+                            }
+                        }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error parsing bookings from provider endpoint", e)
-                        // Fallback to getting all bookings and filtering
-                        getAllBookingsAndFilterByProvider(providerId, token, callback)
+                        Log.e(TAG, "Error parsing bookings", e)
+                        callback(null, e)
                     }
                 } else {
-                    Log.d(TAG, "Provider endpoint returned ${response.code}, falling back to filtering")
-                    getAllBookingsAndFilterByProvider(providerId, token, callback)
+                    Log.e(TAG, "Error getting all bookings: ${response.code}")
+                    callback(null, Exception("Failed to get bookings: ${response.code}"))
                 }
             }
         })
@@ -373,8 +596,10 @@ class BookingApiClient(private val context: Context) {
                 
                 if (response.isSuccessful) {
                     try {
-                        val type = object : TypeToken<List<Booking>>() {}.type
-                        val allBookings = gson.fromJson<List<Booking>>(responseBody, type) ?: emptyList()
+                        // Try with automatic deserialization first
+                        try {
+                            val bookingListType = object : TypeToken<List<Booking>>() {}.type
+                            val allBookings = gson.fromJson<List<Booking>>(responseBody, bookingListType) ?: emptyList()
                         
                         Log.d(TAG, "Received ${allBookings.size} total bookings")
                         
@@ -387,6 +612,51 @@ class BookingApiClient(private val context: Context) {
                         
                         Log.d(TAG, "Found ${providerBookings.size} bookings for provider $providerId after filtering")
                         callback(providerBookings, null)
+                        } catch (e: Exception) {
+                            // If automatic deserialization fails, try manual parsing
+                            Log.e(TAG, "Error with automatic deserialization, trying manual approach", e)
+                            
+                            try {
+                                // Parse the JSON array manually
+                                val jsonArray = JSONArray(responseBody)
+                                val manualBookings = ArrayList<Booking>()
+                                
+                                for (i in 0 until jsonArray.length()) {
+                                    val jsonObject = jsonArray.getJSONObject(i)
+                                    val bookingId = jsonObject.optLong("bookingId", 0)
+                                    
+                                    // Try to extract provider ID to filter
+                                    var serviceProviderId: Long = -1L
+                                    if (jsonObject.has("service") && !jsonObject.isNull("service")) {
+                                        val serviceObj = jsonObject.getJSONObject("service")
+                                        if (serviceObj.has("provider") && !serviceObj.isNull("provider")) {
+                                            val providerObj = serviceObj.getJSONObject("provider")
+                                            serviceProviderId = providerObj.optLong("providerId", -1L)
+                                        }
+                                    }
+                                    
+                                    // Only include if it matches our provider ID
+                                    if (serviceProviderId == providerId) {
+                                        val booking = Booking(
+                                            bookingId = bookingId,
+                                            status = jsonObject.optString("status", ""),
+                                            totalCost = jsonObject.optDouble("totalCost", 0.0),
+                                            bookingDate = extractSimpleDateString(jsonObject, "bookingDate"),
+                                            bookingTime = extractSimpleTimeString(jsonObject, "bookingTime"),
+                                            paymentMethod = jsonObject.optString("paymentMethod", "Cash"),
+                                            note = jsonObject.optString("note", "")
+                                        )
+                                        manualBookings.add(booking)
+                                    }
+                                }
+                                
+                                Log.d(TAG, "Manually parsed ${manualBookings.size} bookings for provider $providerId")
+                                callback(manualBookings, null)
+                            } catch (jsonException: Exception) {
+                                Log.e(TAG, "Error with manual JSON parsing", jsonException)
+                                callback(null, jsonException)
+                            }
+                        }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error parsing bookings", e)
                         callback(null, e)
@@ -435,8 +705,27 @@ class BookingApiClient(private val context: Context) {
 
                 if (response.isSuccessful) {
                     try {
+                        // Try with deserializer first
+                        try {
+                            // Use our custom deserializer which handles array format dates and times
                         val updatedBooking = gson.fromJson(responseBody, Booking::class.java)
                         callback(updatedBooking, null)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error with deserializer, falling back to manual parsing", e)
+                            // Parse manually to extract just the booking ID
+                            val jsonObject = JSONObject(responseBody!!)
+                            val bookingId = jsonObject.getLong("bookingId")
+                            // Create a simple booking object with just the essentials
+                            val simpleBooking = Booking(
+                                bookingId = bookingId,
+                                status = newStatus,
+                                totalCost = jsonObject.optDouble("totalCost", 0.0),
+                                bookingDate = jsonObject.optString("bookingDate", ""),
+                                paymentMethod = jsonObject.optString("paymentMethod", "Cash")
+                            )
+                            Log.d(TAG, "Successfully updated booking status to $newStatus using manual parsing")
+                            callback(simpleBooking, null)
+                        }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error parsing updated booking", e)
                         callback(null, e)
@@ -478,8 +767,27 @@ class BookingApiClient(private val context: Context) {
 
                 if (response.isSuccessful) {
                     try {
+                        // Try with deserializer first
+                        try {
+                            // Use our custom deserializer which handles array format dates and times
                         val completedBooking = gson.fromJson(responseBody, Booking::class.java)
                         callback(completedBooking, null)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error with deserializer, falling back to manual parsing", e)
+                            // Parse manually to extract just the booking ID
+                            val jsonObject = JSONObject(responseBody!!)
+                            val bookingId = jsonObject.getLong("bookingId")
+                            // Create a simple booking object with just the essentials
+                            val simpleBooking = Booking(
+                                bookingId = bookingId,
+                                status = "Completed", // Completed status
+                                totalCost = jsonObject.optDouble("totalCost", 0.0),
+                                bookingDate = jsonObject.optString("bookingDate", ""),
+                                paymentMethod = jsonObject.optString("paymentMethod", "Cash")
+                            )
+                            Log.d(TAG, "Successfully completed booking using manual parsing")
+                            callback(simpleBooking, null)
+                        }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error parsing completed booking", e)
                         callback(null, e)

@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.serbisyo_it342_g3.R
 import com.example.serbisyo_it342_g3.api.BookingApiClient
 import com.example.serbisyo_it342_g3.api.ReviewApiClient
+import com.example.serbisyo_it342_g3.api.UserApiClient
 import com.example.serbisyo_it342_g3.data.Booking
 import java.text.SimpleDateFormat
 import java.util.*
@@ -29,6 +30,7 @@ class BookingHistoryFragment : Fragment() {
     
     private lateinit var bookingApiClient: BookingApiClient
     private lateinit var reviewApiClient: ReviewApiClient
+    private lateinit var userApiClient: UserApiClient
     private var token: String = ""
     private var userId: Long = 0
     private var bookings = mutableListOf<Booking>()
@@ -53,6 +55,7 @@ class BookingHistoryFragment : Fragment() {
         // Initialize API clients
         bookingApiClient = BookingApiClient(requireContext())
         reviewApiClient = ReviewApiClient(requireContext())
+        userApiClient = UserApiClient(requireContext())
         
         // Get token and user ID from SharedPreferences
         val preferences = requireContext().getSharedPreferences("UserPrefs", 0)
@@ -75,20 +78,51 @@ class BookingHistoryFragment : Fragment() {
         bookingAdapter = BookingAdapter(bookings)
         rvBookings.adapter = bookingAdapter
         
-        // Load booking history
-        loadBookingHistory()
+        // First fetch the customer ID that corresponds to this user ID
+        fetchCustomerId()
         
         return view
     }
     
-    private fun loadBookingHistory() {
+    private fun fetchCustomerId() {
         progressBar.visibility = View.VISIBLE
         tvNoBookings.visibility = View.GONE
         
-        // Load bookings for the logged-in user
+        // Use the existing UserApiClient method to get the customer ID for this user
+        userApiClient.getCustomerIdByUserId(userId, token) { customerId, error ->
+            requireActivity().runOnUiThread {
+                if (error != null) {
+                    Log.e(TAG, "Error fetching customer ID: ${error.message}")
+                    progressBar.visibility = View.GONE
+                    tvNoBookings.visibility = View.VISIBLE
+                    tvNoBookings.text = "Could not find your customer profile. Please contact support."
+                    return@runOnUiThread
+                }
+                
+                if (customerId == null) {
+                    Log.e(TAG, "Customer ID not found for user ID: $userId")
+                    progressBar.visibility = View.GONE
+                    tvNoBookings.visibility = View.VISIBLE
+                    tvNoBookings.text = "Could not find your customer profile. Please contact support."
+                    return@runOnUiThread
+                }
+                
+                Log.d(TAG, "Found customer ID $customerId for user ID $userId")
+                
+                // Now load bookings with the correct customer ID
+                loadBookingHistory(customerId)
+            }
+        }
+    }
+    
+    private fun loadBookingHistory(customerId: Long) {
+        progressBar.visibility = View.VISIBLE
+        tvNoBookings.visibility = View.GONE
+        
+        // Use the correct customer ID from user profile
         bookingApiClient.getUserBookings(
             token = token,
-            userId = userId,
+            userId = customerId,
             onSuccess = { loadedBookings ->
                 requireActivity().runOnUiThread {
                     progressBar.visibility = View.GONE

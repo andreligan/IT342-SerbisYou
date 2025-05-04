@@ -286,6 +286,55 @@ class ServiceApiClient(private val context: Context) {
         })
     }
 
+    // Public method to get a service by ID
+    fun getServiceById(serviceId: Long, token: String, callback: (Service?, Exception?) -> Unit) {
+        if (token.isBlank()) {
+            Log.e(TAG, "Cannot get service: Token is empty")
+            callback(null, Exception("Authentication token is required"))
+            return
+        }
+        
+        if (serviceId <= 0) {
+            Log.e(TAG, "Cannot get service: Invalid service ID ($serviceId)")
+            callback(null, Exception("Invalid service ID"))
+            return
+        }
+        
+        Log.d(TAG, "Getting service with ID: $serviceId")
+        
+        val request = Request.Builder()
+            .url("${baseApiClient.getBaseUrl()}/api/services/getById/$serviceId")
+            .get()
+            .header("Authorization", "Bearer $token")
+            .build()
+            
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e(TAG, "Failed to get service with ID $serviceId", e)
+                callback(null, e)
+            }
+            
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                Log.d(TAG, "Response code: ${response.code}")
+                
+                if (response.isSuccessful && responseBody != null) {
+                    try {
+                        val service = gson.fromJson(responseBody, Service::class.java)
+                        Log.d(TAG, "Successfully fetched service: ${service.serviceName} (ID: ${service.serviceId})")
+                        callback(service, null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing service", e)
+                        callback(null, e)
+                    }
+                } else {
+                    Log.e(TAG, "Error getting service: ${response.code}")
+                    callback(null, Exception("Failed to get service: ${response.code}"))
+                }
+            }
+        })
+    }
+
     // Create a new service
     fun createService(providerId: Long, categoryId: Long, service: Service, token: String, callback: (Service?, Exception?) -> Unit) {
         Log.d(TAG, "Creating service for provider: $providerId, category: $categoryId")
@@ -806,38 +855,6 @@ class ServiceApiClient(private val context: Context) {
         }
     }
     
-    // Helper method to get a service by ID
-    private fun getServiceById(serviceId: Long, token: String, callback: (Service?, Exception?) -> Unit) {
-        val request = Request.Builder()
-            .url("${baseApiClient.getBaseUrl()}/api/services/$serviceId")
-            .get()
-            .header("Authorization", "Bearer $token")
-            .build()
-        
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.e(TAG, "Failed to get service by ID", e)
-                callback(null, e)
-            }
-            
-            override fun onResponse(call: Call, response: Response) {
-                val responseBody = response.body?.string()
-                
-                if (response.isSuccessful && responseBody != null) {
-                    try {
-                        val service = gson.fromJson(responseBody, Service::class.java)
-                        callback(service, null)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error parsing service", e)
-                        callback(null, e)
-                    }
-                } else {
-                    callback(null, Exception("Failed to get service: ${response.code}"))
-                }
-            }
-        })
-    }
-
     // Get provider ID by user ID
     fun getProviderIdByUserId(userId: Long, token: String, callback: (Long, Exception?) -> Unit) {
         Log.d(TAG, "Getting provider ID for user ID: $userId")
